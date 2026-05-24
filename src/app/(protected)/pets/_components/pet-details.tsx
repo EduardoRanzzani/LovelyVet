@@ -2,13 +2,14 @@
 import { deleteTimelineItem } from '@/api/actions/timeline.actions';
 import { BreedsWithRelations } from '@/api/schema/breeds.schema';
 import { CustomersWithRelations } from '@/api/schema/customers.schema';
+import { DoctorsWithRelations } from '@/api/schema/doctors.schema';
 import {
 	formatPetTutorNames,
 	PetsWithRelations,
 } from '@/api/schema/pets.schema';
 import { Species } from '@/api/schema/species.schema';
 import { TimelineItem, toTimelinePerson } from '@/api/schema/timeline.schema';
-import { calculateAge } from '@/api/util';
+import { formatAge } from '@/api/util';
 import { GoogleMapsIcon } from '@/components/icons/icon-googlemaps';
 import EditButton from '@/components/list/edit-button';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,7 @@ import TabTimeline from './tabs/tab-timeline';
 
 interface PetDetailsClientProps {
 	pet: PetsWithRelations;
+	doctors: DoctorsWithRelations[];
 	speciesPromise: Promise<Species[]>;
 	breedsPromise: Promise<BreedsWithRelations[]>;
 	customersPromise: Promise<CustomersWithRelations[]>;
@@ -55,6 +57,7 @@ interface PetDetailsClientProps {
 
 const PetDetailsClient = ({
 	pet,
+	doctors,
 	speciesPromise,
 	breedsPromise,
 	customersPromise,
@@ -70,7 +73,7 @@ const PetDetailsClient = ({
 		!isCustomer ? 'history' : 'timeline',
 	);
 
-	const age = calculateAge(new Date(pet.birthDate));
+	const age = formatAge(new Date(pet.birthDate));
 	const primaryTutor = pet.petTutors[0]?.tutor;
 	const fullAddress = primaryTutor
 		? `${primaryTutor.address}, ${primaryTutor.addressNumber} - ${primaryTutor.neighborhood}, ${primaryTutor.city} - ${primaryTutor.state}`
@@ -154,7 +157,26 @@ const PetDetailsClient = ({
 			avatarPerson: v.doctor?.user
 				? toTimelinePerson(v.doctor.user)
 				: undefined,
-			content: v.name,
+			content: (
+				<div className='grid grid-cols-2'>
+					<p className='flex gap-2'>
+						<span className='font-bold'>Vacina: </span>
+						{v.name}
+					</p>
+					<p className='flex gap-2'>
+						<span className='font-bold'>Lote:</span>
+						{v.lotNumber}
+					</p>
+					<p className='flex gap-2'>
+						<span className='font-bold'>Fabricante:</span>
+						{v.manufacturer}
+					</p>
+					<p className='flex gap-2'>
+						<span className='font-bold'>Próxima dose:</span>
+						{formatDate(v.nextDoseDate!, 'dd/MM/yyyy')}
+					</p>
+				</div>
+			),
 			icon: <SyringeIcon className='w-5 h-5 text-accent-foreground' />,
 			color: 'bg-vaccine/30',
 		})) || []),
@@ -379,6 +401,7 @@ const PetDetailsClient = ({
 
 					<div className='p-4 border rounded-md bg-card'>
 						<TabHistory
+							doctors={doctors}
 							historyEvents={historyEvents}
 							petId={pet.id}
 							canDelete={!isCustomer}

@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/db';
-import { petNotesTable, petWeightsTable } from '@/db/schema';
+import { petNotesTable, petWeightsTable, vaccinesTable } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
 import { currentUser } from '@clerk/nextjs/server';
 import { eq } from 'drizzle-orm';
@@ -17,6 +17,15 @@ export const deleteTimelineItem = actionClient
 		const { id, petId, type } = parsedInput;
 
 		switch (type) {
+			case 'vaccine':
+				const vaccine = await db.query.vaccinesTable.findFirst({
+					where: eq(vaccinesTable.id, id),
+				});
+				if (!vaccine) {
+					throw new Error('Vacina não encontrada');
+				}
+				await db.delete(vaccinesTable).where(eq(vaccinesTable.id, id));
+				break;
 			case 'weight':
 				const weight = await db.query.petWeightsTable.findFirst({
 					where: eq(petWeightsTable.id, id),

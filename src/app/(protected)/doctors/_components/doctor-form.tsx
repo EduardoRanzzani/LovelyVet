@@ -142,6 +142,7 @@ const DoctorFormClient = ({ doctor, onSuccess }: DoctorFormClientProps) => {
 							label='Email: '
 							register={form.register}
 							name='email'
+							placeholder='Ex: email@example.com'
 							error={form.formState.errors.email?.message}
 						/>
 
@@ -161,6 +162,7 @@ const DoctorFormClient = ({ doctor, onSuccess }: DoctorFormClientProps) => {
 								format='(##) #####-####'
 								mask='x'
 								name='phone'
+								placeholder='Ex: (99) 99999-9999'
 								className='w-full'
 							/>
 
@@ -171,6 +173,7 @@ const DoctorFormClient = ({ doctor, onSuccess }: DoctorFormClientProps) => {
 								format='###.###.###-##'
 								mask='x'
 								name='cpf'
+								placeholder={'Ex: 123.456.789-09'}
 								className='w-full'
 							/>
 						</div>
@@ -214,6 +217,7 @@ const DoctorFormClient = ({ doctor, onSuccess }: DoctorFormClientProps) => {
 							label='Especialidade: '
 							register={form.register}
 							name='specialty'
+							placeholder='Ex: Clínica Geral'
 							error={form.formState.errors.specialty?.message}
 						/>
 

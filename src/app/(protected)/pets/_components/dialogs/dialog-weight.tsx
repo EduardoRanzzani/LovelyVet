@@ -1,4 +1,4 @@
-import { insertPetWeight } from '@/api/actions/pet-weight.actions';
+import { insertPetWeight } from '@/api/actions/pet-weights.actions';
 import {
 	createPetWeightSchema,
 	CreatePetWeightSchema,
@@ -18,7 +18,7 @@ import {
 import { Form } from '@/components/ui/form';
 import LoadingDialog from '@/components/ui/loading';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { BanIcon, SaveIcon, ScaleIcon } from 'lucide-react';
+import { BanIcon, Loader2Icon, SaveIcon, ScaleIcon } from 'lucide-react';
 import { useAction } from 'next-safe-action/hooks';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -86,6 +86,7 @@ const DialogWeight = ({ petId }: DialogWeightProps) => {
 
 				<Form {...form}>
 					<form
+						id='weightForm'
 						onSubmit={form.handleSubmit(formSubmit)}
 						className='flex flex-col gap-2'
 					>
@@ -98,25 +99,43 @@ const DialogWeight = ({ petId }: DialogWeightProps) => {
 							name='weightInGrams'
 							error={form.formState.errors.weightInGrams?.message}
 						/>
-
-						<DialogFooter className='mt-4'>
-							<DialogClose asChild className='flex-1'>
-								<Button variant={'destructive'}>
-									<BanIcon />
-									Cancelar
-								</Button>
-							</DialogClose>
-
-							<Button type='submit' className='flex-1'>
-								<SaveIcon />
-								Salvar
-							</Button>
-						</DialogFooter>
 					</form>
 				</Form>
-			</DialogContent>
 
-			{insertPetWeightAction.isPending && <LoadingDialog />}
+				{insertPetWeightAction.isPending && <LoadingDialog />}
+
+				<DialogFooter className='mt-4'>
+					<DialogClose asChild>
+						<Button
+							type='button'
+							variant={'destructive'}
+							onClick={() => {
+								if (!insertPetWeightAction.isPending) form.reset();
+							}}
+							className='flex-1'
+						>
+							<BanIcon />
+							Cancelar
+						</Button>
+					</DialogClose>
+
+					<Button
+						type='submit'
+						disabled={insertPetWeightAction.isPending}
+						form='weightForm'
+						className='flex-1'
+					>
+						{insertPetWeightAction.isPending ? (
+							<Loader2Icon className='h-5 w-5 animate-spin' />
+						) : (
+							<>
+								<SaveIcon />
+								Salvar
+							</>
+						)}
+					</Button>
+				</DialogFooter>
+			</DialogContent>
 		</Dialog>
 	);
 };

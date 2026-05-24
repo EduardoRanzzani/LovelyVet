@@ -314,6 +314,34 @@ export const prescriptionsTable = pgTable('prescriptions', {
 		.notNull(),
 });
 
+// Itens da receita (ex: Dipirona gotas - (farmácia humana) - 1fr. Orientações: dar 1 gota/kg a cada 12h)
+export const prescriptionItemsTable = pgTable('prescription_items', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	name: text('name').notNull(),
+	pharmacy: text('pharmacy').notNull(),
+	quantity: text('quantity').notNull(),
+	orientations: text('orientations').notNull(),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at')
+		.defaultNow()
+		.$onUpdate(() => new Date())
+		.notNull(),
+});
+
+// Vínculo entre uma receita e seus itens (muitos-para-muitos, já que um mesmo item pode ser usado em várias receitas)
+export const prescriptionMedicineItemsTable = pgTable(
+	'prescription_medicine_items',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		prescriptionId: uuid('prescription_id')
+			.notNull()
+			.references(() => prescriptionsTable.id),
+		prescriptionItemId: uuid('prescription_item_id')
+			.notNull()
+			.references(() => prescriptionItemsTable.id),
+	},
+);
+
 // Plantões
 export const shiftsTable = pgTable('shifts', {
 	id: uuid('id').primaryKey().defaultRandom(),
@@ -343,8 +371,8 @@ export const vaccinesTable = pgTable('vaccines', {
 		.notNull()
 		.references(() => petsTable.id),
 	name: text('name').notNull(), // Ex: "V10", "Raiva"
-	applicationDate: date('application_date').notNull(),
-	nextDoseDate: date('next_dose_date'), // Importante para o dashboard/agenda
+	applicationDate: timestamp('application_date').notNull(),
+	nextDoseDate: timestamp('next_dose_date'), // Importante para o dashboard/agenda
 	lotNumber: text('lot_number'),
 	manufacturer: text('manufacturer'),
 	doctorId: uuid('doctor_id')
@@ -524,7 +552,7 @@ export const prescriptionTemplatesRelations = relations(
 
 export const prescriptionsRelations = relations(
 	prescriptionsTable,
-	({ one }) => ({
+	({ one, many }) => ({
 		pet: one(petsTable, {
 			fields: [prescriptionsTable.petId],
 			references: [petsTable.id],
@@ -536,6 +564,21 @@ export const prescriptionsRelations = relations(
 		appointment: one(appointmentsTable, {
 			fields: [prescriptionsTable.appointmentId],
 			references: [appointmentsTable.id],
+		}),
+		items: many(prescriptionItemsTable),
+	}),
+);
+
+export const prescriptionMedicineItemsRelations = relations(
+	prescriptionMedicineItemsTable,
+	({ one }) => ({
+		prescription: one(prescriptionsTable, {
+			fields: [prescriptionMedicineItemsTable.prescriptionId],
+			references: [prescriptionsTable.id],
+		}),
+		medicine: one(prescriptionItemsTable, {
+			fields: [prescriptionMedicineItemsTable.prescriptionItemId],
+			references: [prescriptionItemsTable.id],
 		}),
 	}),
 );

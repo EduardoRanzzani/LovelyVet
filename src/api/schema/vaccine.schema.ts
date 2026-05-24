@@ -27,11 +27,14 @@ export type VaccinesWithRelations = typeof vaccinesTable.$inferSelect & {
 export const createVaccineSchema = z.object({
 	id: z.uuid().optional().nullable(),
 	petId: z.uuid({ message: 'Favor informar o pet' }),
-	name: z.string({ message: 'Favor informar o nome da vacina' }),
+	name: z
+		.string({ message: 'Favor informar o nome da vacina' })
+		.nonempty({ message: 'Favor informar o nome da Vacina' }),
 	applicationDate: z.date({ message: 'Favor informar a data da aplicação' }),
-	nextDoseDate: z
-		.date({ message: 'Favor informar a data da próxima dose' })
-		.optional(),
+	daysToNextDose: z.coerce
+		.number()
+		.int()
+		.positive('Informe os dias para a proxima dose'),
 	lotNumber: z
 		.string({ message: 'Favor informar o número do lote' })
 		.optional(),

@@ -1,3 +1,4 @@
+import { JSX } from 'react';
 import z from 'zod';
 
 /** Dados de `users` para avatar e legenda (author ou user do médico). */
@@ -36,7 +37,7 @@ export interface TimelineItem {
 	doctor?: string;
 	/** Quem aparece no avatar: author quando existir; caso contrário user do médico. */
 	avatarPerson?: TimelineItemPerson;
-	content: string;
+	content: string | JSX.Element;
 	icon: React.ReactNode;
 	color: string;
 }

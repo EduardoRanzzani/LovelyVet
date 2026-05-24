@@ -21,7 +21,7 @@ export const getInitials = (name: string): string => {
 	return first + last;
 };
 
-export const calculateAge = (dateOfBirth: Date): string => {
+export const formatAge = (dateOfBirth: Date): string => {
 	const today = new Date();
 	let years = today.getFullYear() - dateOfBirth.getFullYear();
 	let months = today.getMonth() - dateOfBirth.getMonth();
@@ -70,4 +70,37 @@ export const calculateAge = (dateOfBirth: Date): string => {
 	}
 
 	return result;
+};
+
+export const formatAgeShort = (dateOfBirth: Date): string => {
+	const today = new Date();
+	let years = today.getFullYear() - dateOfBirth.getFullYear();
+	let months = today.getMonth() - dateOfBirth.getMonth();
+
+	// Ajusta se o mês atual for anterior ao mês de nascimento
+	// ou se for o mesmo mês, mas o dia ainda não chegou
+	if (months < 0 || (months === 0 && today.getDate() < dateOfBirth.getDate())) {
+		years--;
+		months = (months + 12) % 12;
+	}
+
+	// Ajuste fino para o caso de o dia de hoje ser menor que o dia de nascimento
+	if (today.getDate() < dateOfBirth.getDate() && months > 0) {
+		months--;
+	} else if (
+		today.getDate() < dateOfBirth.getDate() &&
+		months === 0 &&
+		years > 0
+	) {
+		years--;
+		months = 11;
+	}
+
+	const partYears = years > 0 ? `${years}A` : '';
+	const partMonths = months > 0 ? `${months}M` : '';
+
+	// Retorna a combinação, removendo espaços extras se um dos dois for vazio
+	return (
+		`${partYears}${partYears && partMonths ? ' ' : ''}${partMonths}` || '0M'
+	);
 };

@@ -9,7 +9,7 @@ import {
 	PetsWithRelations,
 } from '@/api/schema/pets.schema';
 import { Species } from '@/api/schema/species.schema';
-import { calculateAge } from '@/api/util';
+import { formatAge } from '@/api/util';
 import { WhatsappIcon } from '@/components/icons/icon-whatsapp';
 import AddButton from '@/components/list/add-button';
 import DeleteAlertButton from '@/components/list/delete-alert-dialog';
@@ -142,7 +142,7 @@ const PetsListClient = ({
 					</span>
 				</TableCell>
 
-				<TableCell>{calculateAge(new Date(pet.birthDate))}</TableCell>
+				<TableCell>{formatAge(new Date(pet.birthDate))}</TableCell>
 				<TableCell>
 					{pet.weightHistory && pet.weightHistory.length > 0
 						? formatWeight(pet.weightHistory[0].weightInGrams)
@@ -279,7 +279,7 @@ const PetsListClient = ({
 							<CalendarIcon className='w-4 h-4' />
 						</span>
 						<span className='text-sm'>
-							{calculateAge(new Date(pet.birthDate))}
+							{formatAge(new Date(pet.birthDate))}
 						</span>
 					</p>
 

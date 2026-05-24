@@ -56,7 +56,13 @@ const CustomerFormClient = ({
 	});
 
 	const handlePostalCodeChange = async (postalCode: string) => {
-		if (!postalCode) return;
+		if (!postalCode) {
+			form.setValue('address', '');
+			form.setValue('neighborhood', '');
+			form.setValue('city', '');
+			form.setValue('state', '');
+			return;
+		}
 		const fullAddress = await searchAddressByPostalCode(postalCode);
 		form.setValue('address', fullAddress.logradouro);
 		form.setValue('neighborhood', fullAddress.bairro);
@@ -121,6 +127,7 @@ const CustomerFormClient = ({
 								label='Email:'
 								register={form.register}
 								name='email'
+								placeholder='Ex: email@example.com'
 								error={form.formState.errors.email?.message}
 							/>
 
@@ -151,6 +158,7 @@ const CustomerFormClient = ({
 								error={form.formState.errors.phone?.message}
 								format='(##) #####-####'
 								mask='x'
+								placeholder='Ex: (99) 99999-9999'
 								name='phone'
 							/>
 							<InputFormMask
@@ -159,6 +167,7 @@ const CustomerFormClient = ({
 								error={form.formState.errors.cpf?.message}
 								format='###.###.###-##'
 								mask='x'
+								placeholder='Ex: 123.456.789-09'
 								name='cpf'
 							/>
 						</div>
@@ -171,6 +180,7 @@ const CustomerFormClient = ({
 								format='#####-###'
 								mask='x'
 								name='postalCode'
+								placeholder='Ex: 12345-678'
 								onBlur={(event) => handlePostalCodeChange(event.target.value)}
 							/>
 
@@ -188,6 +198,7 @@ const CustomerFormClient = ({
 							register={form.register}
 							name='address'
 							error={form.formState.errors.address?.message}
+							placeholder='Informe o cep para preenchimento automático'
 							disabled
 						/>
 
@@ -195,6 +206,7 @@ const CustomerFormClient = ({
 							label='Bairro:'
 							register={form.register}
 							name='neighborhood'
+							placeholder='Informe o cep para preenchimento automático'
 							error={form.formState.errors.neighborhood?.message}
 							disabled
 						/>
@@ -205,6 +217,7 @@ const CustomerFormClient = ({
 								register={form.register}
 								name='city'
 								error={form.formState.errors.city?.message}
+								placeholder='Informe o cep'
 								disabled
 							/>
 
@@ -214,6 +227,7 @@ const CustomerFormClient = ({
 								name='state'
 								error={form.formState.errors.state?.message}
 								disabled
+								placeholder='MS'
 								className='w-30'
 							/>
 						</div>

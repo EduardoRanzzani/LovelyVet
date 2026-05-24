@@ -117,6 +117,12 @@ const AppSidebar = () => {
 			roles: ['admin', 'doctor'],
 		},
 		{
+			title: 'Itens de Receitas',
+			url: '/prescriptions-items',
+			icon: CogIcon,
+			roles: ['admin', 'doctor'],
+		},
+		{
 			title: 'Modelos de Receitas',
 			url: '/prescriptions-template',
 			icon: CogIcon,

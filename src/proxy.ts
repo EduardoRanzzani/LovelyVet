@@ -2,7 +2,11 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
 // 1. Definição das Rotas Públicas e Webhooks
-const isPublicRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)']);
+const isPublicRoute = createRouteMatcher([
+	'/sign-in(.*)',
+	'/sign-up(.*)',
+	'/teste',
+]);
 const isWebhookRoute = createRouteMatcher(['/api/webhooks/clerk']);
 
 // 2. Mapeamento de permissões baseado no seu Sidebar
@@ -22,6 +26,8 @@ const rolePermissions = {
 		'/messages',
 		'/admin',
 		'/clinics',
+		'/recipe-layout',
+		'/prescriptions-items',
 	],
 	doctor: [
 		'/dashboard',
@@ -35,8 +41,10 @@ const rolePermissions = {
 		'/calculators',
 		'/shifts',
 		'/clinics',
+		'/recipe-layout',
+		'/prescriptions-items',
 	],
-	customer: ['/dashboard', '/pets', '/appointments'],
+	customer: ['/dashboard', '/pets', '/appointments', '/recipe-layout'],
 };
 
 export default clerkMiddleware(async (auth, req) => {

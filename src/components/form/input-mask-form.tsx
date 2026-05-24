@@ -74,6 +74,7 @@ const InputFormMask = <T extends FieldValues>({
 							}}
 							className={cn(
 								'read-only:cursor-not-allowed read-only:bg-zinc-200',
+								'placeholder:text-muted-foreground/50',
 								error && 'border-destructive',
 							)}
 						/>

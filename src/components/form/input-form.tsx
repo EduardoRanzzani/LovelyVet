@@ -51,6 +51,7 @@ const InputForm = <T extends FieldValues>({
                 */
 				className={cn(
 					'w-full read-only:cursor-not-allowed read-only:bg-zinc-100 dark:read-only:bg-zinc-800',
+					'placeholder:text-muted-foreground/50',
 					error && 'border-destructive',
 				)}
 			/>

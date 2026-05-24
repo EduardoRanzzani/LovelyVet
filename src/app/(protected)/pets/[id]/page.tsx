@@ -14,6 +14,7 @@ import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import PetDetailsClient from '../_components/pet-details';
 import { PetDetailsSkeleton } from '../_components/pet-details-skeleton';
+import { getDoctors } from '@/api/actions/doctors.actions';
 
 interface PetDetailsPageProps {
 	params: Promise<{ id: string }>;
@@ -25,6 +26,7 @@ const PetDetailsPage = async ({ params }: PetDetailsPageProps) => {
 	const pet = await getPetById(id);
 	if (!pet) notFound();
 
+	const doctors = await getDoctors();
 	const speciesPromise = getSpecies();
 	const breedsPromise = getBreeds();
 	const customersPromise = getCustomers();
@@ -49,6 +51,7 @@ const PetDetailsPage = async ({ params }: PetDetailsPageProps) => {
 				>
 					<PetDetailsClient
 						pet={pet}
+						doctors={doctors}
 						speciesPromise={speciesPromise}
 						breedsPromise={breedsPromise}
 						customersPromise={customersPromise}

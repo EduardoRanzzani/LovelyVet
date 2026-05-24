@@ -1,20 +1,18 @@
+import { DoctorsWithRelations } from '@/api/schema/doctors.schema';
 import { TimelineItem } from '@/api/schema/timeline.schema';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TabsContent } from '@/components/ui/tabs';
-import {
-	FileIcon,
-	FlaskConicalIcon,
-	SquarePenIcon,
-	StethoscopeIcon,
-} from 'lucide-react';
+import { FileIcon, FlaskConicalIcon, StethoscopeIcon } from 'lucide-react';
 import DialogNotes from '../dialogs/dialog-notes';
+import DialogRecipe from '../dialogs/dialog-recipe';
 import DialogServices from '../dialogs/dialog-services';
 import DialogVaccine from '../dialogs/dialog-vaccine';
 import DialogWeight from '../dialogs/dialog-weight';
 import PetTimelineClient from './history/pet-history-timeline';
 
 interface TabHistoryProps {
+	doctors: DoctorsWithRelations[];
 	historyEvents: TimelineItem[];
 	petId: string;
 	canDelete: boolean;
@@ -22,6 +20,7 @@ interface TabHistoryProps {
 }
 
 const TabHistory = ({
+	doctors,
 	historyEvents,
 	petId,
 	canDelete,
@@ -49,12 +48,9 @@ const TabHistory = ({
 						<FlaskConicalIcon /> Exame
 					</Button>
 
-					<DialogVaccine petId={petId} />
+					<DialogVaccine petId={petId} doctors={doctors} />
 
-					<Button className='bg-prescription hover:bg-prescription/80'>
-						<SquarePenIcon />
-						Receita
-					</Button>
+					<DialogRecipe petId={petId} />
 
 					<DialogNotes petId={petId} />
 				</div>
