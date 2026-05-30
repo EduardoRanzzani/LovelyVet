@@ -177,7 +177,7 @@ const ShiftsCalendarClient = ({
 									) : (
 										<SunIcon className='w-3 h-3' />
 									)}
-									{shift.clinicName}
+									<span className='truncate'>{shift.clinicName}</span>
 								</span>
 							</div>
 
