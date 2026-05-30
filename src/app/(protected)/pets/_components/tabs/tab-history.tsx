@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { TabsContent } from '@/components/ui/tabs';
 import { FileIcon, FlaskConicalIcon, StethoscopeIcon } from 'lucide-react';
 import DialogNotes from '../dialogs/dialog-notes';
-import DialogRecipe from '../dialogs/dialog-recipe';
+import DialogPrescription from '../dialogs/dialog-prescription';
 import DialogServices from '../dialogs/dialog-services';
 import DialogVaccine from '../dialogs/dialog-vaccine';
 import DialogWeight from '../dialogs/dialog-weight';
@@ -50,7 +50,7 @@ const TabHistory = ({
 
 					<DialogVaccine petId={petId} doctors={doctors} />
 
-					<DialogRecipe petId={petId} />
+					<DialogPrescription petId={petId} doctors={doctors} />
 
 					<DialogNotes petId={petId} />
 				</div>

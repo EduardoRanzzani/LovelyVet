@@ -6,12 +6,9 @@ const ProtectedLayout = ({ children }: { children: ReactNode }) => {
 	return (
 		<SidebarProvider>
 			<AppSidebar />
-			<SidebarInset>
-				{/* <div className='flex items-center justify-between'>
-					<SidebarTrigger className='m-4' variant={'outline'} />
-				</div>
-				<Separator /> */}
-				<main className='w-full'>{children}</main>
+			<SidebarInset className='min-w-0'>
+				{/* <main className='w-full'></main> */}
+				{children}
 			</SidebarInset>
 		</SidebarProvider>
 	);

@@ -115,7 +115,7 @@ export const PrescriptionsItemsListClient = ({
 						<span className='text-sm'>{item.pharmacy}</span>
 					</p>
 
-					<p className='flex gap-2 items-center'>
+					<p className='flex gap-2 items-start'>
 						<span className='text-sm font-semibold'>
 							<NotebookIcon className='h-4 w-4' />
 						</span>
