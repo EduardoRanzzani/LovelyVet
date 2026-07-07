@@ -1,4 +1,5 @@
 import { upsertPrescriptionsTemplate } from '@/api/actions/prescriptions-template.actions';
+import { REGINA_DOCTOR_ID } from '@/api/config/consts';
 import { DoctorsWithRelations } from '@/api/schema/doctors.schema';
 import {
 	createPrescriptionTemplateSchema,
@@ -42,7 +43,7 @@ const PrescriptionTemplateFormClient = ({
 		defaultValues: {
 			title: prescriptionTemplate?.title || '',
 			content: prescriptionTemplate?.content || '',
-			doctorId: prescriptionTemplate?.doctorId || '',
+			doctorId: prescriptionTemplate?.doctorId || REGINA_DOCTOR_ID,
 		},
 	});
 

@@ -1,4 +1,5 @@
 import { upsertShift } from '@/api/actions/shifts.actions';
+import { REGINA_DOCTOR_ID } from '@/api/config/consts';
 import { DoctorsWithRelations } from '@/api/schema/doctors.schema';
 import {
 	createShiftSchema,
@@ -54,7 +55,7 @@ const ShiftFormClient = ({
 	const form = useForm<CreateShiftSchema>({
 		resolver: zodResolver(createShiftSchema),
 		defaultValues: {
-			doctorId: shift?.doctorId || '',
+			doctorId: shift?.doctorId || REGINA_DOCTOR_ID,
 			clinicName: shift?.clinicName || '',
 			startTime: shift?.startTime
 				? new Date(shift.startTime)

@@ -1,6 +1,7 @@
 import { ViaCepResponse } from '@/types/viacep';
 
 export const MAX_PAGE_SIZE = 10;
+export const REGINA_DOCTOR_ID = '284fc65a-9e6d-469a-900d-ff0d1005fe5a';
 
 export type PaginatedData<T> = {
 	data: T[];

@@ -1,6 +1,7 @@
 'use client';
 
 import { upsertAppointment } from '@/api/actions/appointments.actions';
+import { REGINA_DOCTOR_ID } from '@/api/config/consts';
 import {
 	AppointmentsWithRelations,
 	createAppointmentSchema,
@@ -58,7 +59,7 @@ const AppointmentFormClient = ({
 		shouldUnregister: true,
 		defaultValues: {
 			petId: appointment?.petId || '',
-			doctorId: appointment?.doctorId || '',
+			doctorId: appointment?.doctorId || REGINA_DOCTOR_ID,
 			scheduledAt: appointment?.scheduledAt
 				? new Date(appointment.scheduledAt)
 				: new Date(),

@@ -28,6 +28,7 @@ import { useEffect, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import z from 'zod';
+import { REGINA_DOCTOR_ID } from '@/api/config/consts';
 
 const createPrescriptionFormSchema = z.object({
 	doctorId: z
@@ -66,7 +67,7 @@ const DialogPrescription = ({ petId, doctors }: DialogPrescriptionProps) => {
 		resolver: zodResolver(createPrescriptionFormSchema),
 		shouldUnregister: false,
 		defaultValues: {
-			doctorId: '',
+			doctorId: REGINA_DOCTOR_ID,
 			prescriptionItemsIds: [],
 			items: [],
 		},

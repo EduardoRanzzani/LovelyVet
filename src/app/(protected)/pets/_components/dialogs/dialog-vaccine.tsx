@@ -1,4 +1,5 @@
 import { insertVaccine } from '@/api/actions/pet-vaccines.actions';
+import { REGINA_DOCTOR_ID } from '@/api/config/consts';
 import { DoctorsWithRelations } from '@/api/schema/doctors.schema';
 import {
 	createVaccineSchema,
@@ -44,7 +45,7 @@ const DialogVaccine = ({ petId, doctors }: DialogVaccineProps) => {
 			daysToNextDose: undefined,
 			lotNumber: '',
 			manufacturer: '',
-			doctorId: '',
+			doctorId: REGINA_DOCTOR_ID,
 		},
 	});
 
