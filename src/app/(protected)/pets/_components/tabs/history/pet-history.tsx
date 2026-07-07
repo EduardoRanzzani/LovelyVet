@@ -1,6 +1,7 @@
 'use client';
 
 import { TimelineItemPerson } from '@/api/schema/timeline.schema';
+import DOMPurify from 'dompurify';
 import { getInitials } from '@/api/util';
 import DeleteAlertButton from '@/components/list/delete-alert-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -100,12 +101,14 @@ export const HistoryItem = ({
 						/>
 					)}
 				</div>
-
 				<Separator className='mt-2' />
 
-				<div className='mt-2 text-sm text-zinc-700 leading-relaxed'>
-					{content}
-				</div>
+				<div
+					className='prose prose-sm dark:prose-invert max-w-none'
+					dangerouslySetInnerHTML={{
+						__html: DOMPurify.sanitize(content as string),
+					}}
+				/>
 			</div>
 		</div>
 	);

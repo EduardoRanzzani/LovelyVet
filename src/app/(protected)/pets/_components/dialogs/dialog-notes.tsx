@@ -4,6 +4,7 @@ import {
 	createNoteSchema,
 } from '@/api/schema/pet-notes.schema';
 import TextareaForm from '@/components/form/text-area-form';
+import EditorForm from '@/components/form/text-editor-form';
 import { Button } from '@/components/ui/button';
 import {
 	Dialog,
@@ -75,7 +76,6 @@ const DialogNotes = ({ petId }: DialogNotesProps) => {
 			</DialogTrigger>
 
 			<DialogContent
-				className='max-w-lg'
 				showCloseButton={false}
 				onInteractOutside={(e) => e.preventDefault()}
 			>
@@ -94,8 +94,8 @@ const DialogNotes = ({ petId }: DialogNotesProps) => {
 					>
 						<input type='hidden' name='id' {...form.register} />
 						<input type='hidden' name='petId' value={petId} />
-						<TextareaForm
-							register={form.register}
+						<EditorForm
+							control={form.control}
 							name='content'
 							label='Observações'
 							error={form.formState.errors.content?.message}
