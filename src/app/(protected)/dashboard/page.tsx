@@ -71,10 +71,7 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
 			</PageHeader>
 
 			<PageContent>
-				<PageDescription>
-					Olá, {existingUser.name}! Aqui você vai encontrar algumas informações
-					do sistema referentes ao mês selecionado.
-				</PageDescription>
+				<PageDescription>Olá, {existingUser.name}!</PageDescription>
 
 				{/* <DashboardCalendarClient shifts={shifts} appointments={appointments} /> */}
 				{existingUser.role !== 'customer' && (

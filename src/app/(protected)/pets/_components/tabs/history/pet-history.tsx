@@ -1,7 +1,5 @@
 'use client';
-
 import { TimelineItemPerson } from '@/api/schema/timeline.schema';
-import DOMPurify from 'dompurify';
 import { getInitials } from '@/api/util';
 import DeleteAlertButton from '@/components/list/delete-alert-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -106,7 +104,7 @@ export const HistoryItem = ({
 				<div
 					className='prose prose-sm dark:prose-invert max-w-none'
 					dangerouslySetInnerHTML={{
-						__html: DOMPurify.sanitize(content as string),
+						__html: content as string,
 					}}
 				/>
 			</div>

@@ -41,8 +41,9 @@ import {
 import { useAction } from 'next-safe-action/hooks';
 import Image from 'next/image';
 import Link from 'next/link';
-import { use, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { PetDetailsSkeleton } from './pet-details-skeleton';
 import PetFormClient from './pet-form';
 import TabHistory from './tabs/tab-history';
 import TabTimeline from './tabs/tab-timeline';
@@ -62,16 +63,35 @@ const PetDetailsClient = ({
 	breedsPromise,
 	customersPromise,
 }: PetDetailsClientProps) => {
-	const signedInUser = useUser();
-	const isCustomer = signedInUser?.user?.publicMetadata?.role === 'customer';
+	const { user, isLoaded } = useUser();
+
+	const isCustomer = user?.publicMetadata?.role === 'customer';
+
+	const [activeTab, setActiveTab] = useState<string>();
+
+	const { execute, isExecuting } = useAction(deleteTimelineItem, {
+		onSuccess: () => {
+			toast.success('Item removido do histórico!');
+		},
+		onError: ({ error }) => {
+			toast.error(
+				'Erro ao deletar: ' + (error.serverError || 'Tente novamente'),
+			);
+		},
+	});
+
+	if (!isLoaded) {
+		return <PetDetailsSkeleton />;
+	}
+
+	if (!activeTab) {
+		setActiveTab(isCustomer ? 'timeline' : 'history');
+		return <PetDetailsSkeleton />;
+	}
 
 	const species = use(speciesPromise);
 	const breeds = use(breedsPromise);
 	const customers = use(customersPromise);
-
-	const [activeTab, setActiveTab] = useState(
-		!isCustomer ? 'history' : 'timeline',
-	);
 
 	const age = formatAge(new Date(pet.birthDate));
 	const primaryTutor = pet.petTutors[0]?.tutor;
@@ -226,17 +246,6 @@ const PetDetailsClient = ({
 			petId: pet.id,
 		});
 	};
-
-	const { execute, isExecuting } = useAction(deleteTimelineItem, {
-		onSuccess: () => {
-			toast.success('Item removido do histórico!');
-		},
-		onError: ({ error }) => {
-			toast.error(
-				'Erro ao deletar: ' + (error.serverError || 'Tente novamente'),
-			);
-		},
-	});
 
 	return (
 		<div className='flex flex-col gap-4 w-full'>
