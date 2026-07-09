@@ -40,7 +40,6 @@ const rolePermissions = {
 		'/prescriptions-template',
 		'/calculators',
 		'/shifts',
-		'/clinics',
 		'/recipe-layout',
 		'/prescriptions-items',
 	],

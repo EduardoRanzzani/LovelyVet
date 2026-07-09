@@ -1,4 +1,6 @@
 ## Histórico de alterações
+### [1.1.2] - 09/07/2026
+- Melhoria na exibição dos menus laterais, mantendo a visibilidade conforme o perfil do usuário
 
 ### [1.1.1] - 07/07/2026
 

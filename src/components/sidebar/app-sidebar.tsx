@@ -50,6 +50,7 @@ const AppSidebar = () => {
 	};
 
 	const userRole = (user?.publicMetadata?.role as string) || 'customer';
+	console.log(userRole);
 	const pathname = usePathname();
 
 	const items: SidebarItem[] = [
@@ -108,7 +109,7 @@ const AppSidebar = () => {
 			title: 'Clínicas',
 			url: '/clinics',
 			icon: HospitalIcon,
-			roles: ['admin', 'doctor'],
+			roles: ['admin'],
 		},
 		{
 			title: 'Calculadoras',
@@ -150,6 +151,13 @@ const AppSidebar = () => {
 			roles: ['admin', 'doctor'],
 		},
 	];
+
+	const visibleHelpers = helpers.filter((item) =>
+		item.roles.includes(userRole),
+	);
+	const visibleSettings = settings.filter((item) =>
+		item.roles.includes(userRole),
+	);
 
 	return (
 		<Sidebar variant='inset' collapsible='offcanvas'>
@@ -199,12 +207,12 @@ const AppSidebar = () => {
 							))}
 					</SidebarMenu>
 				</SidebarGroup>
-				{['admin', 'doctor'].includes(userRole) && (
+				{visibleHelpers.length > 0 && (
 					<>
 						<SidebarGroup>
 							<SidebarGroupLabel>Helpers</SidebarGroupLabel>
 							<SidebarMenu>
-								{helpers.map((item) => (
+								{visibleHelpers.map((item) => (
 									<SidebarMenuItem key={item.title}>
 										<SidebarMenuButton
 											asChild
@@ -230,35 +238,38 @@ const AppSidebar = () => {
 								))}
 							</SidebarMenu>
 						</SidebarGroup>
-						<SidebarGroup>
-							<SidebarGroupLabel>Configurações</SidebarGroupLabel>
-							<SidebarMenu>
-								{settings.map((item) => (
-									<SidebarMenuItem key={item.title}>
-										<SidebarMenuButton
-											asChild
-											isActive={pathname.includes(item.url)}
-										>
-											<Link
-												href={item.url}
-												className='flex justify-between'
-												onClick={() => setOpenMobile(false)}
+
+						{visibleSettings.length > 0 && (
+							<SidebarGroup>
+								<SidebarGroupLabel>Configurações</SidebarGroupLabel>
+								<SidebarMenu>
+									{visibleSettings.map((item) => (
+										<SidebarMenuItem key={item.title}>
+											<SidebarMenuButton
+												asChild
+												isActive={pathname.includes(item.url)}
 											>
-												<span className='flex items-center gap-2'>
-													<item.icon className='h-5 w-5' />
-													<p
-														className={`${pathname.includes(item.url) && 'font-semibold'}`}
-													>
-														{item.title}
-													</p>
-												</span>
-												{pathname.includes(item.url) && <ChevronRightIcon />}
-											</Link>
-										</SidebarMenuButton>
-									</SidebarMenuItem>
-								))}
-							</SidebarMenu>
-						</SidebarGroup>
+												<Link
+													href={item.url}
+													className='flex justify-between'
+													onClick={() => setOpenMobile(false)}
+												>
+													<span className='flex items-center gap-2'>
+														<item.icon className='h-5 w-5' />
+														<p
+															className={`${pathname.includes(item.url) && 'font-semibold'}`}
+														>
+															{item.title}
+														</p>
+													</span>
+													{pathname.includes(item.url) && <ChevronRightIcon />}
+												</Link>
+											</SidebarMenuButton>
+										</SidebarMenuItem>
+									))}
+								</SidebarMenu>
+							</SidebarGroup>
+						)}
 					</>
 				)}
 				<SidebarGroup />
