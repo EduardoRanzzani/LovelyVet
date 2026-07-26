@@ -218,6 +218,13 @@
       "when": 1785094518299,
       "tag": "0030_magenta_next_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1785105160597,
+      "tag": "0031_fuzzy_dragon_man",
+      "breakpoints": true
     }
   ]
 }

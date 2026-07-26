@@ -280,21 +280,6 @@ export const medicalRecordsTable = pgTable('medical_records', {
 		.notNull(),
 });
 
-// Modelos de receitas
-export const prescriptionTemplatesTable = pgTable('prescription_templates', {
-	id: uuid('id').primaryKey().defaultRandom(),
-	title: text('title').notNull(),
-	content: text('content').notNull(),
-	doctorId: uuid('doctor_id')
-		.notNull()
-		.references(() => doctorsTable.id),
-	createdAt: timestamp('created_at').defaultNow().notNull(),
-	updatedAt: timestamp('updated_at')
-		.defaultNow()
-		.$onUpdate(() => new Date())
-		.notNull(),
-});
-
 // Receitas
 export const prescriptionsTable = pgTable('prescriptions', {
 	id: uuid('id').primaryKey().defaultRandom(),
@@ -537,16 +522,6 @@ export const appointmentItemsRelations = relations(
 		service: one(servicesTable, {
 			fields: [appointmentItemsTable.serviceId],
 			references: [servicesTable.id],
-		}),
-	}),
-);
-
-export const prescriptionTemplatesRelations = relations(
-	prescriptionTemplatesTable,
-	({ one }) => ({
-		doctor: one(doctorsTable, {
-			fields: [prescriptionTemplatesTable.doctorId],
-			references: [doctorsTable.id],
 		}),
 	}),
 );
