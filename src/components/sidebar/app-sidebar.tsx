@@ -20,9 +20,11 @@ import {
 	CogIcon,
 	HospitalIcon,
 	LayoutDashboardIcon,
+	ListIcon,
 	LucideIcon,
 	MessageSquareIcon,
 	PawPrintIcon,
+	ScrollTextIcon,
 	ShieldUserIcon,
 	StethoscopeIcon,
 	UsersRoundIcon,
@@ -120,7 +122,13 @@ const AppSidebar = () => {
 		{
 			title: 'Itens de Receitas',
 			url: '/prescriptions-items',
-			icon: CogIcon,
+			icon: ListIcon,
+			roles: ['admin', 'doctor'],
+		},
+		{
+			title: 'Receitas',
+			url: '/prescriptions',
+			icon: ScrollTextIcon,
 			roles: ['admin', 'doctor'],
 		},
 	];
@@ -149,9 +157,17 @@ const AppSidebar = () => {
 	const visibleHelpers = helpers.filter((item) =>
 		item.roles.includes(userRole),
 	);
+
 	const visibleSettings = settings.filter((item) =>
 		item.roles.includes(userRole),
 	);
+
+	const isLinkActive = (url: string) => {
+		if (url === '/dashboard') {
+			return pathname === '/dashboard';
+		}
+		return pathname === url || pathname.startsWith(`${url}/`);
+	};
 
 	return (
 		<Sidebar variant='inset' collapsible='offcanvas'>
@@ -177,10 +193,7 @@ const AppSidebar = () => {
 							.filter((item) => item.roles.includes(userRole))
 							.map((item) => (
 								<SidebarMenuItem key={item.title}>
-									<SidebarMenuButton
-										asChild
-										isActive={pathname.includes(item.url)}
-									>
+									<SidebarMenuButton asChild isActive={isLinkActive(item.url)}>
 										<Link
 											href={item.url}
 											className='flex justify-between'
@@ -189,12 +202,12 @@ const AppSidebar = () => {
 											<span className='flex items-center gap-2'>
 												<item.icon className='h-5 w-5' />
 												<p
-													className={`${pathname.includes(item.url) && 'font-semibold'}`}
+													className={`${isLinkActive(item.url) && 'font-semibold'}`}
 												>
 													{item.title}
 												</p>
 											</span>
-											{pathname.includes(item.url) && <ChevronRightIcon />}
+											{isLinkActive(item.url) && <ChevronRightIcon />}
 										</Link>
 									</SidebarMenuButton>
 								</SidebarMenuItem>
@@ -210,7 +223,7 @@ const AppSidebar = () => {
 									<SidebarMenuItem key={item.title}>
 										<SidebarMenuButton
 											asChild
-											isActive={pathname.includes(item.url)}
+											isActive={isLinkActive(item.url)}
 										>
 											<Link
 												href={item.url}
@@ -220,12 +233,12 @@ const AppSidebar = () => {
 												<span className='flex items-center gap-2'>
 													<item.icon className='h-5 w-5' />
 													<p
-														className={`${pathname.includes(item.url) && 'font-semibold'}`}
+														className={`${isLinkActive(item.url) && 'font-semibold'}`}
 													>
 														{item.title}
 													</p>
 												</span>
-												{pathname.includes(item.url) && <ChevronRightIcon />}
+												{isLinkActive(item.url) && <ChevronRightIcon />}
 											</Link>
 										</SidebarMenuButton>
 									</SidebarMenuItem>
@@ -241,7 +254,7 @@ const AppSidebar = () => {
 										<SidebarMenuItem key={item.title}>
 											<SidebarMenuButton
 												asChild
-												isActive={pathname.includes(item.url)}
+												isActive={isLinkActive(item.url)}
 											>
 												<Link
 													href={item.url}
@@ -251,12 +264,12 @@ const AppSidebar = () => {
 													<span className='flex items-center gap-2'>
 														<item.icon className='h-5 w-5' />
 														<p
-															className={`${pathname.includes(item.url) && 'font-semibold'}`}
+															className={`${isLinkActive(item.url) && 'font-semibold'}`}
 														>
 															{item.title}
 														</p>
 													</span>
-													{pathname.includes(item.url) && <ChevronRightIcon />}
+													{isLinkActive(item.url) && <ChevronRightIcon />}
 												</Link>
 											</SidebarMenuButton>
 										</SidebarMenuItem>

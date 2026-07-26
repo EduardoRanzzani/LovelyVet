@@ -107,8 +107,69 @@ const PetsListClient = ({
 			: '';
 
 		return (
-			<TableRow key={pet.id} className='group'>
+			<TableRow
+				key={pet.id}
+				className={`group ${pet.status !== 'alive' && 'bg-amber-300/10 hover:bg-amber-300/20'}`}
+			>
 				<TableCell className='flex gap-4 items-center'>
+					{/* Container relativo para posicionar a auréola */}
+					<div className='relative flex items-center justify-center'>
+						{pet.status !== 'alive' && (
+							/* Auréola / Anel Superior */
+							<div
+								className='absolute -top-1.5 w-7 h-2.5 border-2 border-amber-300 border-b-0 rounded-t-full opacity-80 animate-pulse z-10'
+								title='Falecido'
+							/>
+						)}
+
+						<Avatar
+							className={`h-10 w-10 rounded-full ${
+								pet.status !== 'alive'
+									? 'ring-2 ring-amber-300/60 ring-offset-1 ring-offset-background'
+									: ''
+							}`}
+							draggable={false}
+						>
+							{pet.photo ? (
+								<AvatarImage
+									src={pet.photo}
+									alt={pet.name}
+									draggable={false}
+									className='object-cover'
+								/>
+							) : (
+								<AvatarImage
+									src={
+										pet?.breed?.specie.name === 'Canino'
+											? '/dog-placeholder.png'
+											: '/cat-placeholder.svg'
+									}
+									alt={pet.name}
+								/>
+							)}
+						</Avatar>
+					</div>
+
+					<span className='flex flex-col'>
+						<span className='font-medium'>{pet.name}</span>
+						<p className='text-xs text-muted-foreground'>
+							<Badge variant={pet.sterile ? 'default' : 'outline'}>
+								<span className='text-xs'>
+									{pet.sterile ? 'Castrado' : 'Fértil'}
+								</span>
+							</Badge>{' '}
+							{pet.status !== 'alive' && (
+								<>
+									<Badge variant={'destructive'}>
+										<span className='text-xs'>{'Falecido'}</span>
+									</Badge>{' '}
+								</>
+							)}
+							• {pet.breed.specie.name} • {pet.breed.name} • {pet.color}
+						</p>
+					</span>
+				</TableCell>
+				{/* <TableCell className='flex gap-4 items-center'>
 					<Avatar className='h-10 w-10 rounded-full' draggable={false}>
 						{pet.photo ? (
 							<AvatarImage
@@ -137,10 +198,17 @@ const PetsListClient = ({
 									{pet.sterile ? 'Castrado' : 'Fértil'}
 								</span>
 							</Badge>{' '}
+							{pet.status !== 'alive' && (
+								<>
+									<Badge variant={'destructive'}>
+										<span className='text-xs'>{'Falecido'}</span>
+									</Badge>{' '}
+								</>
+							)}
 							• {pet.breed.specie.name} • {pet.breed.name} • {pet.color}
 						</p>
 					</span>
-				</TableCell>
+				</TableCell> */}
 
 				<TableCell>{formatAge(new Date(pet.birthDate))}</TableCell>
 				<TableCell>

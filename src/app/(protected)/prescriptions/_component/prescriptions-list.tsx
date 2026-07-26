@@ -1,5 +1,4 @@
 'use client';
-import { deletePrescriptionTemplate } from '@/api/actions/prescriptions-template.actions';
 import { MAX_PAGE_SIZE, PaginatedData } from '@/api/config/consts';
 import { DoctorsWithRelations } from '@/api/schema/doctors.schema';
 import { PrescriptionsWithRelations } from '@/api/schema/prescriptions.schema';
@@ -18,17 +17,23 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { use } from 'react';
 import { toast } from 'sonner';
-import PrescriptionTemplateFormClient from './prescription-form';
+import PrescriptionFormClient from './prescription-form';
+import { PrescriptionItemsWithRelations } from '@/api/schema/prescriptions-items.schema';
+import { PetsWithRelations } from '@/api/schema/pets.schema';
 
-interface PrescriptionsTemplateListClientProps {
+interface PrescriptionsListClientProps {
+	prescriptionItems: PrescriptionItemsWithRelations[];
 	prescriptions: Promise<PaginatedData<PrescriptionsWithRelations>>;
 	doctors: DoctorsWithRelations[];
+	pets: PetsWithRelations[];
 }
 
-const PrescriptionsTemplateListClient = ({
+const PrescriptionsListClient = ({
+	prescriptionItems,
 	prescriptions,
 	doctors,
-}: PrescriptionsTemplateListClientProps) => {
+	pets,
+}: PrescriptionsListClientProps) => {
 	const prescriptionsResolved = use(prescriptions);
 	const searchParams = useSearchParams();
 
@@ -38,29 +43,27 @@ const PrescriptionsTemplateListClient = ({
 		handleNavigation(params);
 	};
 
-	const handleDelete = (id: string) => {
-		deletePrescriptionTemplateAction.execute({
-			id: id,
-		});
-	};
+	// const handleDelete = (id: string) => {
+	// 	deletePrescriptionAction.execute({
+	// 		id: id,
+	// 	});
+	// };
 
-	const deletePrescriptionTemplateAction = useAction(
-		deletePrescriptionTemplate,
-		{
-			onSuccess: () => {
-				toast.success('Modelo de receita deletado com sucesso!');
-			},
-			onError: (err) => {
-				console.error('Erro ao deletar modelo de receita:', { err });
-				toast.error(
-					'Ocorreu um erro ao tentar deletar o modelo de receita. Tente novamente mais tarde.',
-				);
-			},
-		},
-	);
+	// const deletePrescriptionAction = useAction(deletePrescription, {
+	// 	onSuccess: () => {
+	// 		toast.success('Modelo de receita deletado com sucesso!');
+	// 	},
+	// 	onError: (err) => {
+	// 		console.error('Erro ao deletar modelo de receita:', { err });
+	// 		toast.error(
+	// 			'Ocorreu um erro ao tentar deletar o modelo de receita. Tente novamente mais tarde.',
+	// 		);
+	// 	},
+	// });
 
 	const columns = [
 		{ header: 'Pet', accessorKey: 'pet' },
+		{ header: 'Data', accessorKey: 'createdAt' },
 		{ header: 'Ações', accessorKey: 'actions' },
 	];
 
@@ -68,6 +71,9 @@ const PrescriptionsTemplateListClient = ({
 		return (
 			<TableRow key={prescription.id}>
 				<TableCell>{prescription.pet.name}</TableCell>
+				<TableCell>
+					{prescription.createdAt.toLocaleDateString('pt-BR')}
+				</TableCell>
 				<TableCell className='w-20 space-x-2'>
 					<Button asChild>
 						<Link href={`/prescriptions/print/${prescription.id}`}>
@@ -78,7 +84,7 @@ const PrescriptionsTemplateListClient = ({
 
 					<EditButton tooltip={`Editar`} renderForm={(close) => <></>} />
 
-					<DeleteAlertButton action={() => handleDelete(prescription.id)} />
+					{/* <DeleteAlertButton action={() => handleDelete(prescription.id)} /> */}
 				</TableCell>
 			</TableRow>
 		);
@@ -87,14 +93,42 @@ const PrescriptionsTemplateListClient = ({
 	const renderMobile = (prescription: PrescriptionsWithRelations) => {
 		return (
 			<div key={prescription.id} className='flex flex-col gap-4'>
-				<div className='flex items-center justify-between'>
-					<h3 className='font-bold'>{prescription.content}</h3>
+				<div className='flex flex-row items-center justify-between'>
+					<h3>{prescription.pet.name}</h3>
+
+					<span className='text-sm text-muted-foreground'>
+						{prescription.createdAt.toLocaleDateString('pt-BR')}
+					</span>
 
 					<span className='flex flex-col gap-2'>
-						<EditButton renderForm={(close) => <></>} />
+						<EditButton
+							renderForm={(close) => (
+								<PrescriptionFormClient
+									prescription={prescription}
+									prescriptionItems={prescriptionItems}
+									doctors={doctors}
+									pets={pets}
+									onSuccess={close}
+								/>
+							)}
+						/>
 
-						<DeleteAlertButton action={() => handleDelete(prescription.id)} />
+						<Button asChild size={'icon'} variant={'secondary'}>
+							<Link href={`/prescriptions/print/${prescription.id}`}>
+								<DownloadIcon />
+							</Link>
+						</Button>
+
+						{/* <DeleteAlertButton action={() => handleDelete(prescription.id)} /> */}
 					</span>
+				</div>
+				<div className='flex items-center justify-between w-full'>
+					<div
+						className='prose prose-sm dark:prose-invert max-w-none'
+						dangerouslySetInnerHTML={{
+							__html: prescription.content as string,
+						}}
+					/>
 				</div>
 			</div>
 		);
@@ -108,15 +142,17 @@ const PrescriptionsTemplateListClient = ({
 				<AddButton
 					text='Adicionar Modelo'
 					renderForm={(close) => (
-						<PrescriptionTemplateFormClient
+						<PrescriptionFormClient
+							prescriptionItems={prescriptionItems}
 							doctors={doctors}
+							pets={pets}
 							onSuccess={close}
 						/>
 					)}
 				/>
 			</div>
 
-			{deletePrescriptionTemplateAction.isPending && <LoadingDialog />}
+			{/* {deletePrescriptionAction.isPending && <LoadingDialog />} */}
 
 			<TableComponent
 				emptyMessage='Nenhum modelo de receita cadastrado...'
@@ -134,4 +170,4 @@ const PrescriptionsTemplateListClient = ({
 	);
 };
 
-export default PrescriptionsTemplateListClient;
+export default PrescriptionsListClient;

@@ -18,7 +18,6 @@ interface PrescriptionViewerProps {
 const PrescriptionViewerClient = ({
 	pet,
 	prescriptionContent,
-	doctorName,
 	issuedAt,
 }: PrescriptionViewerProps) => {
 	const date = issuedAt.toLocaleDateString('pt-BR', {

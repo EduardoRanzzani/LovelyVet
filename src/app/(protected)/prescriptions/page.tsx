@@ -12,7 +12,9 @@ import {
 } from '@/components/shared/page-container';
 import LoadingDialog from '@/components/ui/loading';
 import { Suspense } from 'react';
-import PrescriptionsTemplateListClient from './_component/prescriptions-list';
+import PrescriptionsListClient from './_component/prescriptions-list';
+import { getPets } from '@/api/actions/pets.actions';
+import { getPrescriptionsItems } from '@/api/actions/prescriptions-items.actions';
 
 interface PrescriptionsTemplatePageProps {
 	searchParams: Promise<{ page?: string; filter?: string; keyword?: string }>;
@@ -27,7 +29,9 @@ const PrescriptionsTemplatePage = async ({
 
 	const dataPromise = getPrescriptionsPaginated(page, MAX_PAGE_SIZE, filter);
 
+	const prescriptionItems = await getPrescriptionsItems();
 	const doctors = await getDoctors();
+	const pets = await getPets();
 
 	return (
 		<PageContainer>
@@ -49,9 +53,11 @@ const PrescriptionsTemplatePage = async ({
 						</>
 					}
 				>
-					<PrescriptionsTemplateListClient
+					<PrescriptionsListClient
+						prescriptionItems={prescriptionItems}
 						prescriptions={dataPromise}
 						doctors={doctors}
+						pets={pets}
 					/>
 				</Suspense>
 			</PageContent>

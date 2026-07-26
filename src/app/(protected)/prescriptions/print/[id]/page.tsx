@@ -1,6 +1,5 @@
 import { getPrescriptionById } from '@/api/actions/prescriptions.actions';
 import PrescriptionLayout from '../../_component/prescription-layout';
-import { use } from 'react';
 
 export default async function PrintRecipePage({
 	params,
