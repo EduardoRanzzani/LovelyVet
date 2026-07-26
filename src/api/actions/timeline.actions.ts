@@ -1,7 +1,12 @@
 'use server';
 
 import { db } from '@/db';
-import { petNotesTable, petWeightsTable, vaccinesTable } from '@/db/schema';
+import {
+	petNotesTable,
+	petWeightsTable,
+	prescriptionsTable,
+	vaccinesTable,
+} from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
 import { currentUser } from '@clerk/nextjs/server';
 import { eq } from 'drizzle-orm';
@@ -43,6 +48,17 @@ export const deleteTimelineItem = actionClient
 					throw new Error('Observação não encontrada');
 				}
 				await db.delete(petNotesTable).where(eq(petNotesTable.id, id));
+				break;
+			case 'prescription':
+				const prescription = await db.query.prescriptionsTable.findFirst({
+					where: eq(prescriptionsTable.id, id),
+				});
+				if (!prescription) {
+					throw new Error('Prescrição não encontrada');
+				}
+				await db
+					.delete(prescriptionsTable)
+					.where(eq(prescriptionsTable.id, id));
 				break;
 		}
 

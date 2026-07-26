@@ -2,6 +2,7 @@ allowBuilds:
   '@clerk/shared': true
   esbuild: true
   msw: true
+  puppeteer: true
   sharp: true
   unrs-resolver: true
 ignoredBuiltDependencies:

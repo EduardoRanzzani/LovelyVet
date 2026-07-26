@@ -1,10 +1,26 @@
-import { doctorsTable, prescriptionsTable, usersTable } from '@/db/schema';
+import {
+	breedsTable,
+	doctorsTable,
+	petsTable,
+	petWeightsTable,
+	prescriptionsTable,
+	speciesTable,
+	usersTable,
+} from '@/db/schema';
 import z from 'zod';
 
 export type PrescriptionsWithRelations =
 	typeof prescriptionsTable.$inferSelect & {
 		doctor: typeof doctorsTable.$inferSelect & {
 			user: typeof usersTable.$inferSelect;
+		};
+		pet: typeof petsTable.$inferSelect & {
+			breed: typeof breedsTable.$inferSelect & {
+				specie: typeof speciesTable.$inferSelect;
+			};
+			weightHistory?: (typeof petWeightsTable.$inferSelect & {
+				author?: typeof usersTable.$inferSelect;
+			})[];
 		};
 	};
 

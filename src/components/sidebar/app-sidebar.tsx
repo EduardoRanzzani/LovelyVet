@@ -123,12 +123,6 @@ const AppSidebar = () => {
 			icon: CogIcon,
 			roles: ['admin', 'doctor'],
 		},
-		{
-			title: 'Modelos de Receitas',
-			url: '/prescriptions-template',
-			icon: CogIcon,
-			roles: ['admin', 'doctor'],
-		},
 	];
 
 	const settings: SidebarItem[] = [

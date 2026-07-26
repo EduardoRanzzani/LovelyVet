@@ -2,11 +2,12 @@
 
 import { getPrescriptionsItems } from '@/api/actions/prescriptions-items.actions';
 import { createPrescription } from '@/api/actions/prescriptions.actions';
+import { REGINA_DOCTOR_ID } from '@/api/config/consts';
 import { DoctorsWithRelations } from '@/api/schema/doctors.schema';
 import { PrescriptionItemsWithRelations } from '@/api/schema/prescriptions-items.schema';
 import { CreatePrescriptionSchema } from '@/api/schema/prescriptions.schema';
-import TextEditorForm from '@/components/form/text-editor-form';
 import SelectForm from '@/components/form/select-form';
+import TextEditorForm from '@/components/form/text-editor-form';
 import { Button } from '@/components/ui/button';
 import {
 	Dialog,
@@ -28,7 +29,6 @@ import { useEffect, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import z from 'zod';
-import { REGINA_DOCTOR_ID } from '@/api/config/consts';
 
 const createPrescriptionFormSchema = z.object({
 	doctorId: z
@@ -205,7 +205,7 @@ const DialogPrescription = ({ petId, doctors }: DialogPrescriptionProps) => {
 							</TabsContent>
 
 							<TabsContent value='preview' className='space-y-4 pt-4'>
-								<div className='border rounded-lg p-4 bg-white max-h-[400px] overflow-y-auto'>
+								<div className='border rounded-lg p-4 bg-white max-h-100 overflow-y-auto'>
 									{fields.length > 0 ? (
 										<div className='space-y-6'>
 											{fields.map((field, index) => (

@@ -32,6 +32,7 @@ import {
 	FilmIcon,
 	GalleryHorizontalIcon,
 	MessageCircleIcon,
+	PrinterIcon,
 	ScaleIcon,
 	ShoppingCartIcon,
 	SquarePenIcon,
@@ -137,7 +138,22 @@ const PetDetailsClient = ({
 			title: 'Receita Emitida',
 			doctor: p.doctor.user.name,
 			avatarPerson: toTimelinePerson(p.doctor.user),
-			content: p.content,
+			content: (
+				<div className='flex flex-col gap-2'>
+					<div
+						className='prose prose-sm dark:prose-invert max-w-none'
+						dangerouslySetInnerHTML={{
+							__html: p.content as string,
+						}}
+					/>
+
+					<Button variant={'outline'} asChild>
+						<Link href={`/prescriptions/print/${p.id}`}>
+							<PrinterIcon /> Imprimir
+						</Link>
+					</Button>
+				</div>
+			),
 			icon: <SquarePenIcon className='w-5 h-5 text-accent-foreground' />,
 			color: 'bg-prescription/30',
 		})) || []),

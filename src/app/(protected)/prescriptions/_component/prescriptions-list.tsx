@@ -2,33 +2,34 @@
 import { deletePrescriptionTemplate } from '@/api/actions/prescriptions-template.actions';
 import { MAX_PAGE_SIZE, PaginatedData } from '@/api/config/consts';
 import { DoctorsWithRelations } from '@/api/schema/doctors.schema';
-import { PrescriptionTemplatesWithRelations } from '@/api/schema/prescriptions-template.schema.';
+import { PrescriptionsWithRelations } from '@/api/schema/prescriptions.schema';
 import AddButton from '@/components/list/add-button';
 import DeleteAlertButton from '@/components/list/delete-alert-dialog';
 import EditButton from '@/components/list/edit-button';
 import SearchInput from '@/components/list/search-input';
 import TableComponent from '@/components/list/table-component';
+import { Button } from '@/components/ui/button';
 import LoadingDialog from '@/components/ui/loading';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { handleNavigation } from '@/lib/utils';
+import { DownloadIcon } from 'lucide-react';
 import { useAction } from 'next-safe-action/hooks';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { use } from 'react';
 import { toast } from 'sonner';
-import PrescriptionTemplateFormClient from './prescription-template-form';
+import PrescriptionTemplateFormClient from './prescription-form';
 
 interface PrescriptionsTemplateListClientProps {
-	prescriptionsTemplate: Promise<
-		PaginatedData<PrescriptionTemplatesWithRelations>
-	>;
+	prescriptions: Promise<PaginatedData<PrescriptionsWithRelations>>;
 	doctors: DoctorsWithRelations[];
 }
 
 const PrescriptionsTemplateListClient = ({
-	prescriptionsTemplate,
+	prescriptions,
 	doctors,
 }: PrescriptionsTemplateListClientProps) => {
-	const prescriptionTemplatesResolved = use(prescriptionsTemplate);
+	const prescriptionsResolved = use(prescriptions);
 	const searchParams = useSearchParams();
 
 	const handlePageChange = (page: number) => {
@@ -59,59 +60,40 @@ const PrescriptionsTemplateListClient = ({
 	);
 
 	const columns = [
-		{ header: 'Título', accessorKey: 'title' },
+		{ header: 'Pet', accessorKey: 'pet' },
 		{ header: 'Ações', accessorKey: 'actions' },
 	];
 
-	const renderRow = (
-		prescriptionTemplate: PrescriptionTemplatesWithRelations,
-	) => {
+	const renderRow = (prescription: PrescriptionsWithRelations) => {
 		return (
-			<TableRow key={prescriptionTemplate.id}>
-				<TableCell>{prescriptionTemplate.title}</TableCell>
+			<TableRow key={prescription.id}>
+				<TableCell>{prescription.pet.name}</TableCell>
 				<TableCell className='w-20 space-x-2'>
-					<EditButton
-						tooltip={`Editar ${prescriptionTemplate.title}`}
-						renderForm={(close) => (
-							<PrescriptionTemplateFormClient
-								prescriptionTemplate={prescriptionTemplate}
-								doctors={doctors}
-								onSuccess={close}
-							/>
-						)}
-					/>
+					<Button asChild>
+						<Link href={`/prescriptions/print/${prescription.id}`}>
+							<DownloadIcon className='w-4 h-4 mr-2' />
+							Baixar PDF
+						</Link>
+					</Button>
 
-					<DeleteAlertButton
-						action={() => handleDelete(prescriptionTemplate.id)}
-					/>
+					<EditButton tooltip={`Editar`} renderForm={(close) => <></>} />
+
+					<DeleteAlertButton action={() => handleDelete(prescription.id)} />
 				</TableCell>
 			</TableRow>
 		);
 	};
 
-	const renderMobile = (
-		prescriptionTemplate: PrescriptionTemplatesWithRelations,
-	) => {
+	const renderMobile = (prescription: PrescriptionsWithRelations) => {
 		return (
-			<div key={prescriptionTemplate.id} className='flex flex-col gap-4'>
+			<div key={prescription.id} className='flex flex-col gap-4'>
 				<div className='flex items-center justify-between'>
-					<h3 className='font-bold'>{prescriptionTemplate.title}</h3>
+					<h3 className='font-bold'>{prescription.content}</h3>
 
 					<span className='flex flex-col gap-2'>
-						<EditButton
-							tooltip={`Editar ${prescriptionTemplate.title}`}
-							renderForm={(close) => (
-								<PrescriptionTemplateFormClient
-									prescriptionTemplate={prescriptionTemplate}
-									doctors={doctors}
-									onSuccess={close}
-								/>
-							)}
-						/>
+						<EditButton renderForm={(close) => <></>} />
 
-						<DeleteAlertButton
-							action={() => handleDelete(prescriptionTemplate.id)}
-						/>
+						<DeleteAlertButton action={() => handleDelete(prescription.id)} />
 					</span>
 				</div>
 			</div>
@@ -141,10 +123,10 @@ const PrescriptionsTemplateListClient = ({
 				columns={columns}
 				renderRow={renderRow}
 				renderMobile={renderMobile}
-				data={prescriptionTemplatesResolved?.data}
-				currentPage={prescriptionTemplatesResolved?.metadata.currentPage}
-				totalPages={prescriptionTemplatesResolved?.metadata.pageCount}
-				totalElements={prescriptionTemplatesResolved?.metadata.totalCount}
+				data={prescriptionsResolved?.data}
+				currentPage={prescriptionsResolved?.metadata.currentPage}
+				totalPages={prescriptionsResolved?.metadata.pageCount}
+				totalElements={prescriptionsResolved?.metadata.totalCount}
 				pageSize={MAX_PAGE_SIZE}
 				onPageChange={handlePageChange}
 			/>

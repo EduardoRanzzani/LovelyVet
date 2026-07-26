@@ -101,12 +101,13 @@ export const HistoryItem = ({
 				</div>
 				<Separator className='mt-2' />
 
-				<div
+				{/* <div
 					className='prose prose-sm dark:prose-invert max-w-none'
 					dangerouslySetInnerHTML={{
 						__html: content as string,
 					}}
-				/>
+				/> */}
+				{content}
 			</div>
 		</div>
 	);

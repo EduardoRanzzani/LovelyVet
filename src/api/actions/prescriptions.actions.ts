@@ -1,18 +1,53 @@
 'use server';
 
 import { db } from '@/db';
-import { prescriptionItemsTable, prescriptionsTable } from '@/db/schema';
+import {
+	petWeightsTable,
+	prescriptionItemsTable,
+	prescriptionsTable,
+} from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
 import { currentUser } from '@clerk/nextjs/server';
-import { eq, inArray } from 'drizzle-orm';
+import { asc, count, desc, eq, ilike, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-import { createPrescriptionSchema } from '../schema/prescriptions.schema';
+import { MAX_PAGE_SIZE, PaginatedData } from '../config/consts';
+import {
+	createPrescriptionSchema,
+	PrescriptionsWithRelations,
+} from '../schema/prescriptions.schema';
 
 /**
  * Monta o conteúdo HTML da receita a partir dos items selecionados
  */
+// const buildPrescriptionContent = (
+// 	prescriptionItems: Array<{
+// 		name: string;
+// 		pharmacy: string;
+// 		quantity: string;
+// 		orientations: string;
+// 	}>,
+// ): string => {
+// 	const items = prescriptionItems
+// 		.map(
+// 			(item) =>
+// 				`<div class="prescription-item">
+//                 <div class="item-header">
+//                     <span class="item-name"><strong>${item.name}</strong></span>
+//                     <span class="item-pharmacy">(${item.pharmacy})</span>
+//                     <span class="item-quantity"><strong>${item.quantity}</strong></span>
+//                 </div>
+//                 <div class="item-orientations">
+//                     ${item.orientations}
+//                 </div>
+//             </div>`,
+// 		)
+// 		.join('');
+
+// 	return `<div class="prescription-content">${items}</div>`;
+// };
 const buildPrescriptionContent = (
 	prescriptionItems: Array<{
+		id?: string;
 		name: string;
 		pharmacy: string;
 		quantity: string;
@@ -22,20 +57,77 @@ const buildPrescriptionContent = (
 	const items = prescriptionItems
 		.map(
 			(item) =>
-				`<div class="prescription-item">
-                <div class="item-header">
-                    <span class="item-name"><strong>${item.name}</strong></span>
-                    <span class="item-pharmacy">(${item.pharmacy})</span>
-                    <span class="item-quantity"><strong>${item.quantity}</strong></span>
-                </div>
-                <div class="item-orientations">
-                    ${item.orientations}
-                </div>
-            </div>`,
+				`<div style="display: flex; flex-direction: column; gap: 0px; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: baseline; width: 100%; gap: 4px; font-size: 15px;">
+                        <span style="font-weight: bold; white-space: nowrap;">
+                            ${item.name}
+                        </span>
+
+                        <div style="flex: 1; border-bottom: 1px solid #000; margin-bottom: 3px;"></div>
+
+                        <span style="font-weight: bold; white-space: nowrap;">
+                            (${item.pharmacy})
+                        </span>
+
+                        <div style="flex: 1; border-bottom: 1px solid #000; margin-bottom: 3px;"></div>
+
+                        <span style="font-weight: bold; white-space: nowrap;">
+                            ${item.quantity}
+                        </span>
+                    </div>
+
+                    <div class="orientations-box" style="font-size: 13px; line-height: 1.3; margin-top: 2px;">
+                        <style>
+                            .orientations-box p { margin: 0 !important; padding: 0 !important; }
+                        </style>
+                        ${item.orientations}
+                    </div>
+                </div>`,
 		)
 		.join('');
 
-	return `<div class="prescription-content">${items}</div>`;
+	return `<div class="prescription-content" style="display: flex; flex-direction: column; gap: 4px;">${items}</div>`;
+};
+
+export const getPrescriptionsPaginated = async (
+	page: number = 1,
+	limit: number = MAX_PAGE_SIZE,
+	search?: string,
+): Promise<PaginatedData<PrescriptionsWithRelations>> => {
+	const authenticatedUser = await currentUser();
+	if (!authenticatedUser) throw new Error('Usuário não autenticado');
+
+	const offset = (page - 1) * limit;
+
+	const filterConditions = search
+		? ilike(prescriptionsTable.content, `%${search}%`)
+		: undefined;
+
+	const data = await db.query.prescriptionsTable.findMany({
+		where: filterConditions,
+		with: { pet: true, doctor: true },
+		limit: limit,
+		offset: offset,
+		orderBy: asc(prescriptionsTable.createdAt),
+	});
+
+	const totalCountResult = await db
+		.select({ value: count() })
+		.from(prescriptionsTable)
+		.where(filterConditions);
+
+	const totalCount = Number(totalCountResult[0]?.value ?? 0);
+	const pageCount = Math.ceil(totalCount / limit);
+
+	return {
+		data: data as PrescriptionsWithRelations[],
+		metadata: {
+			totalCount,
+			pageCount,
+			currentPage: page,
+			limit,
+		},
+	};
 };
 
 export const createPrescription = actionClient
@@ -61,7 +153,7 @@ export const createPrescription = actionClient
 			parsedInput.customContent || buildPrescriptionContent(prescriptionItems);
 
 		// Criar a receita
-		const result = await db.insert(prescriptionsTable).values({
+		await db.insert(prescriptionsTable).values({
 			petId: parsedInput.petId,
 			doctorId: parsedInput.doctorId,
 			appointmentId: parsedInput.appointmentId || null,
@@ -121,6 +213,10 @@ export const getPrescriptionById = async (prescriptionId: string) => {
 								},
 							},
 						},
+					},
+					weightHistory: {
+						orderBy: desc(petWeightsTable.measuredAt),
+						with: { author: true },
 					},
 				},
 			},

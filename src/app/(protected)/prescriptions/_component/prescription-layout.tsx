@@ -1,3 +1,4 @@
+
 'use client';
 import { PetsWithRelations } from '@/api/schema/pets.schema';
 import { PrescriptionItemsWithRelations } from '@/api/schema/prescriptions-items.schema';
@@ -5,6 +6,7 @@ import { formatAgeShort } from '@/api/util';
 import { GoogleMapsIcon } from '@/components/icons/icon-googlemaps';
 import { WhatsappIcon } from '@/components/icons/icon-whatsapp';
 import { Button } from '@/components/ui/button';
+import { formatWeight } from '@/helpers/weight';
 import { FileIcon } from 'lucide-react';
 import Image from 'next/image';
 
@@ -14,7 +16,7 @@ interface RecipeLayoutProps {
 	recipeDate?: Date;
 }
 
-const RecipeLayoutPageClient = ({
+const PrescriptionLayout = ({
 	pet,
 	prescriptionItems,
 	recipeDate,
@@ -37,20 +39,20 @@ const RecipeLayoutPageClient = ({
 		<>
 			{/* Regras específicas para limpeza da impressão */}
 			<style>{`
-				@media print {
-					@page { 
-						margin: 0; 
-						size: auto; 
-					}
-					body { 
-						margin: 0; 
-						background: white;
-					}
-					.no-print { 
-						display: none !important; 
-					}
-				}
-			`}</style>
+                @media print {
+                    @page { 
+                        margin: 0; 
+                        size: auto; 
+                    }
+                    body { 
+                        margin: 0; 
+                        background: white;
+                    }
+                    .no-print { 
+                        display: none !important; 
+                    }
+                }
+            `}</style>
 
 			<div className='w-full m-2 no-print'>
 				<Button
@@ -150,7 +152,11 @@ const RecipeLayoutPageClient = ({
 							</span>
 
 							<span className='flex flex-col w-full'>
-								<label className='text-sm'>{pet?.weightInGrams ?? `---`}</label>
+								<label className='text-sm'>
+									{pet?.weightHistory && pet.weightHistory.length > 0
+										? formatWeight(pet.weightHistory[0].weightInGrams)
+										: '---'}
+								</label>
 								<label className='border-t border-zinc-900 w-full text-xs font-semibold'>
 									Peso
 								</label>
@@ -181,30 +187,30 @@ const RecipeLayoutPageClient = ({
 									}}
 								/>
 								{/* {prescriptionItems?.map((item) => (
-									<div key={item.id} className='flex flex-col gap-1'>
-										<div className='flex items-end w-full gap-1 md:text-base'>
-											<span className='font-bold whitespace-nowrap'>
-												{item.name}
-											</span>
+                                    <div key={item.id} className='flex flex-col gap-1'>
+                                        <div className='flex items-end w-full gap-1 md:text-base'>
+                                            <span className='font-bold whitespace-nowrap'>
+                                                {item.name}
+                                            </span>
 
-											<div className='flex-1 border-b border-black mb-1' />
+                                            <div className='flex-1 border-b border-black mb-1' />
 
-											<span className='font-bold whitespace-nowrap'>
-												({item.pharmacy})
-											</span>
+                                            <span className='font-bold whitespace-nowrap'>
+                                                ({item.pharmacy})
+                                            </span>
 
-											<div className='flex-1 border-b border-black mb-1' />
+                                            <div className='flex-1 border-b border-black mb-1' />
 
-											<span className='font-bold whitespace-nowrap'>
-												{item.quantity}
-											</span>
-										</div>
-										<p
-											className='text-xs print:text-xs leading-relaxed'
-											dangerouslySetInnerHTML={{ __html: item.orientations }}
-										/>
-									</div>
-								))} */}
+                                            <span className='font-bold whitespace-nowrap'>
+                                                {item.quantity}
+                                            </span>
+                                        </div>
+                                        <p
+                                            className='text-xs print:text-xs leading-relaxed'
+                                            dangerouslySetInnerHTML={{ __html: item.orientations }}
+                                        />
+                                    </div>
+                                ))} */}
 							</div>
 						</div>
 					</main>
@@ -243,4 +249,4 @@ const RecipeLayoutPageClient = ({
 	);
 };
 
-export default RecipeLayoutPageClient;
+export default PrescriptionLayout;
