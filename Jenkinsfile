@@ -4,7 +4,8 @@ pipeline {
     environment {
         VPS_HOST = "72.61.218.192"
         VPS_USER = "root"
-        PROJECT_PATH = "~/projects/lovely-vet/"
+        PROJECT_PATH = "/root/projects/lovely-vet"
+        PNPM_HOME = "/root/.local/share/pnpm"
     }
 
     options {
@@ -46,7 +47,7 @@ pipeline {
                         sshagent(['vps-production']) {
                             sh '''
                             ssh ${VPS_USER}@${VPS_HOST} "
-                                source ~/.bashrc &&
+                                export PATH=${PNPM_HOME}:\$PATH &&
                                 cd ${PROJECT_PATH} &&
                                 pnpm install
                             "
@@ -59,6 +60,7 @@ pipeline {
                         sshagent(['vps-production']) {
                             sh '''
                             ssh ${VPS_USER}@${VPS_HOST} "
+                                export PATH=${PNPM_HOME}:\$PATH &&
                                 cd ${PROJECT_PATH} &&
                                 pnpm build
                             "
