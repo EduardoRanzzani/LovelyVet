@@ -1,10 +1,10 @@
 pipeline {
     agent any
-
     environment {
         VPS_HOST = "72.61.218.192"
         VPS_USER = "root"
         PROJECT_PATH = "/root/projects/lovely-vet"
+        NVM_DIR = "/root/.nvm"
         PNPM_HOME = "/root/.local/share/pnpm"
     }
 
@@ -30,6 +30,7 @@ pipeline {
                         }
                     }
                 }
+
                 stage('📥 Git pull') {
                     steps {
                         sshagent(['vps-production']) {
@@ -42,12 +43,34 @@ pipeline {
                         }
                     }
                 }
+
+                stage('🔧 Preparando ambiente Node') {
+                    steps {
+                        sshagent(['vps-production']) {
+                            sh '''
+                            ssh ${VPS_USER}@${VPS_HOST} "
+                                export NVM_DIR=${NVM_DIR} &&
+                                source \$NVM_DIR/nvm.sh &&
+                                export PATH=${PNPM_HOME}:\$PATH &&
+
+                                node -v &&
+                                pnpm -v &&
+                                pm2 -v
+                            "
+                            '''
+                        }
+                    }
+                }
+
                 stage('📦 pnpm install') {
                     steps {
                         sshagent(['vps-production']) {
                             sh '''
                             ssh ${VPS_USER}@${VPS_HOST} "
+                                export NVM_DIR=${NVM_DIR} &&
+                                source \$NVM_DIR/nvm.sh &&
                                 export PATH=${PNPM_HOME}:\$PATH &&
+
                                 cd ${PROJECT_PATH} &&
                                 pnpm install
                             "
@@ -55,12 +78,17 @@ pipeline {
                         }
                     }
                 }
+
+
                 stage('🏗️ pnpm build') {
                     steps {
                         sshagent(['vps-production']) {
                             sh '''
                             ssh ${VPS_USER}@${VPS_HOST} "
+                                export NVM_DIR=${NVM_DIR} &&
+                                source \$NVM_DIR/nvm.sh &&
                                 export PATH=${PNPM_HOME}:\$PATH &&
+
                                 cd ${PROJECT_PATH} &&
                                 pnpm build
                             "
@@ -68,11 +96,16 @@ pipeline {
                         }
                     }
                 }
+
                 stage('♻️ PM2 reload') {
                     steps {
                         sshagent(['vps-production']) {
                             sh '''
                             ssh ${VPS_USER}@${VPS_HOST} "
+                                export NVM_DIR=${NVM_DIR} &&
+                                source \$NVM_DIR/nvm.sh &&
+                                export PATH=${PNPM_HOME}:\$PATH &&
+
                                 cd ${PROJECT_PATH} &&
                                 pm2 reload ecosystem.config.js
                             "
@@ -80,11 +113,16 @@ pipeline {
                         }
                     }
                 }
+
                 stage('💾 PM2 save') {
                     steps {
                         sshagent(['vps-production']) {
                             sh '''
                             ssh ${VPS_USER}@${VPS_HOST} "
+                                export NVM_DIR=${NVM_DIR} &&
+                                source \$NVM_DIR/nvm.sh &&
+                                export PATH=${PNPM_HOME}:\$PATH &&
+
                                 pm2 save
                             "
                             '''
