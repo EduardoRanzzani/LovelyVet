@@ -19,123 +19,166 @@ pipeline {
 
     options {
         timeout(time: 20, unit: 'MINUTES')
+        timestamps()
+        ansiColor('xterm')
     }
+
 
     stages {
 
-        stage('Deploy VPS') {
+
+        stage('🔌 Conectando à VPS') {
 
             when {
                 branch 'master'
             }
 
-            stages {
+            steps {
 
-                stage('🔌 Conectando à VPS') {
-                    steps {
-                        sshagent(['vps-production']) {
-                            sh '''
-                            ssh -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_HOST} "
-                                hostname &&
-                                whoami
-                            "
-                            '''
-                        }
-                    }
+                sshagent(['vps-production']) {
+
+                    sh '''
+                    ssh -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_HOST} "
+                        hostname &&
+                        whoami
+                    "
+                    '''
                 }
+            }
+        }
 
 
-                stage('📥 Git pull') {
-                    steps {
-                        sshagent(['vps-production']) {
-                            sh '''
-                            ssh ${VPS_USER}@${VPS_HOST} "
-                                cd ${PROJECT_PATH} &&
-                                git pull origin master
-                            "
-                            '''
-                        }
-                    }
+        stage('📥 Git pull') {
+
+            when {
+                branch 'master'
+            }
+
+            steps {
+
+                sshagent(['vps-production']) {
+
+                    sh '''
+                    ssh ${VPS_USER}@${VPS_HOST} "
+                        cd ${PROJECT_PATH} &&
+                        git pull origin master
+                    "
+                    '''
                 }
+            }
+        }
 
 
-                stage('🔧 Preparando ambiente Node') {
-                    steps {
-                        sshagent(['vps-production']) {
-                            sh '''
-                            ssh ${VPS_USER}@${VPS_HOST} "
-                                ${NODE_ENV_SETUP}
+        stage('🔧 Preparando ambiente Node') {
 
-                                node -v &&
-                                pnpm -v &&
-                                pm2 -v
-                            "
-                            '''
-                        }
-                    }
+            when {
+                branch 'master'
+            }
+
+            steps {
+
+                sshagent(['vps-production']) {
+
+                    sh '''
+                    ssh ${VPS_USER}@${VPS_HOST} "
+                        ${NODE_ENV_SETUP}
+
+                        node -v &&
+                        pnpm -v &&
+                        pm2 -v
+                    "
+                    '''
                 }
+            }
+        }
 
 
-                stage('📦 pnpm install') {
-                    steps {
-                        sshagent(['vps-production']) {
-                            sh '''
-                            ssh ${VPS_USER}@${VPS_HOST} "
-                                ${NODE_ENV_SETUP}
+        stage('📦 pnpm install') {
 
-                                cd ${PROJECT_PATH} &&
-                                pnpm install
-                            "
-                            '''
-                        }
-                    }
+            when {
+                branch 'master'
+            }
+
+            steps {
+
+                sshagent(['vps-production']) {
+
+                    sh '''
+                    ssh ${VPS_USER}@${VPS_HOST} "
+                        ${NODE_ENV_SETUP}
+
+                        cd ${PROJECT_PATH} &&
+                        pnpm install
+                    "
+                    '''
                 }
+            }
+        }
 
 
-                stage('🏗️ pnpm build') {
-                    steps {
-                        sshagent(['vps-production']) {
-                            sh '''
-                            ssh ${VPS_USER}@${VPS_HOST} "
-                                ${NODE_ENV_SETUP}
+        stage('🏗️ pnpm build') {
 
-                                cd ${PROJECT_PATH} &&
-                                pnpm build
-                            "
-                            '''
-                        }
-                    }
+            when {
+                branch 'master'
+            }
+
+            steps {
+
+                sshagent(['vps-production']) {
+
+                    sh '''
+                    ssh ${VPS_USER}@${VPS_HOST} "
+                        ${NODE_ENV_SETUP}
+
+                        cd ${PROJECT_PATH} &&
+                        pnpm build
+                    "
+                    '''
                 }
+            }
+        }
 
 
-                stage('♻️ PM2 reload') {
-                    steps {
-                        sshagent(['vps-production']) {
-                            sh '''
-                            ssh ${VPS_USER}@${VPS_HOST} "
-                                ${NODE_ENV_SETUP}
+        stage('♻️ PM2 reload') {
 
-                                cd ${PROJECT_PATH} &&
-                                pm2 reload ecosystem.config.js --update-env
-                            "
-                            '''
-                        }
-                    }
+            when {
+                branch 'master'
+            }
+
+            steps {
+
+                sshagent(['vps-production']) {
+
+                    sh '''
+                    ssh ${VPS_USER}@${VPS_HOST} "
+                        ${NODE_ENV_SETUP}
+
+                        cd ${PROJECT_PATH} &&
+                        pm2 reload ecosystem.config.js --update-env
+                    "
+                    '''
                 }
+            }
+        }
 
 
-                stage('💾 PM2 save') {
-                    steps {
-                        sshagent(['vps-production']) {
-                            sh '''
-                            ssh ${VPS_USER}@${VPS_HOST} "
-                                ${NODE_ENV_SETUP}
+        stage('💾 PM2 save') {
 
-                                pm2 save
-                            "
-                            '''
-                        }
-                    }
+            when {
+                branch 'master'
+            }
+
+            steps {
+
+                sshagent(['vps-production']) {
+
+                    sh '''
+                    ssh ${VPS_USER}@${VPS_HOST} "
+                        ${NODE_ENV_SETUP}
+
+                        pm2 save
+                    "
+                    '''
                 }
             }
         }
