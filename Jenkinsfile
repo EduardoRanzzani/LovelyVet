@@ -1,11 +1,20 @@
 pipeline {
+
     agent any
+
     environment {
         VPS_HOST = "72.61.218.192"
         VPS_USER = "root"
         PROJECT_PATH = "/root/projects/lovely-vet"
+
         NVM_DIR = "/root/.nvm"
         PNPM_HOME = "/root/.local/share/pnpm"
+
+        NODE_ENV_SETUP = '''
+            export NVM_DIR=/root/.nvm
+            source $NVM_DIR/nvm.sh
+            export PATH=$PATH:/root/.local/share/pnpm
+        '''
     }
 
     options {
@@ -13,11 +22,15 @@ pipeline {
     }
 
     stages {
+
         stage('Deploy VPS') {
+
             when {
                 branch 'master'
             }
+
             stages {
+
                 stage('🔌 Conectando à VPS') {
                     steps {
                         sshagent(['vps-production']) {
@@ -30,6 +43,7 @@ pipeline {
                         }
                     }
                 }
+
 
                 stage('📥 Git pull') {
                     steps {
@@ -44,14 +58,13 @@ pipeline {
                     }
                 }
 
+
                 stage('🔧 Preparando ambiente Node') {
                     steps {
                         sshagent(['vps-production']) {
                             sh '''
                             ssh ${VPS_USER}@${VPS_HOST} "
-                                export NVM_DIR=${NVM_DIR} &&
-                                source \$NVM_DIR/nvm.sh &&
-                                export PATH=${PNPM_HOME}:\$PATH &&
+                                ${NODE_ENV_SETUP}
 
                                 node -v &&
                                 pnpm -v &&
@@ -62,14 +75,13 @@ pipeline {
                     }
                 }
 
+
                 stage('📦 pnpm install') {
                     steps {
                         sshagent(['vps-production']) {
                             sh '''
                             ssh ${VPS_USER}@${VPS_HOST} "
-                                export NVM_DIR=${NVM_DIR} &&
-                                source \$NVM_DIR/nvm.sh &&
-                                export PATH=${PNPM_HOME}:\$PATH &&
+                                ${NODE_ENV_SETUP}
 
                                 cd ${PROJECT_PATH} &&
                                 pnpm install
@@ -85,9 +97,7 @@ pipeline {
                         sshagent(['vps-production']) {
                             sh '''
                             ssh ${VPS_USER}@${VPS_HOST} "
-                                export NVM_DIR=${NVM_DIR} &&
-                                source \$NVM_DIR/nvm.sh &&
-                                export PATH=${PNPM_HOME}:\$PATH &&
+                                ${NODE_ENV_SETUP}
 
                                 cd ${PROJECT_PATH} &&
                                 pnpm build
@@ -97,31 +107,29 @@ pipeline {
                     }
                 }
 
+
                 stage('♻️ PM2 reload') {
                     steps {
                         sshagent(['vps-production']) {
                             sh '''
                             ssh ${VPS_USER}@${VPS_HOST} "
-                                export NVM_DIR=${NVM_DIR} &&
-                                source \$NVM_DIR/nvm.sh &&
-                                export PATH=${PNPM_HOME}:\$PATH &&
+                                ${NODE_ENV_SETUP}
 
                                 cd ${PROJECT_PATH} &&
-                                pm2 reload ecosystem.config.js
+                                pm2 reload ecosystem.config.js --update-env
                             "
                             '''
                         }
                     }
                 }
 
+
                 stage('💾 PM2 save') {
                     steps {
                         sshagent(['vps-production']) {
                             sh '''
                             ssh ${VPS_USER}@${VPS_HOST} "
-                                export NVM_DIR=${NVM_DIR} &&
-                                source \$NVM_DIR/nvm.sh &&
-                                export PATH=${PNPM_HOME}:\$PATH &&
+                                ${NODE_ENV_SETUP}
 
                                 pm2 save
                             "
@@ -132,10 +140,14 @@ pipeline {
             }
         }
     }
+
+
     post {
+
         success {
             echo '🚀 Deploy concluído com sucesso'
         }
+
         failure {
             echo '❌ Deploy falhou'
         }
