@@ -46,6 +46,7 @@ pipeline {
                         sshagent(['vps-production']) {
                             sh '''
                             ssh ${VPS_USER}@${VPS_HOST} "
+                                source ~/.bashrc &&
                                 cd ${PROJECT_PATH} &&
                                 pnpm install
                             "
