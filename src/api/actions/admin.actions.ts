@@ -3,7 +3,8 @@
 import { db } from '@/db';
 import { usersTable } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
-import { currentUser } from '@clerk/nextjs/server';
+import { requireAuthContext } from '@/lib/security/auth-context';
+import { requireAdmin } from '@/lib/security/authorization';
 import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
@@ -15,8 +16,8 @@ const email = 'eduranzzani@gmail.com';
 export const changeUserId = actionClient
 	.schema(z.object({ environment: z.enum(['prod', 'dev']) }))
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
+		const context = await requireAuthContext();
+		requireAdmin(context);
 
 		const { environment } = parsedInput;
 		const clerkUserId = environment === 'prod' ? userIdProd : userIdDev;

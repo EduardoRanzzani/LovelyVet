@@ -3,21 +3,19 @@
 import { db } from '@/db';
 import { clinicsTable } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
-import { currentUser } from '@clerk/nextjs/server';
 import { asc, count, eq, ilike, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
 import { PaginatedData } from '../config/consts';
 import { Clinics, createClinicSchema } from '../schema/clinics.schema';
+import { requireAuthContext } from '@/lib/security/auth-context';
+import { requireAdmin } from '@/lib/security/authorization';
 
 export const getClinicsPaginated = async (
 	page: number,
 	limit: number,
 	search?: string,
 ): Promise<PaginatedData<Clinics>> => {
-	const authenticatedUser = await currentUser();
-	if (!authenticatedUser) throw new Error('Usuário não autenticado');
-
 	const offset = (page - 1) * limit;
 
 	const filterConditions = search
@@ -65,8 +63,8 @@ export const getClinicsPaginated = async (
 export const upsertClinic = actionClient
 	.schema(createClinicSchema)
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
+		const context = await requireAuthContext();
+		requireAdmin(context);
 
 		// Converta para centavos uma única vez
 		const priceInCents = Math.round(parsedInput.defaultShiftPriceInCents * 100);
@@ -109,8 +107,8 @@ export const upsertClinic = actionClient
 export const deleteClinic = actionClient
 	.schema(z.object({ id: z.uuid() }))
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
+		const context = await requireAuthContext();
+		requireAdmin(context);
 
 		const clinic = await db.query.clinicsTable.findFirst({
 			where: eq(clinicsTable.id, parsedInput.id),

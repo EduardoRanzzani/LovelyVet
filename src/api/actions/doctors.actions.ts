@@ -3,7 +3,8 @@
 import { db } from '@/db';
 import { doctorsTable, usersTable } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
-import { currentUser } from '@clerk/nextjs/server';
+import { requireAuthContext } from '@/lib/security/auth-context';
+import { requireAdmin } from '@/lib/security/authorization';
 import { asc, count, eq, ilike, or, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
@@ -12,12 +13,9 @@ import {
 	createDoctorWithUserSchema,
 	DoctorsWithRelations,
 } from '../schema/doctors.schema';
-import { createNewClerkUser } from './clerk.actions';
+import { createNewClerkUser, updateClerkUserRole } from './clerk.actions';
 
 export const getDoctors = async (): Promise<DoctorsWithRelations[]> => {
-	const authenticatedUser = await currentUser();
-	if (!authenticatedUser) throw new Error('Usuário não autenticado');
-
 	const data = await db
 		.select({
 			doctors: doctorsTable,
@@ -40,9 +38,6 @@ export const getDoctorsPaginated = async (
 	limit: number = MAX_PAGE_SIZE,
 	search?: string,
 ): Promise<PaginatedData<DoctorsWithRelations>> => {
-	const authenticatedUser = await currentUser();
-	if (!authenticatedUser) throw new Error('Usuário não autenticado');
-
 	const offset = (page - 1) * limit;
 
 	const filterCondition = search
@@ -99,19 +94,23 @@ export const getDoctorsPaginated = async (
 export const upsertDoctor = actionClient
 	.schema(createDoctorWithUserSchema)
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
+		const context = await requireAuthContext();
+		requireAdmin(context);
 
-		let clerkUserId;
+		let clerkUserId: string;
 
 		const existingUser = await db.query.usersTable.findFirst({
 			where: eq(usersTable.email, parsedInput.email),
 		});
 
 		if (existingUser) {
+			if (!existingUser.clerkUserId) {
+				throw new Error('Usuário existente não possui vínculo com o Clerk');
+			}
 			clerkUserId = existingUser.clerkUserId;
+			await updateClerkUserRole(clerkUserId, 'doctor');
 		} else {
-			const newClerkUser = await createNewClerkUser(parsedInput);
+			const newClerkUser = await createNewClerkUser(parsedInput, 'doctor');
 			clerkUserId = newClerkUser.id;
 		}
 
@@ -122,7 +121,7 @@ export const upsertDoctor = actionClient
 				email: parsedInput.email,
 				image: parsedInput.image,
 				clerkUserId: clerkUserId,
-				role: 'customer',
+				role: 'doctor',
 			})
 			.onConflictDoUpdate({
 				target: usersTable.clerkUserId,
@@ -130,6 +129,7 @@ export const upsertDoctor = actionClient
 					name: parsedInput.name,
 					email: parsedInput.email,
 					image: parsedInput.image,
+					role: 'doctor',
 					updatedAt: new Date(),
 				},
 			})
@@ -175,15 +175,14 @@ export const upsertDoctor = actionClient
 export const deleteDoctor = actionClient
 	.schema(z.object({ id: z.uuid() }))
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
+		const context = await requireAuthContext();
+		requireAdmin(context);
 
 		const doctor = await db.query.doctorsTable.findFirst({
 			where: eq(doctorsTable.id, parsedInput.id),
 		});
 
 		if (!doctor) throw new Error('Veterinário não encontrado');
-
 		await db.delete(doctorsTable).where(eq(doctorsTable.id, parsedInput.id));
 
 		revalidatePath('/doctors');
