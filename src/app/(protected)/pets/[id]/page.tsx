@@ -15,10 +15,15 @@ import { Suspense } from 'react';
 import PetDetailsClient from '../_components/pet-details';
 import { PetDetailsSkeleton } from '../_components/pet-details-skeleton';
 import { getDoctors } from '@/api/actions/doctors.actions';
+import { requireAuthContext } from '@/lib/security/auth-context';
+import { hasRole } from '@/lib/security/authorization';
 
 interface PetDetailsPageProps {
 	params: Promise<{ id: string }>;
 }
+
+const context = await requireAuthContext();
+const canManagePets = hasRole(context, 'admin', 'doctor');
 
 const PetDetailsPage = async ({ params }: PetDetailsPageProps) => {
 	const { id } = await params;
@@ -26,10 +31,10 @@ const PetDetailsPage = async ({ params }: PetDetailsPageProps) => {
 	const pet = await getPetById(id);
 	if (!pet) notFound();
 
-	const doctors = await getDoctors();
+	const doctors = canManagePets ? await getDoctors() : [];
 	const speciesPromise = getSpecies();
 	const breedsPromise = getBreeds();
-	const customersPromise = getCustomers();
+	const customersPromise = canManagePets ? getCustomers() : Promise.resolve([]);
 
 	return (
 		<PageContainer>

@@ -25,6 +25,7 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
 	const params = await searchParams;
 
 	const { userId, isAuthenticated } = await auth();
+
 	if (!isAuthenticated) return <div>Redirecinando para login...</div>;
 
 	const existingUser = await db.query.usersTable.findFirst({
@@ -51,16 +52,19 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
 		where: eq(customersTable.userId, existingUser.id),
 	});
 
-	const needsToCreateCustomer = existingUser && !existingCustomer;
+	const needsToCreateCustomer =
+		existingUser.role === 'customer' && !existingCustomer;
 
 	const monthName = params.month || format(new Date(), 'MMMM').toLowerCase();
-	const [shifts, appointments, createdPets, createdCustomers] =
-		await Promise.all([
-			getShifts(monthName, false),
-			getAppointments(monthName, false),
-			getCreatedPets(monthName),
-			getCreatedCustomers(monthName),
-		]);
+	const dashboardData =
+		existingUser.role !== 'customer'
+			? await Promise.all([
+					getShifts(monthName, false),
+					getAppointments(monthName, false),
+					getCreatedPets(monthName),
+					getCreatedCustomers(monthName),
+				])
+			: null;
 
 	return (
 		<PageContainer>
@@ -73,13 +77,12 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
 			<PageContent>
 				<PageDescription>Olá, {existingUser.name}!</PageDescription>
 
-				{/* <DashboardCalendarClient shifts={shifts} appointments={appointments} /> */}
-				{existingUser.role !== 'customer' && (
+				{dashboardData && (
 					<DashboardCards
-						shifts={shifts}
-						appointments={appointments}
-						createdPets={createdPets}
-						createdCustomers={createdCustomers}
+						shifts={dashboardData[0]}
+						appointments={dashboardData[1]}
+						createdPets={dashboardData[2]}
+						createdCustomers={dashboardData[3]}
 					/>
 				)}
 

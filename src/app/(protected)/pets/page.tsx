@@ -15,6 +15,8 @@ import { Suspense } from 'react';
 import PetsListClient from './_components/pets-list';
 import { ListSkeleton } from '@/components/list/list-skeleton';
 import LoadingDialog from '@/components/ui/loading';
+import { requireAuthContext } from '@/lib/security/auth-context';
+import { hasRole } from '@/lib/security/authorization';
 
 interface PetsPageProps {
 	searchParams: Promise<{ page?: string; filter?: string; keyword?: string }>;
@@ -25,12 +27,14 @@ const PetsPage = async ({ searchParams }: PetsPageProps) => {
 	const page = Number(params.page) || 1;
 	const filter = params.filter || '';
 
-	const dataPromise = getPetsPaginated(page, MAX_PAGE_SIZE, filter);
+	const context = await requireAuthContext();
+	const canManagePets = hasRole(context, 'admin', 'doctor');
 
+	const dataPromise = getPetsPaginated(page, MAX_PAGE_SIZE, filter);
 	const [species, breeds, customers] = await Promise.all([
 		getSpecies(),
 		getBreeds(),
-		getCustomers(),
+		canManagePets ? getCustomers() : Promise.resolve([]),
 	]);
 
 	return (

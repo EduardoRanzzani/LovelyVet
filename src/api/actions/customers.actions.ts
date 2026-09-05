@@ -3,7 +3,8 @@
 import { db } from '@/db';
 import { customersTable, usersTable } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
-import { currentUser } from '@clerk/nextjs/server';
+import { requireAuthContext } from '@/lib/security/auth-context';
+import { requireRole, requireStaff } from '@/lib/security/authorization';
 import { endOfMonth, startOfMonth } from 'date-fns';
 import { and, asc, count, eq, gte, ilike, lte, or, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
@@ -19,51 +20,54 @@ import { createNewClerkUser } from './clerk.actions';
 export const onboardingCustomer = actionClient
 	.schema(onboardingCustomerSchema)
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
+		const context = await requireAuthContext();
+		requireRole(context, 'customer');
 
-		const databaseUser = await db.query.usersTable.findFirst({
-			where: eq(usersTable.clerkUserId, authenticatedUser.id),
+		const existingCustomer = await db.query.customersTable.findFirst({
+			where: eq(customersTable.userId, context.userId),
 		});
-		if (!databaseUser) throw new Error('Usuário não cadastrado no sistema');
 
-		await db
-			.insert(customersTable)
-			.values({
-				userId: databaseUser.id,
-				phone: parsedInput.phone,
-				cpf: parsedInput.cpf,
-				gender: parsedInput.gender,
-				postalCode: parsedInput.postalCode,
-				address: parsedInput.address,
-				addressNumber: parsedInput.addressNumber || 'S/N',
-				neighborhood: parsedInput.neighborhood,
-				city: parsedInput.city,
-				state: parsedInput.state,
-			})
-			.onConflictDoUpdate({
-				target: customersTable.cpf,
-				set: {
-					userId: databaseUser.id,
-					phone: parsedInput.phone,
-					gender: parsedInput.gender,
-					postalCode: parsedInput.postalCode,
-					address: parsedInput.address,
-					addressNumber: parsedInput.addressNumber || 'S/N',
-					neighborhood: parsedInput.neighborhood,
-					city: parsedInput.city,
-					state: parsedInput.state,
+		const cpfOwner = await db.query.customersTable.findFirst({
+			where: eq(customersTable.cpf, parsedInput.cpf),
+		});
+
+		if (cpfOwner && cpfOwner.userId !== context.userId) {
+			throw new Error('CPF já cadastrado para outro cliente');
+		}
+
+		const customerData = {
+			phone: parsedInput.phone,
+			cpf: parsedInput.cpf,
+			gender: parsedInput.gender,
+			postalCode: parsedInput.postalCode,
+			address: parsedInput.address,
+			addressNumber: parsedInput.addressNumber || 'S/N',
+			neighborhood: parsedInput.neighborhood,
+			city: parsedInput.city,
+			state: parsedInput.state,
+		};
+
+		if (existingCustomer) {
+			await db
+				.update(customersTable)
+				.set({
+					...customerData,
 					updatedAt: new Date(),
-				},
-			})
-			.returning();
+				})
+				.where(eq(customersTable.id, existingCustomer.id));
+		} else {
+			await db.insert(customersTable).values({
+				userId: context.userId,
+				...customerData,
+			});
+		}
 
 		revalidatePath('/customers');
 	});
 
 export const getCustomers = async (): Promise<CustomersWithRelations[]> => {
-	const authenticatedUser = await currentUser();
-	if (!authenticatedUser) throw new Error('Usuário não autenticado');
+	const context = await requireAuthContext();
+	requireStaff(context);
 
 	// Usando select tradicional para permitir o join e a ordenação por outra tabela
 	const customers = await db
@@ -81,8 +85,8 @@ export const getCustomers = async (): Promise<CustomersWithRelations[]> => {
 export const getCreatedCustomers = async (
 	monthName?: string,
 ): Promise<CustomersWithRelations[]> => {
-	const authenticatedUser = await currentUser();
-	if (!authenticatedUser) throw new Error('Usuário não autenticado');
+	const context = await requireAuthContext();
+	requireStaff(context);
 
 	const now = new Date();
 	const year = now.getFullYear();
@@ -113,8 +117,8 @@ export const getCustomersPaginated = async (
 	limit: number = 20,
 	search?: string,
 ): Promise<PaginatedData<CustomersWithRelations>> => {
-	const authenticatedUser = await currentUser();
-	if (!authenticatedUser) throw new Error('Usuário não autenticado');
+	const context = await requireAuthContext();
+	requireStaff(context);
 
 	const offset = (page - 1) * limit;
 
@@ -178,8 +182,8 @@ export const getCustomersPaginated = async (
 export const upsertCustomer = actionClient
 	.schema(createCustomerWithUserSchema)
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
+		const context = await requireAuthContext();
+		requireStaff(context);
 
 		let clerkUserId;
 
@@ -254,8 +258,8 @@ export const upsertCustomer = actionClient
 export const deleteCustomer = actionClient
 	.schema(z.object({ id: z.uuid() }))
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
+		const context = await requireAuthContext();
+		requireStaff(context);
 
 		const customer = await db.query.customersTable.findFirst({
 			where: eq(customersTable.id, parsedInput.id),
