@@ -12,6 +12,8 @@ import {
 	createServiceSchema,
 	ServicesWithRelations,
 } from '../schema/services.schema';
+import { requireAuthContext } from '@/lib/security/auth-context';
+import { requireStaff } from '@/lib/security/authorization';
 
 export const getServices = async (): Promise<ServicesWithRelations[]> => {
 	const authenticatedUser = await currentUser();
@@ -71,8 +73,8 @@ export const getServicesPaginated = async (
 export const upsertService = actionClient
 	.schema(createServiceSchema)
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
+		const context = await requireAuthContext();
+		requireStaff(context);
 
 		// Verifica se a especie foi preenchida, caso contrário salva null no banco
 		const specieId = parsedInput?.specieId === '' ? null : parsedInput.specieId;
@@ -103,8 +105,8 @@ export const upsertService = actionClient
 export const deleteService = actionClient
 	.schema(z.object({ id: z.string() }))
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
+		const context = await requireAuthContext();
+		requireStaff(context);
 
 		const service = await db.query.servicesTable.findFirst({
 			where: eq(servicesTable.id, parsedInput.id),

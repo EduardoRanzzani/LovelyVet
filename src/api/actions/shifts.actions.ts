@@ -19,6 +19,8 @@ import {
 	ShiftsWithRelations,
 } from '../schema/shifts.schema';
 import { sendWhatsappMessage } from './whatsapp.actions';
+import { requireAuthContext } from '@/lib/security/auth-context';
+import { requireStaff } from '@/lib/security/authorization';
 
 export const getAllShifts = async (): Promise<ShiftsWithRelations[]> => {
 	const result = await db.query.shiftsTable.findMany({
@@ -68,8 +70,8 @@ export const getShifts = async (
 export const upsertShift = actionClient
 	.schema(createShiftSchema)
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
+		const context = await requireAuthContext();
+		requireStaff(context);
 
 		const {
 			id,

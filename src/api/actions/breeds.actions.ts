@@ -12,6 +12,8 @@ import {
 	BreedsWithRelations,
 	createBreedSchema,
 } from '../schema/breeds.schema';
+import { requireAuthContext } from '@/lib/security/auth-context';
+import { requireStaff } from '@/lib/security/authorization';
 
 export const getBreeds = async (): Promise<BreedsWithRelations[]> => {
 	const breeds = await db.query.breedsTable.findMany({
@@ -86,8 +88,8 @@ export const getBreedsPaginated = async (
 export const upsertBreed = actionClient
 	.schema(createBreedSchema)
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
+		const context = await requireAuthContext();
+		requireStaff(context);
 
 		await db
 			.insert(breedsTable)
@@ -111,8 +113,8 @@ export const upsertBreed = actionClient
 export const deleteBreed = actionClient
 	.schema(z.object({ id: z.string() }))
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
+		const context = await requireAuthContext();
+		requireStaff(context);
 
 		const breed = await db.query.breedsTable.findFirst({
 			where: eq(breedsTable.id, parsedInput.id),

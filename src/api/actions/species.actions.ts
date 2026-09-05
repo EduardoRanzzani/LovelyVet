@@ -3,16 +3,14 @@
 import { db } from '@/db';
 import { speciesTable } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
+import { requireAuthContext } from '@/lib/security/auth-context';
+import { requireStaff } from '@/lib/security/authorization';
 import { currentUser } from '@clerk/nextjs/server';
 import { asc, count, eq, ilike, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
 import { PaginatedData } from '../config/consts';
-import {
-	createSpecieSchema,
-	CreateSpecieSchema,
-	Species,
-} from '../schema/species.schema';
+import { createSpecieSchema, Species } from '../schema/species.schema';
 
 export const getSpecies = async (): Promise<Species[]> => {
 	const species = await db.query.speciesTable.findMany({
@@ -73,32 +71,11 @@ export const getSpeciesPaginated = async (
 	};
 };
 
-export const upsertSpecieOld = async (data: CreateSpecieSchema) => {
-	const authenticatedUser = await currentUser();
-	if (!authenticatedUser) throw new Error('Usuário não autenticado');
-
-	await db
-		.insert(speciesTable)
-		.values({
-			id: data.id,
-			name: data.name,
-		})
-		.onConflictDoUpdate({
-			target: speciesTable.id, // O conflito ocorre no ID
-			set: {
-				name: data.name,
-			},
-		})
-		.returning();
-
-	revalidatePath('/species');
-};
-
 export const upsertSpecie = actionClient
 	.schema(createSpecieSchema)
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
+		const context = await requireAuthContext();
+		requireStaff(context);
 
 		await db
 			.insert(speciesTable)
@@ -120,8 +97,8 @@ export const upsertSpecie = actionClient
 export const deleteSpecie = actionClient
 	.schema(z.object({ id: z.uuid() }))
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
+		const context = await requireAuthContext();
+		requireStaff(context);
 
 		const specie = await db.query.speciesTable.findFirst({
 			where: eq(speciesTable.id, parsedInput.id),

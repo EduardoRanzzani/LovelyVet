@@ -11,6 +11,8 @@ import {
 	createPrescriptionItemSchema,
 	PrescriptionItemsWithRelations,
 } from '../schema/prescriptions-items.schema';
+import { requireAuthContext } from '@/lib/security/auth-context';
+import { requireStaff } from '@/lib/security/authorization';
 
 export const getPrescriptionsItems = async () => {
 	const authenticatedUser = await currentUser();
@@ -65,8 +67,8 @@ export const getPrescriptionsItemsPaginated = async (
 export const upsertPrescriptionItems = actionClient
 	.schema(createPrescriptionItemSchema)
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Nenhum usuário autenticado');
+		const context = await requireAuthContext();
+		requireStaff(context);
 
 		await db
 			.insert(prescriptionItemsTable)
@@ -93,8 +95,8 @@ export const upsertPrescriptionItems = actionClient
 export const deletePrescriptionItem = actionClient
 	.schema(z.object({ id: z.string() }))
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Nenhum usuário autenticado');
+		const context = await requireAuthContext();
+		requireStaff(context);
 
 		const item = await db.query.prescriptionItemsTable.findFirst({
 			where: eq(prescriptionItemsTable.id, parsedInput.id),
