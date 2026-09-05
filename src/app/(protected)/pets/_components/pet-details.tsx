@@ -42,7 +42,7 @@ import {
 import { useAction } from 'next-safe-action/hooks';
 import Image from 'next/image';
 import Link from 'next/link';
-import { use, useEffect, useState } from 'react';
+import { use, useState } from 'react';
 import { toast } from 'sonner';
 import { PetDetailsSkeleton } from './pet-details-skeleton';
 import PetFormClient from './pet-form';
@@ -65,9 +65,7 @@ const PetDetailsClient = ({
 	customersPromise,
 }: PetDetailsClientProps) => {
 	const { user, isLoaded } = useUser();
-
 	const isCustomer = user?.publicMetadata?.role === 'customer';
-
 	const [activeTab, setActiveTab] = useState<string>();
 
 	const { execute, isExecuting } = useAction(deleteTimelineItem, {
@@ -249,9 +247,7 @@ const PetDetailsClient = ({
 			icon: <MessageCircleIcon className='w-5 h-5 text-accent-foreground' />,
 			color: 'bg-notes/80',
 		})) || []),
-	]
-		.filter((event) => !(isCustomer && event.type === 'note'))
-		.sort((a, b) => b.date.getTime() - a.date.getTime());
+	].sort((a, b) => b.date.getTime() - a.date.getTime());
 
 	const handleDelete = (item: TimelineItem) => {
 		if (!item.id) return;

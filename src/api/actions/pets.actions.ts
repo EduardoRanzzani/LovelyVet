@@ -18,6 +18,7 @@ import type { AuthContext } from '@/lib/security/auth-context';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
 import { buildPetAccessCondition } from '@/lib/security/pet-access';
+import { filterPetForViewer } from '@/lib/security/pet-visibility';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 import type { SQL } from 'drizzle-orm';
 import {
@@ -185,9 +186,10 @@ export const getPetById = async (id: string): Promise<PetsWithRelations> => {
 		},
 	});
 
-	if (!pet) throw new Error('Pet não encontrado');
-
-	return pet as unknown as PetsWithRelations;
+	if (!pet) {
+		throw new Error('Pet não encontrado');
+	}
+	return filterPetForViewer(context, pet as unknown as PetsWithRelations);
 };
 
 export const getPets = async (): Promise<PetsWithRelations[]> => {
