@@ -14,7 +14,10 @@ import {
 	usersTable,
 } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
-import { currentUser } from '@clerk/nextjs/server';
+import type { AuthContext } from '@/lib/security/auth-context';
+import { requireAuthContext } from '@/lib/security/auth-context';
+import { requireStaff } from '@/lib/security/authorization';
+import { buildPetAccessCondition } from '@/lib/security/pet-access';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 import type { SQL } from 'drizzle-orm';
 import {
@@ -38,24 +41,20 @@ import {
 } from '../schema/pets.schema';
 import { sendEmailAction } from './emails.actions';
 
-function buildPetsListWhere(
-	dbUser: { role: string; customer?: { id: string } | null },
+const buildPetsListWhere = (
+	context: AuthContext,
 	search?: string,
-): SQL | undefined {
+): SQL | undefined => {
 	const parts: SQL[] = [];
-	if (dbUser.role === 'customer' && dbUser.customer) {
-		parts.push(
-			inArray(
-				petsTable.id,
-				db
-					.select({ petId: petTutorsTable.petId })
-					.from(petTutorsTable)
-					.where(eq(petTutorsTable.customerId, dbUser.customer.id)),
-			),
-		);
+	const accessCondition = buildPetAccessCondition(context);
+
+	if (accessCondition) {
+		parts.push(accessCondition);
 	}
+
 	if (search?.trim()) {
 		const s = `%${search.trim()}%`;
+
 		parts.push(
 			or(
 				ilike(petsTable.name, s),
@@ -90,14 +89,15 @@ function buildPetsListWhere(
 			)!,
 		);
 	}
+
 	return parts.length ? and(...parts) : undefined;
-}
+};
 
 export const getCreatedPets = async (
 	monthName?: string,
 ): Promise<PetsWithRelations[]> => {
-	const authUser = await currentUser();
-	if (!authUser) throw new Error('Usuário não autenticado');
+	const context = await requireAuthContext();
+	const accessCondition = buildPetAccessCondition(context);
 
 	const now = new Date();
 	const year = now.getFullYear();
@@ -114,6 +114,7 @@ export const getCreatedPets = async (
 
 	const pets = await db.query.petsTable.findMany({
 		where: and(
+			accessCondition,
 			lte(petsTable.createdAt, endRange),
 			gte(petsTable.createdAt, startRange),
 		),
@@ -143,11 +144,10 @@ export const getCreatedPets = async (
 };
 
 export const getPetById = async (id: string): Promise<PetsWithRelations> => {
-	const authUser = await currentUser();
-	if (!authUser) throw new Error('Usuário não autenticado');
+	const context = await requireAuthContext();
 
 	const pet = await db.query.petsTable.findFirst({
-		where: eq(petsTable.id, id),
+		where: buildPetAccessCondition(context, id),
 		with: {
 			breed: { with: { specie: true } },
 			petTutors: { with: { tutor: { with: { user: true } } } },
@@ -191,17 +191,8 @@ export const getPetById = async (id: string): Promise<PetsWithRelations> => {
 };
 
 export const getPets = async (): Promise<PetsWithRelations[]> => {
-	const authUser = await currentUser();
-	if (!authUser) throw new Error('Usuário não autenticado');
-
-	const dbUser = await db.query.usersTable.findFirst({
-		where: eq(usersTable.clerkUserId, authUser.id),
-		with: { customer: true },
-	});
-
-	if (!dbUser) throw new Error('Usuário não encontrado no banco');
-
-	const filter = buildPetsListWhere(dbUser, undefined);
+	const context = await requireAuthContext();
+	const filter = buildPetsListWhere(context);
 
 	const data = await db.query.petsTable.findMany({
 		where: filter,
@@ -220,19 +211,10 @@ export const getPetsPaginated = async (
 	limit: number,
 	search?: string,
 ): Promise<PaginatedData<PetsWithRelations>> => {
-	const authUser = await currentUser();
-	if (!authUser) throw new Error('Usuário não autenticado');
-
-	const dbUser = await db.query.usersTable.findFirst({
-		where: eq(usersTable.clerkUserId, authUser.id),
-		with: { customer: true },
-	});
-
-	if (!dbUser) throw new Error('Usuário não encontrado no banco');
+	const context = await requireAuthContext();
+	const filter = buildPetsListWhere(context, search);
 
 	const offset = (page - 1) * limit;
-	const filter = buildPetsListWhere(dbUser, search);
-
 	const data = await db.query.petsTable.findMany({
 		where: filter,
 		with: {
@@ -269,16 +251,13 @@ export const getPetsPaginated = async (
 export const upsertPet = actionClient
 	.schema(createPetWithTutorAndBreedSchema)
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
-
-		const user = await db.query.usersTable.findFirst({
-			where: eq(usersTable.clerkUserId, authenticatedUser.id),
-		});
-		const authorId = user?.id;
+		const context = await requireAuthContext();
+		requireStaff(context);
 
 		const isNewRegistration = !parsedInput.id;
 		const tutorIds = [...new Set(parsedInput.customerIds)];
+
+		const authorId = context.userId;
 
 		const petResult = await db.transaction(async (tx) => {
 			const [insertedPet] = await tx
@@ -326,11 +305,6 @@ export const upsertPet = actionClient
 			}
 
 			if (parsedInput.weightInGrams) {
-				if (!authorId) {
-					throw new Error(
-						'Usuário autenticado não encontrado para registrar o peso',
-					);
-				}
 				await tx.insert(petWeightsTable).values({
 					petId: insertedPet.id,
 					weightInGrams: Math.round(parsedInput.weightInGrams * 1000),
@@ -373,8 +347,8 @@ export const upsertPet = actionClient
 export const deletePet = actionClient
 	.schema(z.object({ id: z.uuid() }))
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
+		const context = await requireAuthContext();
+		requireStaff(context);
 
 		const pet = await db.query.petsTable.findFirst({
 			where: eq(petsTable.id, parsedInput.id),
@@ -388,8 +362,10 @@ export const deletePet = actionClient
 	});
 
 export const getPetHistory = async (petId: string) => {
+	const context = await requireAuthContext();
+
 	const data = await db.query.petsTable.findFirst({
-		where: eq(petsTable.id, petId),
+		where: buildPetAccessCondition(context, petId),
 		with: {
 			medicalRecords: {
 				orderBy: desc(medicalRecordsTable.createdAt),
