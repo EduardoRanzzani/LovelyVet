@@ -1,6 +1,7 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeUserRole, type UserRole } from './lib/security/roles';
+import { isPathWithinRoute } from './lib/security/routes';
 
 const isWebhookRoute = createRouteMatcher(['/api/webhooks/clerk']);
 const isPublicRoute = createRouteMatcher([
@@ -80,7 +81,9 @@ export default clerkMiddleware(async (auth, req) => {
 	const pathname = nextUrl.pathname;
 
 	const allowedRoutes = rolePermissions[userRole];
-	const isAllowed = allowedRoutes.some((route) => pathname.startsWith(route));
+	const isAllowed = allowedRoutes.some((route) =>
+		isPathWithinRoute(pathname, route),
+	);
 
 	if (pathname === '/') {
 		return NextResponse.redirect(new URL('/dashboard', req.url));
