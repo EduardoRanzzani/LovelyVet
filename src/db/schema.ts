@@ -1,4 +1,5 @@
 import { relations } from 'drizzle-orm';
+import { USER_ROLES } from '@/lib/security/roles';
 import {
 	boolean,
 	date,
@@ -15,11 +16,7 @@ import {
 
 // --- ENUMS ---
 
-export const userRoleEnum = pgEnum('user_role', [
-	'admin',
-	'doctor',
-	'customer',
-]);
+export const userRoleEnum = pgEnum('user_role', USER_ROLES);
 export const sexEnum = pgEnum('sex', ['male', 'female']);
 export const petStatusEnum = pgEnum('pet_status', ['alive', 'dead', 'missing']);
 export const appointmentStatusEnum = pgEnum('appointment_status', [

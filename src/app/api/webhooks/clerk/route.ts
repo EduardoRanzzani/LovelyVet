@@ -1,6 +1,7 @@
 import { db } from '@/db';
 import { usersTable } from '@/db/schema';
 import { UserJSON, WebhookEvent } from '@clerk/nextjs/server';
+import { normalizeUserRole } from '@/lib/security/roles';
 import { eq } from 'drizzle-orm';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
@@ -64,9 +65,7 @@ export async function POST(req: Request) {
 						(addr) => addr.id === data.primary_email_address_id,
 					)?.email_address ?? data.email_addresses[0]?.email_address;
 
-				const role =
-					(data.public_metadata.role as 'admin' | 'doctor' | 'customer') ??
-					'customer';
+				const role = normalizeUserRole(data.public_metadata.role);
 
 				userResponse = await db
 					.insert(usersTable)
@@ -99,9 +98,7 @@ export async function POST(req: Request) {
 						(addr) => addr.id === data.primary_email_address_id,
 					)?.email_address ?? data.email_addresses[0]?.email_address;
 
-				const role =
-					(data.public_metadata.role as 'admin' | 'doctor' | 'customer') ??
-					'customer';
+				const role = normalizeUserRole(data.public_metadata.role);
 
 				userResponse = await db
 					.update(usersTable)

@@ -1,11 +1,11 @@
-export {};
+import type { UserRole } from '@/lib/security/roles';
 
-export type Roles = 'admin' | 'doctor' | 'client';
+export {};
 
 declare global {
 	interface CustomJwtSessionClaims {
 		metadata: {
-			role?: Roles;
+			role?: UserRole;
 		};
 	}
 }

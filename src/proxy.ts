@@ -1,5 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { normalizeUserRole, type UserRole } from './lib/security/roles';
 
 const isWebhookRoute = createRouteMatcher(['/api/webhooks/clerk']);
 const isPublicRoute = createRouteMatcher([
@@ -18,13 +19,10 @@ const isInternalPrintRequest = (req: NextRequest): boolean => {
 	const secretFromEnv =
 		process.env.INTERNAL_PDF_SECRET || 'internal-pdf-secret-to-download';
 	const secretFromQuery = searchParams.get('secret');
-
 	return secretFromQuery === secretFromEnv;
 };
 
-type Role = 'admin' | 'doctor' | 'customer';
-
-const rolePermissions: Record<Role, string[]> = {
+const rolePermissions: Record<UserRole, string[]> = {
 	admin: [
 		'/dashboard',
 		'/doctors',
@@ -78,13 +76,12 @@ export default clerkMiddleware(async (auth, req) => {
 		return (await auth()).redirectToSignIn();
 	}
 
-	const userRole =
-		(sessionClaims?.metadata as { role?: Role })?.role ?? 'customer';
+	const userRole = normalizeUserRole(sessionClaims?.metadata?.role);
 
 	const { nextUrl } = req;
 	const pathname = nextUrl.pathname;
 
-	const allowedRoutes = rolePermissions[userRole] || rolePermissions.customer;
+	const allowedRoutes = rolePermissions[userRole];
 	const isAllowed = allowedRoutes.some((route) => pathname.startsWith(route));
 
 	if (pathname === '/') {
