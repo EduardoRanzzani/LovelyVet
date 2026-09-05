@@ -271,9 +271,10 @@ const AppointmentsListClient = ({
 						/>
 
 						<DeleteAlertButton
+							icon={<BanIcon />}
 							disabled={appointment.status !== 'pending'}
-							action={() => handleDelete(appointment.id)}
-							tooltip='Deletar agendamento'
+							action={() => handleCancelAppointment(appointment.id)}
+							tooltip='Cancelar agendamento'
 						/>
 					</span>
 				</div>

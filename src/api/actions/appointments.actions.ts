@@ -5,11 +5,15 @@ import {
 	appointmentItemsTable,
 	appointmentsTable,
 	petsTable,
-	petTutorsTable,
-	usersTable,
 } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
-import { currentUser } from '@clerk/nextjs/server';
+import {
+	buildAppointmentAccessCondition,
+	requireAccessibleAppointment,
+} from '@/lib/security/appointment-access';
+import { requireAuthContext } from '@/lib/security/auth-context';
+import { requireStaff } from '@/lib/security/authorization';
+import { assertCanAccessPet } from '@/lib/security/pet-access';
 import { addMonths, endOfMonth, startOfMonth, subMonths } from 'date-fns';
 import { and, count, desc, eq, exists, gte, ilike, lte, ne } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
@@ -25,98 +29,81 @@ export const getAppointmentsPaginated = async (
 	limit: number = MAX_PAGE_SIZE,
 	search?: string,
 ): Promise<PaginatedData<AppointmentsWithRelations>> => {
-	const authenticatedUser = await currentUser();
-	if (!authenticatedUser) throw new Error('Usuário não autenticado');
-
-	const dbUser = await db.query.usersTable.findFirst({
-		where: eq(usersTable.clerkUserId, authenticatedUser.id),
-		with: { customer: true },
-	});
-
-	if (!dbUser) throw new Error('Usuário não encontrado no banco');
-
+	const context = await requireAuthContext();
 	const offset = (page - 1) * limit;
 
+	const searchCondition = search?.trim()
+		? exists(
+				db
+					.select()
+					.from(petsTable)
+					.where(
+						and(
+							eq(petsTable.id, appointmentsTable.petId),
+							ilike(petsTable.name, `%${search.trim()}%`),
+						),
+					),
+			)
+		: undefined;
+
 	const data = await db.query.appointmentsTable.findMany({
-		where: (appointments, { and, eq, ilike, exists }) => {
-			const filters = [];
-
-			// FILTRO DE SEGURANÇA: Somente pets do cliente logado
-			if (dbUser.role === 'customer' && dbUser.customer) {
-				filters.push(
-					exists(
-						db
-							.select()
-							.from(petTutorsTable)
-							.where(
-								and(
-									eq(petTutorsTable.petId, appointments.petId),
-									eq(petTutorsTable.customerId, dbUser.customer!.id),
-								),
-							),
-					),
-				);
-			}
-
-			if (search) {
-				filters.push(
-					exists(
-						db
-							.select()
-							.from(petsTable)
-							.where(
-								and(
-									eq(petsTable.id, appointments.petId),
-									ilike(petsTable.name, `%${search}%`),
-								),
-							),
-					),
-				);
-			}
-
-			return filters.length > 0 ? and(...filters) : undefined;
-		},
-		limit: limit,
-		offset: offset,
+		where: and(buildAppointmentAccessCondition(context), searchCondition),
+		limit,
+		offset,
 		orderBy: desc(appointmentsTable.scheduledAt),
 		with: {
 			pet: {
-				with: { petTutors: { with: { tutor: { with: { user: true } } } } },
+				with: {
+					petTutors: { with: { tutor: { with: { user: true } } } },
+				},
 			},
 			doctor: { with: { user: true } },
 			items: { with: { service: true } },
 		},
 	});
 
-	// 2. Buscar o total para paginação
 	const totalCountResult = await db
-		.select({ value: count() })
+		.select({
+			value: count(),
+		})
 		.from(appointmentsTable)
 		.innerJoin(petsTable, eq(appointmentsTable.petId, petsTable.id))
 		.where(
 			and(
-				dbUser.role === 'customer' && dbUser.customer
-					? exists(
-							db
-								.select()
-								.from(petTutorsTable)
-								.where(
-									and(
-										eq(petTutorsTable.petId, appointmentsTable.petId),
-										eq(petTutorsTable.customerId, dbUser.customer.id),
-									),
-								),
-						)
+				buildAppointmentAccessCondition(context),
+				search?.trim()
+					? ilike(petsTable.name, `%${search.trim()}%`)
 					: undefined,
-				search ? ilike(petsTable.name, `%${search}%`) : undefined,
 			),
 		);
 
 	const totalCount = Number(totalCountResult[0]?.value ?? 0);
+
 	const pageCount = Math.ceil(totalCount / limit);
 
+	/*
+	 * Mesmo depois de restringir quais appointments
+	 * o customer pode consultar, um pet pode possuir
+	 * múltiplos tutores.
+	 *
+	 * Não devemos enviar os dados pessoais dos outros
+	 * tutores ao navegador.
+	 */
+	const safeData =
+		context.role === 'customer'
+			? data.map((appointment) => ({
+					...appointment,
+					pet: {
+						...appointment.pet,
+						petTutors: appointment.pet.petTutors.filter(
+							({ tutor }) => tutor.id === context.customerId,
+						),
+					},
+				}))
+			: data;
+
 	return {
-		data: data as AppointmentsWithRelations[],
+		data: safeData as AppointmentsWithRelations[],
 		metadata: {
 			totalCount,
 			pageCount,
@@ -129,10 +116,18 @@ export const getAppointmentsPaginated = async (
 export const getAllAppointments = async (): Promise<
 	AppointmentsWithRelations[]
 > => {
+	const context = await requireAuthContext();
+
+	requireStaff(context);
+
 	const appointments = await db.query.appointmentsTable.findMany({
 		with: {
 			pet: {
-				with: { petTutors: { with: { tutor: { with: { user: true } } } } },
+				with: {
+					petTutors: {
+						with: { tutor: { with: { user: true } } },
+					},
+				},
 			},
 			doctor: { with: { user: true } },
 			items: { with: { service: true } },
@@ -146,8 +141,8 @@ export const getAppointments = async (
 	monthName?: string,
 	extraMonths?: boolean,
 ): Promise<AppointmentsWithRelations[]> => {
-	const authenticatedUser = await currentUser();
-	if (!authenticatedUser) throw new Error('Usuário não autenticado');
+	const context = await requireAuthContext();
+	requireStaff(context);
 
 	const now = new Date();
 	const year = now.getFullYear();
@@ -156,8 +151,8 @@ export const getAppointments = async (
 		: now.getMonth();
 
 	const safeMonthIndex = monthIndex === -1 ? now.getMonth() : monthIndex;
-
 	const referenceDate = new Date(year, safeMonthIndex, 1);
+
 	let startRange = startOfMonth(referenceDate);
 	let endRange = endOfMonth(referenceDate);
 
@@ -173,7 +168,9 @@ export const getAppointments = async (
 		),
 		with: {
 			pet: {
-				with: { petTutors: { with: { tutor: { with: { user: true } } } } },
+				with: {
+					petTutors: { with: { tutor: { with: { user: true } } } },
+				},
 			},
 			doctor: { with: { user: true } },
 			items: { with: { service: true } },
@@ -186,15 +183,94 @@ export const getAppointments = async (
 export const upsertAppointment = actionClient
 	.schema(createAppointmentSchema)
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
+		const context = await requireAuthContext();
 
 		const { id, services, ...data } = parsedInput;
-		const totalPriceInCents = Math.round(data.totalPriceInCents * 100);
+
+		/*
+		 * BOLA:
+		 * customer só pode criar/alterar
+		 * appointment utilizando um pet
+		 * ao qual possui acesso.
+		 */
+		await assertCanAccessPet(context, data.petId);
+
+		/*
+		 * Em updates validamos também o
+		 * appointment original.
+		 */
+		if (id) {
+			const existingAppointment = await requireAccessibleAppointment(
+				context,
+				id,
+			);
+
+			/*
+			 * Customer não altera appointments
+			 * que já avançaram no fluxo.
+			 */
+			if (
+				context.role === 'customer' &&
+				existingAppointment.status !== 'pending'
+			) {
+				throw new Error('Apenas agendamentos pendentes podem ser alterados');
+			}
+		}
 
 		try {
 			await db.transaction(async (tx) => {
-				// 1. VALIDAÇÃO DE CONFLITO DE HORÁRIO
+				/*
+				 * Não confiamos no preço
+				 * enviado pelo browser.
+				 *
+				 * O valor oficial vem dos
+				 * serviços armazenados no banco.
+				 */
+				const servicesData = await tx.query.servicesTable.findMany({
+					where: (table, { inArray }) => inArray(table.id, services),
+				});
+
+				/*
+				 * Também impede IDs de serviços
+				 * inexistentes.
+				 *
+				 * new Set evita que duplicatas
+				 * no input burlem a comparação.
+				 */
+				if (servicesData.length !== new Set(services).size) {
+					throw new Error('Um ou mais serviços selecionados são inválidos');
+				}
+
+				const totalPriceInCents = servicesData.reduce(
+					(total, service) => total + service.priceInCents,
+					0,
+				);
+
+				/*
+				 * Customer nunca controla
+				 * diretamente o status.
+				 */
+				const status = context.role === 'customer' ? 'pending' : data.status;
+
+				/*
+				 * Evitamos espalhar diretamente
+				 * todo parsedInput na tabela.
+				 *
+				 * Isso reduz mass assignment.
+				 */
+				const appointmentData = {
+					petId: data.petId,
+					doctorId: data.doctorId,
+					scheduledAt: data.scheduledAt,
+					status,
+					notes: data.notes,
+					totalPriceInCents,
+				};
+
+				/*
+				 * Validação de conflito
+				 * de horário.
+				 */
 				const conflict = await tx.query.appointmentsTable.findFirst({
 					where: and(
 						eq(appointmentsTable.doctorId, data.doctorId),
@@ -209,65 +285,60 @@ export const upsertAppointment = actionClient
 					);
 				}
 
-				// Inicializamos como null para o TS rastrear a atribuição
-
 				let appointmentId: string | null = null;
 
 				if (id) {
-					// UPDATE
 					await tx
 						.update(appointmentsTable)
 						.set({
-							...data,
-							totalPriceInCents,
+							...appointmentData,
 							updatedAt: new Date(),
 						})
 						.where(eq(appointmentsTable.id, id));
 
 					appointmentId = id;
 
-					// Limpa serviços antigos
 					await tx
 						.delete(appointmentItemsTable)
 						.where(eq(appointmentItemsTable.appointmentId, id));
 				} else {
-					// INSERT
 					const [newAppointment] = await tx
 						.insert(appointmentsTable)
-						.values({
-							...data,
-							totalPriceInCents,
-						})
-						.returning({ id: appointmentsTable.id });
+						.values(appointmentData)
+						.returning({
+							id: appointmentsTable.id,
+						});
 
-					if (!newAppointment) throw new Error('Erro ao criar agendamento');
+					if (!newAppointment) {
+						throw new Error('Erro ao criar agendamento');
+					}
+
 					appointmentId = newAppointment.id;
 				}
 
-				// 2. INSERÇÃO DOS ITENS
-				// O check 'appointmentId' aqui atua como Type Guard, eliminando o erro de 'unassigned'
-				if (appointmentId && services.length > 0) {
-					const servicesData = await tx.query.servicesTable.findMany({
-						where: (table, { inArray }) => inArray(table.id, services),
-					});
+				/*
+				 * services é nonempty no schema,
+				 * mas mantemos a guarda também
+				 * para deixar a operação explícita.
+				 */
+				if (appointmentId && servicesData.length > 0) {
+					const itemsToInsert = servicesData.map((service) => ({
+						appointmentId,
+						serviceId: service.id,
+						priceAtTimeInCents: service.priceInCents,
+					}));
 
-					if (servicesData.length > 0) {
-						const itemsToInsert = servicesData.map((s) => ({
-							appointmentId: appointmentId as string, // Cast seguro após a guarda
-							serviceId: s.id,
-							priceAtTimeInCents: s.priceInCents,
-						}));
-
-						await tx.insert(appointmentItemsTable).values(itemsToInsert);
-					}
+					await tx.insert(appointmentItemsTable).values(itemsToInsert);
 				}
 			});
 
 			revalidatePath('/appointments');
-			return { success: true };
+
+			return {
+				success: true,
+			};
 		} catch (error: unknown) {
 			console.error('Erro no upsert:', error);
-
 			if (error instanceof Error) {
 				throw error;
 			}
@@ -277,34 +348,51 @@ export const upsertAppointment = actionClient
 	});
 
 export const deleteAppointment = actionClient
-	.schema(z.object({ id: z.uuid() }))
+	.schema(
+		z.object({
+			id: z.uuid(),
+		}),
+	)
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
+		const context = await requireAuthContext();
 
-		const appointment = await db.query.appointmentsTable.findFirst({
-			where: eq(appointmentsTable.id, parsedInput.id),
-		});
+		requireStaff(context);
 
-		if (!appointment) throw new Error('Agendamento não encontrado');
+		const appointment = await requireAccessibleAppointment(
+			context,
+			parsedInput.id,
+		);
+
+		if (!appointment) {
+			throw new Error('Agendamento não encontrado');
+		}
 
 		await db
 			.delete(appointmentsTable)
 			.where(eq(appointmentsTable.id, parsedInput.id));
+
 		revalidatePath('/appointments');
 	});
 
 export const markAsConfirmed = actionClient
-	.schema(z.object({ id: z.uuid() }))
+	.schema(
+		z.object({
+			id: z.uuid(),
+		}),
+	)
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
+		const context = await requireAuthContext();
 
-		const appointment = await db.query.appointmentsTable.findFirst({
-			where: eq(appointmentsTable.id, parsedInput.id),
-		});
+		requireStaff(context);
 
-		if (!appointment) throw new Error('Agendamento não encontrado');
+		const appointment = await requireAccessibleAppointment(
+			context,
+			parsedInput.id,
+		);
+
+		if (appointment.status !== 'pending') {
+			throw new Error('Apenas agendamentos pendentes podem ser confirmados');
+		}
 
 		await db
 			.update(appointmentsTable)
@@ -318,16 +406,29 @@ export const markAsConfirmed = actionClient
 	});
 
 export const markAppointmentAsCompleted = actionClient
-	.schema(z.object({ id: z.uuid() }))
+	.schema(
+		z.object({
+			id: z.uuid(),
+		}),
+	)
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
+		const context = await requireAuthContext();
 
-		const appointment = await db.query.appointmentsTable.findFirst({
-			where: eq(appointmentsTable.id, parsedInput.id),
-		});
+		requireStaff(context);
 
-		if (!appointment) throw new Error('Agendamento não encontrado');
+		const appointment = await requireAccessibleAppointment(
+			context,
+			parsedInput.id,
+		);
+
+		if (
+			appointment.status !== 'confirmed' &&
+			appointment.status !== 'in_progress'
+		) {
+			throw new Error(
+				'O agendamento precisa estar confirmado ou em atendimento para ser concluído',
+			);
+		}
 
 		await db
 			.update(appointmentsTable)
@@ -341,16 +442,22 @@ export const markAppointmentAsCompleted = actionClient
 	});
 
 export const markAppointmentAsCancelled = actionClient
-	.schema(z.object({ id: z.uuid() }))
+	.schema(
+		z.object({
+			id: z.uuid(),
+		}),
+	)
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
+		const context = await requireAuthContext();
 
-		const appointment = await db.query.appointmentsTable.findFirst({
-			where: eq(appointmentsTable.id, parsedInput.id),
-		});
+		const appointment = await requireAccessibleAppointment(
+			context,
+			parsedInput.id,
+		);
 
-		if (!appointment) throw new Error('Agendamento não encontrado');
+		if (appointment.status !== 'pending') {
+			throw new Error('Apenas agendamentos pendentes podem ser cancelados');
+		}
 
 		await db
 			.update(appointmentsTable)
