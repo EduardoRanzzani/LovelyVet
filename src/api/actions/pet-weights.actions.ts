@@ -1,9 +1,11 @@
 'use server';
 
 import { db } from '@/db';
-import { petWeightsTable, usersTable } from '@/db/schema';
+import { petWeightsTable } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
-import { currentUser } from '@clerk/nextjs/server';
+import { requireAuthContext } from '@/lib/security/auth-context';
+import { requireStaff } from '@/lib/security/authorization';
+import { assertCanAccessPet } from '@/lib/security/pet-access';
 import { desc, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import {
@@ -13,8 +15,8 @@ import {
 } from '../schema/pet-weight.schema';
 
 export const getPetWeights = async (): Promise<PetWeightWithRelations[]> => {
-	const authenticatedUser = await currentUser();
-	if (!authenticatedUser) throw new Error('Usuário não autenticado');
+	const context = await requireAuthContext();
+	requireStaff(context);
 
 	const weightHistory = await db.query.petWeightsTable.findMany({
 		with: {
@@ -45,8 +47,8 @@ export const getPetWeights = async (): Promise<PetWeightWithRelations[]> => {
 export const getLastPetWeight = async (
 	petId: string,
 ): Promise<PetWeight | null> => {
-	const authenticatedUser = await currentUser();
-	if (!authenticatedUser) throw new Error('Usuário não autenticado');
+	const context = await requireAuthContext();
+	await assertCanAccessPet(context, petId);
 
 	const lastWeight = await db.query.petWeightsTable.findFirst({
 		where: eq(petWeightsTable.petId, petId),
@@ -59,23 +61,13 @@ export const getLastPetWeight = async (
 export const insertPetWeight = actionClient
 	.schema(createPetWeightSchema)
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
-
-		const user = await db.query.usersTable.findFirst({
-			where: eq(usersTable.clerkUserId, authenticatedUser.id),
-		});
-		const authorId = user?.id;
-		if (!authorId) {
-			throw new Error(
-				'Usuário autenticado não encontrado para registrar o peso',
-			);
-		}
+		const context = await requireAuthContext();
+		requireStaff(context);
 
 		await db.insert(petWeightsTable).values({
 			petId: parsedInput.petId!,
 			weightInGrams: Math.round(parsedInput.weightInGrams * 1000),
-			authorId,
+			authorId: context.userId,
 			measuredAt: new Date(),
 			createdAt: new Date(),
 		});

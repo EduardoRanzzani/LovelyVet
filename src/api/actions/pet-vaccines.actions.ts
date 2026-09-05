@@ -2,16 +2,16 @@
 import { db } from '@/db';
 import { vaccinesTable } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
-import { currentUser } from '@clerk/nextjs/server';
+import { requireAuthContext } from '@/lib/security/auth-context';
+import { resolveClinicalDoctorId } from '@/lib/security/clinical-access';
 import { revalidatePath } from 'next/cache';
 import { createVaccineSchema } from '../schema/vaccine.schema';
-
 
 export const insertVaccine = actionClient
 	.schema(createVaccineSchema)
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Usuário não autenticado');
+		const context = await requireAuthContext();
+		const doctorId = resolveClinicalDoctorId(context, parsedInput.doctorId);
 
 		// Calcular nextDoseDate
 		const nextDoseDateObj = new Date(parsedInput.applicationDate);
@@ -29,7 +29,7 @@ export const insertVaccine = actionClient
 			nextDoseDate: nextDoseDateStr,
 			lotNumber: parsedInput.lotNumber ?? undefined,
 			manufacturer: parsedInput.manufacturer ?? undefined,
-			doctorId: parsedInput.doctorId,
+			doctorId,
 			createdAt: new Date(), // timestamp() aceita Date, mas date() não.
 		};
 

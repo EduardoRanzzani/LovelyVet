@@ -29,3 +29,19 @@ export const buildPetAccessCondition = (
 
 	return and(eq(petsTable.id, petId), ownershipCondition);
 };
+
+export const assertCanAccessPet = async (
+	context: AuthContext,
+	petId: string,
+): Promise<void> => {
+	const pet = await db.query.petsTable.findFirst({
+		columns: {
+			id: true,
+		},
+		where: buildPetAccessCondition(context, petId),
+	});
+
+	if (!pet) {
+		throw new Error('Pet não encontrado');
+	}
+};

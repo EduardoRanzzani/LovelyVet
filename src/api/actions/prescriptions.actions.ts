@@ -7,7 +7,10 @@ import {
 	prescriptionsTable,
 } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
-import { currentUser } from '@clerk/nextjs/server';
+import { requireAuthContext } from '@/lib/security/auth-context';
+import { requireStaff } from '@/lib/security/authorization';
+import { resolveClinicalDoctorId } from '@/lib/security/clinical-access';
+import { assertCanAccessPet } from '@/lib/security/pet-access';
 import { asc, count, desc, eq, ilike, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { MAX_PAGE_SIZE, PaginatedData } from '../config/consts';
@@ -16,35 +19,6 @@ import {
 	PrescriptionsWithRelations,
 } from '../schema/prescriptions.schema';
 
-/**
- * Monta o conteúdo HTML da receita a partir dos items selecionados
- */
-// const buildPrescriptionContent = (
-// 	prescriptionItems: Array<{
-// 		name: string;
-// 		pharmacy: string;
-// 		quantity: string;
-// 		orientations: string;
-// 	}>,
-// ): string => {
-// 	const items = prescriptionItems
-// 		.map(
-// 			(item) =>
-// 				`<div class="prescription-item">
-//                 <div class="item-header">
-//                     <span class="item-name"><strong>${item.name}</strong></span>
-//                     <span class="item-pharmacy">(${item.pharmacy})</span>
-//                     <span class="item-quantity"><strong>${item.quantity}</strong></span>
-//                 </div>
-//                 <div class="item-orientations">
-//                     ${item.orientations}
-//                 </div>
-//             </div>`,
-// 		)
-// 		.join('');
-
-// 	return `<div class="prescription-content">${items}</div>`;
-// };
 const buildPrescriptionContent = (
 	prescriptionItems: Array<{
 		id?: string;
@@ -94,8 +68,8 @@ export const getPrescriptionsPaginated = async (
 	limit: number = MAX_PAGE_SIZE,
 	search?: string,
 ): Promise<PaginatedData<PrescriptionsWithRelations>> => {
-	const authenticatedUser = await currentUser();
-	if (!authenticatedUser) throw new Error('Usuário não autenticado');
+	const context = await requireAuthContext();
+	requireStaff(context);
 
 	const offset = (page - 1) * limit;
 
@@ -133,8 +107,8 @@ export const getPrescriptionsPaginated = async (
 export const createPrescription = actionClient
 	.schema(createPrescriptionSchema)
 	.action(async ({ parsedInput }) => {
-		const authenticatedUser = await currentUser();
-		if (!authenticatedUser) throw new Error('Nenhum usuário autenticado');
+		const context = await requireAuthContext();
+		const doctorId = resolveClinicalDoctorId(context, parsedInput.doctorId);
 
 		// Buscar os items da receita selecionados
 		const prescriptionItems = await db.query.prescriptionItemsTable.findMany({
@@ -155,14 +129,13 @@ export const createPrescription = actionClient
 		// Criar a receita
 		await db.insert(prescriptionsTable).values({
 			petId: parsedInput.petId,
-			doctorId: parsedInput.doctorId,
+			doctorId,
 			appointmentId: parsedInput.appointmentId || null,
-			content: content,
+			content,
 			issuedAt: new Date(),
 		});
 
 		revalidatePath('/pets');
-
 		return {
 			success: true,
 			message: 'Receita criada com sucesso!',
@@ -170,50 +143,38 @@ export const createPrescription = actionClient
 	});
 
 export const getPrescriptionsByPet = async (petId: string) => {
-	const authenticatedUser = await currentUser();
-	if (!authenticatedUser) throw new Error('Usuário não autenticado');
+	const context = await requireAuthContext();
+	await assertCanAccessPet(context, petId);
 
 	return await db.query.prescriptionsTable.findMany({
 		where: eq(prescriptionsTable.petId, petId),
-		with: {
-			doctor: {
-				with: {
-					user: true,
-				},
-			},
-		},
+		with: { doctor: { with: { user: true } } },
 		orderBy: (prescriptions, { desc }) => desc(prescriptions.issuedAt),
 	});
 };
 
 export const getPrescriptionById = async (prescriptionId: string) => {
-	const authenticatedUser = await currentUser();
-	if (!authenticatedUser) throw new Error('Usuário não autenticado');
+	const context = await requireAuthContext();
+
+	const prescription = await db.query.prescriptionsTable.findFirst({
+		columns: { id: true, petId: true },
+		where: eq(prescriptionsTable.id, prescriptionId),
+	});
+
+	if (!prescription) {
+		throw new Error('Prescrição não encontrada');
+	}
+
+	await assertCanAccessPet(context, prescription.petId);
 
 	return await db.query.prescriptionsTable.findFirst({
 		where: eq(prescriptionsTable.id, prescriptionId),
 		with: {
-			doctor: {
-				with: {
-					user: true,
-				},
-			},
+			doctor: { with: { user: true } },
 			pet: {
 				with: {
-					breed: {
-						with: {
-							specie: true,
-						},
-					},
-					petTutors: {
-						with: {
-							tutor: {
-								with: {
-									user: true,
-								},
-							},
-						},
-					},
+					breed: { with: { specie: true } },
+					petTutors: { with: { tutor: { with: { user: true } } } },
 					weightHistory: {
 						orderBy: desc(petWeightsTable.measuredAt),
 						with: { author: true },
