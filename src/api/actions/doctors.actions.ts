@@ -13,7 +13,10 @@ import {
 	createDoctorWithUserSchema,
 	DoctorsWithRelations,
 } from '../schema/doctors.schema';
-import { createNewClerkUser, updateClerkUserRole } from './clerk.actions';
+import {
+	createNewClerkUser,
+	updateClerkUserRole,
+} from '@/lib/integrations/clerk';
 
 export const getDoctors = async (): Promise<DoctorsWithRelations[]> => {
 	const data = await db

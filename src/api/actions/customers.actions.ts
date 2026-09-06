@@ -15,7 +15,7 @@ import {
 	CustomersWithRelations,
 	onboardingCustomerSchema,
 } from '../schema/customers.schema';
-import { createNewClerkUser } from './clerk.actions';
+import { createNewClerkUser } from '@/lib/integrations/clerk';
 
 export const onboardingCustomer = actionClient
 	.schema(onboardingCustomerSchema)
