@@ -3,7 +3,7 @@
 import { upsertAppointment } from '@/api/actions/appointments.actions';
 import { REGINA_DOCTOR_ID } from '@/api/config/consts';
 import {
-	AppointmentsWithRelations,
+	AppointmentListItem,
 	createAppointmentSchema,
 	CreateAppointmentSchema,
 } from '@/api/schema/appointments.schema';
@@ -34,7 +34,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
 interface AppointmentFormClientProps {
-	appointment?: AppointmentsWithRelations;
+	appointment?: AppointmentListItem;
 	pets: PetOption[];
 	doctors: DoctorOption[];
 	services: ServicesWithRelations[];

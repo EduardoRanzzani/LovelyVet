@@ -1,9 +1,9 @@
 import { convertAppointmentStatus } from '@/api/config/consts';
-import { AppointmentsWithRelations } from '@/api/schema/appointments.schema';
 import { Badge } from '@/components/ui/badge';
+import type { AppointmentListItem } from '@/api/schema/appointments.schema';
 
 interface BadgeStatusProps {
-	appointment: AppointmentsWithRelations;
+	appointment: Pick<AppointmentListItem, 'status'>;
 }
 
 const BadgeStatus = ({ appointment }: BadgeStatusProps) => {

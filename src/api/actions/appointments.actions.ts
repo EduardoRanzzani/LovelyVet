@@ -20,6 +20,7 @@ import { revalidatePath } from 'next/cache';
 import z from 'zod';
 import { MAX_PAGE_SIZE, monthNames, PaginatedData } from '../config/consts';
 import {
+	AppointmentListItem,
 	AppointmentsWithRelations,
 	createAppointmentSchema,
 } from '../schema/appointments.schema';
@@ -28,7 +29,7 @@ export const getAppointmentsPaginated = async (
 	page: number = 1,
 	limit: number = MAX_PAGE_SIZE,
 	search?: string,
-): Promise<PaginatedData<AppointmentsWithRelations>> => {
+): Promise<PaginatedData<AppointmentListItem>> => {
 	const context = await requireAuthContext();
 	const offset = (page - 1) * limit;
 
@@ -53,11 +54,23 @@ export const getAppointmentsPaginated = async (
 		orderBy: desc(appointmentsTable.scheduledAt),
 		with: {
 			pet: {
+				columns: { id: true, name: true },
 				with: {
-					petTutors: { with: { tutor: { with: { user: true } } } },
+					petTutors: {
+						columns: {},
+						with: {
+							tutor: {
+								columns: { id: true },
+								with: { user: { columns: { name: true } } },
+							},
+						},
+					},
 				},
 			},
-			doctor: { with: { user: true } },
+			doctor: {
+				columns: { id: true },
+				with: { user: { columns: { name: true } } },
+			},
 			items: { with: { service: true } },
 		},
 	});
@@ -89,21 +102,28 @@ export const getAppointmentsPaginated = async (
 	 * Não devemos enviar os dados pessoais dos outros
 	 * tutores ao navegador.
 	 */
-	const safeData =
-		context.role === 'customer'
-			? data.map((appointment) => ({
-					...appointment,
-					pet: {
-						...appointment.pet,
-						petTutors: appointment.pet.petTutors.filter(
-							({ tutor }) => tutor.id === context.customerId,
-						),
-					},
-				}))
-			: data;
+	const safeData: AppointmentListItem[] = data.map((appointment) => ({
+		...appointment,
+		doctor: {
+			id: appointment.doctor.id,
+			user: { name: appointment.doctor.user.name },
+		},
+		pet: {
+			id: appointment.pet.id,
+			name: appointment.pet.name,
+			petTutors: appointment.pet.petTutors
+				.filter(
+					({ tutor }) =>
+						context.role !== 'customer' || tutor.id === context.customerId,
+				)
+				.map(({ tutor }) => ({
+					tutor: { user: { name: tutor.user.name } },
+				})),
+		},
+	}));
 
 	return {
-		data: safeData as AppointmentsWithRelations[],
+		data: safeData,
 		metadata: {
 			totalCount,
 			pageCount,

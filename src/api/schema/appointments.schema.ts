@@ -47,3 +47,18 @@ export const createAppointmentSchema = z.object({
 });
 
 export type CreateAppointmentSchema = z.infer<typeof createAppointmentSchema>;
+
+export type AppointmentListItem = Omit<
+	AppointmentsWithRelations,
+	'doctor' | 'pet'
+> & {
+	doctor: {
+		id: string;
+		user: { name: string };
+	};
+	pet: {
+		id: string;
+		name: string;
+		petTutors: { tutor: { user: { name: string } } }[];
+	};
+};

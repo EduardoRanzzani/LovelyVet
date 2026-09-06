@@ -7,7 +7,7 @@ import {
 	markAsConfirmed,
 } from '@/api/actions/appointments.actions';
 import { MAX_PAGE_SIZE, PaginatedData } from '@/api/config/consts';
-import { AppointmentsWithRelations } from '@/api/schema/appointments.schema';
+import { AppointmentListItem } from '@/api/schema/appointments.schema';
 import { DoctorOption } from '@/api/schema/doctors.schema';
 import { formatPetTutorNames, PetOption } from '@/api/schema/pets.schema';
 import { ServicesWithRelations } from '@/api/schema/services.schema';
@@ -41,7 +41,7 @@ import AppointmentFormClient from './appointment-form';
 import BadgeStatus from './badge-status';
 
 interface AppointmentsListClientProps {
-	appointments: Promise<PaginatedData<AppointmentsWithRelations>>;
+	appointments: Promise<PaginatedData<AppointmentListItem>>;
 	pets: PetOption[];
 	doctors: DoctorOption[];
 	services: ServicesWithRelations[];
@@ -152,7 +152,7 @@ const AppointmentsListClient = ({
 		{ header: 'Ações', accessorKey: 'actions' },
 	];
 
-	const renderRow = (appointment: AppointmentsWithRelations) => {
+	const renderRow = (appointment: AppointmentListItem) => {
 		return (
 			<TableRow key={appointment.id}>
 				<TableCell>
@@ -225,7 +225,7 @@ const AppointmentsListClient = ({
 		);
 	};
 
-	const renderMobile = (appointment: AppointmentsWithRelations) => {
+	const renderMobile = (appointment: AppointmentListItem) => {
 		return (
 			<div key={appointment.id} className='flex flex-col gap-4'>
 				<div className='flex items-center justify-between'>
