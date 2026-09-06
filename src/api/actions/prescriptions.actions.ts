@@ -18,6 +18,7 @@ import {
 	createPrescriptionSchema,
 	PrescriptionsWithRelations,
 } from '../schema/prescriptions.schema';
+import { escapeHtml, sanitizeRichTextHtml } from '@/lib/security/html';
 
 const buildPrescriptionContent = (
 	prescriptionItems: Array<{
@@ -34,19 +35,19 @@ const buildPrescriptionContent = (
 				`<div style="display: flex; flex-direction: column; gap: 0px; margin-bottom: 12px;">
                     <div style="display: flex; align-items: baseline; width: 100%; gap: 4px; font-size: 15px;">
                         <span style="font-weight: bold; white-space: nowrap;">
-                            ${item.name}
+                            ${escapeHtml(item.name)}
                         </span>
 
                         <div style="flex: 1; border-bottom: 1px solid #000; margin-bottom: 3px;"></div>
 
                         <span style="font-weight: bold; white-space: nowrap;">
-                            (${item.pharmacy})
+                            (${escapeHtml(item.pharmacy)})
                         </span>
 
                         <div style="flex: 1; border-bottom: 1px solid #000; margin-bottom: 3px;"></div>
 
                         <span style="font-weight: bold; white-space: nowrap;">
-                            ${item.quantity}
+                            ${escapeHtml(item.quantity)}
                         </span>
                     </div>
 
@@ -54,7 +55,7 @@ const buildPrescriptionContent = (
                         <style>
                             .orientations-box p { margin: 0 !important; padding: 0 !important; }
                         </style>
-                        ${item.orientations}
+                        ${sanitizeRichTextHtml(item.orientations)}
                     </div>
                 </div>`,
 		)
@@ -123,8 +124,9 @@ export const createPrescription = actionClient
 		}
 
 		// Usar conteúdo customizado ou gerar automaticamente
-		const content =
-			parsedInput.customContent || buildPrescriptionContent(prescriptionItems);
+		const content = parsedInput.customContent
+			? sanitizeRichTextHtml(parsedInput.customContent)
+			: buildPrescriptionContent(prescriptionItems);
 
 		// Criar a receita
 		await db.insert(prescriptionsTable).values({

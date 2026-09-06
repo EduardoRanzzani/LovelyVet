@@ -13,6 +13,7 @@ import {
 } from '../schema/prescriptions-items.schema';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
+import { sanitizeRichTextHtml } from '@/lib/security/html';
 
 export const getPrescriptionsItems = async () => {
 	const authenticatedUser = await currentUser();
@@ -70,6 +71,12 @@ export const upsertPrescriptionItems = actionClient
 		const context = await requireAuthContext();
 		requireStaff(context);
 
+		const orientations = sanitizeRichTextHtml(parsedInput.orientations);
+
+		if (!orientations.trim()) {
+			throw new Error('Orientações inválidas');
+		}
+
 		await db
 			.insert(prescriptionItemsTable)
 			.values({
@@ -77,7 +84,7 @@ export const upsertPrescriptionItems = actionClient
 				name: parsedInput.name,
 				pharmacy: parsedInput.pharmacy,
 				quantity: parsedInput.quantity,
-				orientations: parsedInput.orientations,
+				orientations,
 			})
 			.onConflictDoUpdate({
 				target: prescriptionItemsTable.id,
@@ -85,7 +92,7 @@ export const upsertPrescriptionItems = actionClient
 					name: parsedInput.name,
 					pharmacy: parsedInput.pharmacy,
 					quantity: parsedInput.quantity,
-					orientations: parsedInput.orientations,
+					orientations,
 				},
 			});
 
