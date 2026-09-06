@@ -9,6 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { SendIcon } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import z from 'zod';
+import type { WhatsappPayload } from '@/api/schema/whatsapp.schema';
 
 const data = z.object({
 	to: z.string().nonempty({ message: "O campo 'destinatário' é obrigatório" }),

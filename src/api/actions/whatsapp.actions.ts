@@ -1,19 +1,12 @@
 'use server';
 
-export const sendWhatsappMessage = async (payload: WhatsappPayload) => {
-	console.log('Enviando mensagem para WhatsApp:', payload);
-	const response = await fetch(
-		`http://72.61.218.192:8080/message/sendText/LovelyVet`,
-		{
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				apikey: process.env.EVOLUTION_API_KEY || '',
-			},
-			body: JSON.stringify(payload),
-		},
-	);
+import { WhatsappPayload } from '@/api/schema/whatsapp.schema';
+import { sendWhatsappMessageInternal } from '@/lib/integrations/whatsapp';
+import { requireAuthContext } from '@/lib/security/auth-context';
+import { requireAdmin } from '@/lib/security/authorization';
 
-	console.log('Resposta da API:', { response });
-	return response.json();
+export const sendWhatsappMessage = async (payload: WhatsappPayload) => {
+	const context = await requireAuthContext();
+	requireAdmin(context);
+	return sendWhatsappMessageInternal(payload);
 };

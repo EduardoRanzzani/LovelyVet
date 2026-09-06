@@ -40,7 +40,7 @@ import {
 	createPetWithTutorAndBreedSchema,
 	PetsWithRelations,
 } from '../schema/pets.schema';
-import { sendEmailAction } from './emails.actions';
+import { sendEmailMessage } from '@/lib/integrations/email';
 
 const buildPetsListWhere = (
 	context: AuthContext,
@@ -333,10 +333,10 @@ export const upsertPet = actionClient
 					emailed.add(email);
 					const firstName =
 						tutor!.user!.name.split(/\s+/)[0] ?? tutor!.user!.name;
-					await sendEmailAction({
+					await sendEmailMessage({
 						to: email,
 						subject: 'Novo Pet Adicionado',
-						body: `Olá, ${firstName}! <br/> O pet ${petResult.name} foi adicionado ao seu cadastro.`,
+						body: `Olá, ${firstName}!\nO pet ${petResult.name} foi adicionado ao seu cadastro.`,
 					});
 				}
 			}

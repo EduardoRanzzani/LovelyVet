@@ -18,7 +18,7 @@ import {
 	createShiftSchema,
 	ShiftsWithRelations,
 } from '../schema/shifts.schema';
-import { sendWhatsappMessage } from './whatsapp.actions';
+import { sendWhatsappMessageInternal } from '@/lib/integrations/whatsapp';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
 
@@ -119,16 +119,12 @@ export const upsertShift = actionClient
 		});
 
 		if (isNewRegistration) {
-			console.log('Novo plantão criado, enviando notificação WhatsApp...');
-
 			const doctor = await db.query.doctorsTable.findFirst({
 				where: eq(doctorsTable.id, doctorId),
 				with: {
 					user: true,
 				},
 			});
-
-			console.log('Dados do médico:', { doctor });
 
 			if (doctor?.phone) {
 				// Formatador para: "23/04/2026 às 18:30"
@@ -145,14 +141,12 @@ export const upsertShift = actionClient
 					doctor.user.name.indexOf(' '),
 				);
 
-				const whatsappResult = await sendWhatsappMessage({
+				await sendWhatsappMessageInternal({
 					number: '55' + doctor.phone.replace(/\D/g, ''),
 					text: `Olá ${doctorName}, seu plantão em ${clinicName} foi agendado para ${formattedDate}.`,
 					delay: 1200,
 					linkPreview: false,
 				});
-
-				console.log('Resposta do envio WhatsApp:', { whatsappResult });
 			}
 		}
 
