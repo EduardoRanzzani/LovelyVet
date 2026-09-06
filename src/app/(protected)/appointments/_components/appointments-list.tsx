@@ -8,7 +8,7 @@ import {
 } from '@/api/actions/appointments.actions';
 import { MAX_PAGE_SIZE, PaginatedData } from '@/api/config/consts';
 import { AppointmentsWithRelations } from '@/api/schema/appointments.schema';
-import { DoctorsWithRelations } from '@/api/schema/doctors.schema';
+import { DoctorOption } from '@/api/schema/doctors.schema';
 import {
 	formatPetTutorNames,
 	PetsWithRelations,
@@ -46,7 +46,7 @@ import BadgeStatus from './badge-status';
 interface AppointmentsListClientProps {
 	appointments: Promise<PaginatedData<AppointmentsWithRelations>>;
 	pets: PetsWithRelations[];
-	doctors: DoctorsWithRelations[];
+	doctors: DoctorOption[];
 	services: ServicesWithRelations[];
 }
 

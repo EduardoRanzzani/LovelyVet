@@ -7,7 +7,7 @@ import {
 	createAppointmentSchema,
 	CreateAppointmentSchema,
 } from '@/api/schema/appointments.schema';
-import { DoctorsWithRelations } from '@/api/schema/doctors.schema';
+import { DoctorOption } from '@/api/schema/doctors.schema';
 import {
 	formatPetTutorNames,
 	PetsWithRelations,
@@ -39,7 +39,7 @@ import { toast } from 'sonner';
 interface AppointmentFormClientProps {
 	appointment?: AppointmentsWithRelations;
 	pets: PetsWithRelations[];
-	doctors: DoctorsWithRelations[];
+	doctors: DoctorOption[];
 	services: ServicesWithRelations[];
 	onSuccess?: () => void;
 }

@@ -5,6 +5,13 @@ export type DoctorsWithRelations = typeof doctorsTable.$inferSelect & {
 	user: typeof usersTable.$inferSelect;
 };
 
+export type DoctorOption = {
+	id: string;
+	user: {
+		name: string;
+	};
+};
+
 export const createDoctorWithUserSchema = z
 	.object({
 		id: z.uuid().optional().nullable(),

@@ -2,24 +2,26 @@
 
 import { db } from '@/db';
 import { doctorsTable, usersTable } from '@/db/schema';
-import { actionClient } from '@/lib/next-safe-action';
-import { requireAuthContext } from '@/lib/security/auth-context';
-import { requireAdmin } from '@/lib/security/authorization';
-import { asc, count, eq, ilike, or, sql } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
-import z from 'zod';
-import { MAX_PAGE_SIZE, PaginatedData } from '../config/consts';
-import {
-	createDoctorWithUserSchema,
-	DoctorsWithRelations,
-} from '../schema/doctors.schema';
 import {
 	createNewClerkUser,
 	updateClerkUserRole,
 } from '@/lib/integrations/clerk';
+import { actionClient } from '@/lib/next-safe-action';
+import { requireAuthContext } from '@/lib/security/auth-context';
+import { requireAdmin, requireStaff } from '@/lib/security/authorization';
+import { asc, count, eq, ilike, or, sql } from 'drizzle-orm';
+import { revalidatePath } from 'next/cache';
+import z from 'zod';
+import { MAX_PAGE_SIZE, PaginatedData } from '../config/consts';
+import type { DoctorOption } from '../schema/doctors.schema';
+import {
+	createDoctorWithUserSchema,
+	DoctorsWithRelations,
+} from '../schema/doctors.schema';
 
 export const getDoctors = async (): Promise<DoctorsWithRelations[]> => {
-	await requireAuthContext();
+	const context = await requireAuthContext();
+	requireStaff(context);
 
 	const data = await db
 		.select({
@@ -194,3 +196,23 @@ export const deleteDoctor = actionClient
 
 		revalidatePath('/doctors');
 	});
+
+export const getDoctorsForSelection = async (): Promise<DoctorOption[]> => {
+	await requireAuthContext();
+
+	const doctors = await db.query.doctorsTable.findMany({
+		columns: {
+			id: true,
+		},
+		with: {
+			user: {
+				columns: {
+					name: true,
+				},
+			},
+		},
+		orderBy: (table, { asc }) => [asc(table.id)],
+	});
+
+	return doctors;
+};
