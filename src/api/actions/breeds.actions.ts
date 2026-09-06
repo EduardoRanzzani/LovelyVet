@@ -3,7 +3,8 @@
 import { db } from '@/db';
 import { breedsTable, speciesTable } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
-import { currentUser } from '@clerk/nextjs/server';
+import { requireAuthContext } from '@/lib/security/auth-context';
+import { requireStaff } from '@/lib/security/authorization';
 import { asc, count, eq, ilike, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
@@ -12,10 +13,10 @@ import {
 	BreedsWithRelations,
 	createBreedSchema,
 } from '../schema/breeds.schema';
-import { requireAuthContext } from '@/lib/security/auth-context';
-import { requireStaff } from '@/lib/security/authorization';
 
 export const getBreeds = async (): Promise<BreedsWithRelations[]> => {
+	await requireAuthContext();
+
 	const breeds = await db.query.breedsTable.findMany({
 		with: {
 			specie: true,
@@ -31,8 +32,8 @@ export const getBreedsPaginated = async (
 	limit: number,
 	search?: string,
 ): Promise<PaginatedData<BreedsWithRelations>> => {
-	const authenticatedUser = await currentUser();
-	if (!authenticatedUser) throw new Error('Usuário não autenticado');
+	const context = await requireAuthContext();
+	requireStaff(context);
 
 	const offset = (page - 1) * limit;
 

@@ -16,8 +16,10 @@ export const getClinicsPaginated = async (
 	limit: number,
 	search?: string,
 ): Promise<PaginatedData<Clinics>> => {
-	const offset = (page - 1) * limit;
+	const context = await requireAuthContext();
+	requireAdmin(context);
 
+	const offset = (page - 1) * limit;
 	const filterConditions = search
 		? or(ilike(clinicsTable.name, `%${search}%`))
 		: undefined;

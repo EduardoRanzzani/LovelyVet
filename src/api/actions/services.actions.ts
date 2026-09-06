@@ -3,7 +3,8 @@
 import { db } from '@/db';
 import { servicesTable, speciesTable } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
-import { currentUser } from '@clerk/nextjs/server';
+import { requireAuthContext } from '@/lib/security/auth-context';
+import { requireStaff } from '@/lib/security/authorization';
 import { asc, count, eq, ilike, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
@@ -12,12 +13,9 @@ import {
 	createServiceSchema,
 	ServicesWithRelations,
 } from '../schema/services.schema';
-import { requireAuthContext } from '@/lib/security/auth-context';
-import { requireStaff } from '@/lib/security/authorization';
 
 export const getServices = async (): Promise<ServicesWithRelations[]> => {
-	const authenticatedUser = await currentUser();
-	if (!authenticatedUser) throw new Error('Usuário não autenticado');
+	await requireAuthContext();
 
 	const data = await db.query.servicesTable.findMany({
 		with: { specie: true },
@@ -30,8 +28,8 @@ export const getServicesPaginated = async (
 	limit: number = MAX_PAGE_SIZE,
 	search?: string,
 ): Promise<PaginatedData<ServicesWithRelations>> => {
-	const authenticatedUser = await currentUser();
-	if (!authenticatedUser) throw new Error('Usuário não autenticado');
+	const context = await requireAuthContext();
+	requireStaff(context);
 
 	const offset = (page - 1) * limit;
 

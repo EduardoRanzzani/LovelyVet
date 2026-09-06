@@ -2,8 +2,10 @@
 
 import { db } from '@/db';
 import { doctorsTable, shiftsTable } from '@/db/schema';
+import { sendWhatsappMessageInternal } from '@/lib/integrations/whatsapp';
 import { actionClient } from '@/lib/next-safe-action';
-import { currentUser } from '@clerk/nextjs/server';
+import { requireAuthContext } from '@/lib/security/auth-context';
+import { requireStaff } from '@/lib/security/authorization';
 import {
 	addHours,
 	addMonths,
@@ -18,11 +20,11 @@ import {
 	createShiftSchema,
 	ShiftsWithRelations,
 } from '../schema/shifts.schema';
-import { sendWhatsappMessageInternal } from '@/lib/integrations/whatsapp';
-import { requireAuthContext } from '@/lib/security/auth-context';
-import { requireStaff } from '@/lib/security/authorization';
 
 export const getAllShifts = async (): Promise<ShiftsWithRelations[]> => {
+	const context = await requireAuthContext();
+	requireStaff(context);
+
 	const result = await db.query.shiftsTable.findMany({
 		with: { doctor: { with: { user: true } } },
 	});
@@ -34,8 +36,8 @@ export const getShifts = async (
 	monthName?: string,
 	extraMonths?: boolean,
 ): Promise<ShiftsWithRelations[]> => {
-	const authenticatedUser = await currentUser();
-	if (!authenticatedUser) throw new Error('Usuário não autenticado');
+	const context = await requireAuthContext();
+	requireStaff(context);
 
 	const now = new Date();
 	const year = now.getFullYear();

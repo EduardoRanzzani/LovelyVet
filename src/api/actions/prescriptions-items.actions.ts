@@ -2,7 +2,6 @@
 import { db } from '@/db';
 import { prescriptionItemsTable } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
-import { currentUser } from '@clerk/nextjs/server';
 import { asc, count, eq, ilike, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
@@ -16,9 +15,8 @@ import { requireStaff } from '@/lib/security/authorization';
 import { sanitizeRichTextHtml } from '@/lib/security/html';
 
 export const getPrescriptionsItems = async () => {
-	const authenticatedUser = await currentUser();
-	if (!authenticatedUser) throw new Error('Nenhum usuário autenticado');
-
+	const context = await requireAuthContext();
+	requireStaff(context);
 	return await db.query.prescriptionItemsTable.findMany();
 };
 
@@ -27,8 +25,8 @@ export const getPrescriptionsItemsPaginated = async (
 	limit: number = MAX_PAGE_SIZE,
 	search?: string,
 ): Promise<PaginatedData<PrescriptionItemsWithRelations>> => {
-	const authenticatedUser = await currentUser();
-	if (!authenticatedUser) throw new Error('Nenhum usuário autenticado');
+	const context = await requireAuthContext();
+	requireStaff(context);
 
 	const offset = (page - 1) * limit;
 

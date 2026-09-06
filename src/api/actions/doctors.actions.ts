@@ -19,6 +19,8 @@ import {
 } from '@/lib/integrations/clerk';
 
 export const getDoctors = async (): Promise<DoctorsWithRelations[]> => {
+	await requireAuthContext();
+
 	const data = await db
 		.select({
 			doctors: doctorsTable,
@@ -41,8 +43,10 @@ export const getDoctorsPaginated = async (
 	limit: number = MAX_PAGE_SIZE,
 	search?: string,
 ): Promise<PaginatedData<DoctorsWithRelations>> => {
-	const offset = (page - 1) * limit;
+	const context = await requireAuthContext();
+	requireAdmin(context);
 
+	const offset = (page - 1) * limit;
 	const filterCondition = search
 		? or(
 				ilike(usersTable.name, `%${search}%`),

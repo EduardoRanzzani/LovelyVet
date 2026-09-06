@@ -5,7 +5,6 @@ import { speciesTable } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
-import { currentUser } from '@clerk/nextjs/server';
 import { asc, count, eq, ilike, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
@@ -13,6 +12,7 @@ import { PaginatedData } from '../config/consts';
 import { createSpecieSchema, Species } from '../schema/species.schema';
 
 export const getSpecies = async (): Promise<Species[]> => {
+	await requireAuthContext();
 	const species = await db.query.speciesTable.findMany({
 		orderBy: asc(speciesTable.name),
 	});
@@ -24,8 +24,8 @@ export const getSpeciesPaginated = async (
 	limit: number,
 	search?: string,
 ): Promise<PaginatedData<Species>> => {
-	const authenticatedUser = await currentUser();
-	if (!authenticatedUser) throw new Error('Usuário não autenticado');
+	const context = await requireAuthContext();
+	requireStaff(context);
 
 	const offset = (page - 1) * limit;
 
