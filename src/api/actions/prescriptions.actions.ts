@@ -169,7 +169,7 @@ export const getPrescriptionById = async (prescriptionId: string) => {
 
 	await assertCanAccessPet(context, prescription.petId);
 
-	return await db.query.prescriptionsTable.findFirst({
+	const data = await db.query.prescriptionsTable.findFirst({
 		where: eq(prescriptionsTable.id, prescriptionId),
 		with: {
 			doctor: { with: { user: true } },
@@ -185,4 +185,22 @@ export const getPrescriptionById = async (prescriptionId: string) => {
 			},
 		},
 	});
+
+	if (!data) {
+		throw new Error('Prescrição não encontrada');
+	}
+
+	if (context.role !== 'customer') {
+		return data;
+	}
+
+	return {
+		...data,
+		pet: {
+			...data.pet,
+			petTutors: data.pet.petTutors.filter(
+				({ tutor }) => tutor.id === context.customerId,
+			),
+		},
+	};
 };
