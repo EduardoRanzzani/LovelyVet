@@ -17,15 +17,18 @@ import { PetDetailsSkeleton } from '../_components/pet-details-skeleton';
 import { getDoctors } from '@/api/actions/doctors.actions';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { hasRole } from '@/lib/security/authorization';
+import { connection } from 'next/server';
 
 interface PetDetailsPageProps {
 	params: Promise<{ id: string }>;
 }
 
-const context = await requireAuthContext();
-const canManagePets = hasRole(context, 'admin', 'doctor');
-
 const PetDetailsPage = async ({ params }: PetDetailsPageProps) => {
+	await connection();
+
+	const context = await requireAuthContext();
+	const canManagePets = hasRole(context, 'admin', 'doctor');
+
 	const { id } = await params;
 
 	const pet = await getPetById(id);
