@@ -1,6 +1,6 @@
 import { getAppointmentsPaginated } from '@/api/actions/appointments.actions';
 import { getDoctorsForSelection } from '@/api/actions/doctors.actions';
-import { getPets } from '@/api/actions/pets.actions';
+import { getPetsForSelection } from '@/api/actions/pets.actions';
 import { getServices } from '@/api/actions/services.actions';
 import { MAX_PAGE_SIZE } from '@/api/config/consts';
 import {
@@ -25,7 +25,7 @@ const AppointmentsPage = async ({ searchParams }: AppointmentsPageProps) => {
 	const page = Number(params.page) || 1;
 	const filter = params.filter || '';
 
-	const pets = await getPets();
+	const pets = await getPetsForSelection();
 	const doctors = await getDoctorsForSelection();
 	const services = await getServices();
 

@@ -8,10 +8,7 @@ import {
 	CreateAppointmentSchema,
 } from '@/api/schema/appointments.schema';
 import { DoctorOption } from '@/api/schema/doctors.schema';
-import {
-	formatPetTutorNames,
-	PetsWithRelations,
-} from '@/api/schema/pets.schema';
+import { formatPetTutorNames, PetOption } from '@/api/schema/pets.schema';
 import { ServicesWithRelations } from '@/api/schema/services.schema';
 import DateTimePickerForm from '@/components/form/datetimepicker-form';
 import InputForm from '@/components/form/input-form';
@@ -38,7 +35,7 @@ import { toast } from 'sonner';
 
 interface AppointmentFormClientProps {
 	appointment?: AppointmentsWithRelations;
-	pets: PetsWithRelations[];
+	pets: PetOption[];
 	doctors: DoctorOption[];
 	services: ServicesWithRelations[];
 	onSuccess?: () => void;

@@ -39,6 +39,7 @@ import { monthNames, PaginatedData } from '../config/consts';
 import {
 	createPetWithTutorAndBreedSchema,
 	PetsWithRelations,
+	PetOption,
 } from '../schema/pets.schema';
 import { sendEmailMessage } from '@/lib/integrations/email';
 
@@ -194,6 +195,8 @@ export const getPetById = async (id: string): Promise<PetsWithRelations> => {
 
 export const getPets = async (): Promise<PetsWithRelations[]> => {
 	const context = await requireAuthContext();
+	requireStaff(context);
+
 	const filter = buildPetsListWhere(context);
 
 	const data = await db.query.petsTable.findMany({
@@ -409,4 +412,40 @@ export const getPetHistory = async (petId: string) => {
 		},
 	});
 	return data;
+};
+
+export const getPetsForSelection = async (): Promise<PetOption[]> => {
+	const context = await requireAuthContext();
+
+	const data = await db.query.petsTable.findMany({
+		where: buildPetAccessCondition(context),
+		columns: { id: true, name: true },
+		with: {
+			breed: { columns: { specieId: true } },
+			petTutors: {
+				columns: {},
+				with: {
+					tutor: {
+						columns: { id: true },
+						with: { user: { columns: { name: true } } },
+					},
+				},
+			},
+		},
+		orderBy: asc(petsTable.name),
+	});
+
+	return data.map((pet) => ({
+		id: pet.id,
+		name: pet.name,
+		breed: pet.breed,
+		petTutors: pet.petTutors
+			.filter(
+				({ tutor }) =>
+					context.role !== 'customer' || tutor.id === context.customerId,
+			)
+			.map(({ tutor }) => ({
+				tutor: { user: { name: tutor.user.name } },
+			})),
+	}));
 };

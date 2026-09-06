@@ -71,9 +71,17 @@ export type PetsWithRelations = typeof petsTable.$inferSelect & {
 };
 
 /** Nomes dos tutores para exibição (pet carregado com `petTutors.tutor.user`). */
-export function formatPetTutorNames(
-	pet: Pick<PetsWithRelations, 'petTutors'>,
-): string {
+type PetWithTutorNames = {
+	petTutors: {
+		tutor: {
+			user: {
+				name: string;
+			};
+		};
+	}[];
+};
+
+export function formatPetTutorNames(pet: PetWithTutorNames): string {
 	return (
 		pet.petTutors
 			?.map((pt) => pt.tutor.user.name)
@@ -102,3 +110,18 @@ export const createPetWithTutorAndBreedSchema = z.object({
 export type CreatePetWithTutorAndBreedSchema = z.infer<
 	typeof createPetWithTutorAndBreedSchema
 >;
+
+export type PetOption = {
+	id: string;
+	name: string;
+	breed: {
+		specieId: string;
+	};
+	petTutors: {
+		tutor: {
+			user: {
+				name: string;
+			};
+		};
+	}[];
+};

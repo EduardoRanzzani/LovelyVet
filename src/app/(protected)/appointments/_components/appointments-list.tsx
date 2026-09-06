@@ -9,10 +9,7 @@ import {
 import { MAX_PAGE_SIZE, PaginatedData } from '@/api/config/consts';
 import { AppointmentsWithRelations } from '@/api/schema/appointments.schema';
 import { DoctorOption } from '@/api/schema/doctors.schema';
-import {
-	formatPetTutorNames,
-	PetsWithRelations,
-} from '@/api/schema/pets.schema';
+import { formatPetTutorNames, PetOption } from '@/api/schema/pets.schema';
 import { ServicesWithRelations } from '@/api/schema/services.schema';
 import AddButton from '@/components/list/add-button';
 import ConfirmAlertButton from '@/components/list/confirm-alert-dialog';
@@ -45,7 +42,7 @@ import BadgeStatus from './badge-status';
 
 interface AppointmentsListClientProps {
 	appointments: Promise<PaginatedData<AppointmentsWithRelations>>;
-	pets: PetsWithRelations[];
+	pets: PetOption[];
 	doctors: DoctorOption[];
 	services: ServicesWithRelations[];
 }
