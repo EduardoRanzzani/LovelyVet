@@ -158,10 +158,14 @@ export const getPrescriptionsByPet = async (petId: string) => {
 export const getPrescriptionById = async (prescriptionId: string) => {
 	const context = await requireAuthContext();
 
-	const prescription = await db.query.prescriptionsTable.findFirst({
-		columns: { id: true, petId: true },
-		where: eq(prescriptionsTable.id, prescriptionId),
-	});
+	const [prescription] = await db
+		.select({
+			id: prescriptionsTable.id,
+			petId: prescriptionsTable.petId,
+		})
+		.from(prescriptionsTable)
+		.where(eq(prescriptionsTable.id, prescriptionId))
+		.limit(1);
 
 	if (!prescription) {
 		throw new Error('Prescrição não encontrada');
@@ -170,7 +174,7 @@ export const getPrescriptionById = async (prescriptionId: string) => {
 	await assertCanAccessPet(context, prescription.petId);
 
 	const data = await db.query.prescriptionsTable.findFirst({
-		where: eq(prescriptionsTable.id, prescriptionId),
+		where: (prescriptions, { eq }) => eq(prescriptions.id, prescriptionId),
 		with: {
 			doctor: { with: { user: true } },
 			pet: {

@@ -4,18 +4,17 @@ import PrescriptionLayout from '../../_component/prescription-layout';
 export default async function PrintRecipePage({
 	params,
 }: {
-	params: { id: string };
+	params: Promise<{ id: string }>;
 }) {
-	const resolvedParams = await params;
-	console.log(resolvedParams.id);
+	const { id } = await params;
 
-	const recipeData = await getPrescriptionById(resolvedParams.id);
+	const recipeData = await getPrescriptionById(id);
 
 	return (
 		<PrescriptionLayout
-			pet={recipeData?.pet}
-			prescriptionItems={recipeData?.content}
-			recipeDate={recipeData?.createdAt}
+			pet={recipeData.pet}
+			prescriptionItems={recipeData.content}
+			recipeDate={recipeData.createdAt}
 		/>
 	);
 }
