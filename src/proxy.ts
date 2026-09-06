@@ -37,7 +37,6 @@ const rolePermissions: Record<UserRole, string[]> = {
 		'/messages',
 		'/admin',
 		'/clinics',
-		'/recipe-layout',
 		'/prescriptions-items',
 	],
 	doctor: [
@@ -51,10 +50,9 @@ const rolePermissions: Record<UserRole, string[]> = {
 		'/prescriptions',
 		'/calculators',
 		'/shifts',
-		'/recipe-layout',
 		'/prescriptions-items',
 	],
-	customer: ['/dashboard', '/pets', '/appointments', '/recipe-layout'],
+	customer: ['/dashboard', '/pets', '/appointments'],
 };
 
 export default clerkMiddleware(async (auth, req) => {
