@@ -48,7 +48,11 @@ export const getAppointmentsPaginated = async (
 		: undefined;
 
 	const data = await db.query.appointmentsTable.findMany({
-		where: and(buildAppointmentAccessCondition(context), searchCondition),
+		where: (appointments) =>
+			and(
+				buildAppointmentAccessCondition(context, undefined, appointments),
+				searchCondition,
+			),
 		limit,
 		offset,
 		orderBy: desc(appointmentsTable.scheduledAt),
