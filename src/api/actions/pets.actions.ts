@@ -145,7 +145,9 @@ export const getCreatedPets = async (
 	return pets as PetsWithRelations[];
 };
 
-export const getPetById = async (id: string): Promise<PetsWithRelations> => {
+export const getPetById = async (
+	id: string,
+): Promise<PetsWithRelations | null> => {
 	const context = await requireAuthContext();
 
 	const pet = await db.query.petsTable.findFirst({
@@ -188,7 +190,7 @@ export const getPetById = async (id: string): Promise<PetsWithRelations> => {
 	});
 
 	if (!pet) {
-		throw new Error('Pet não encontrado');
+		return null;
 	}
 	return filterPetForViewer(context, pet as unknown as PetsWithRelations);
 };
