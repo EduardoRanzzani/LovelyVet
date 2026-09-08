@@ -1,5 +1,5 @@
 import { getPetById } from '@/api/actions/pets.actions';
-import { formatAge } from '@/api/util';
+import { formatAge, formatAgeShort } from '@/api/util';
 import {
 	PageContainer,
 	PageContent,
@@ -11,8 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { formatWeight } from '@/helpers/weight';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
-import { connection } from 'next/server';
 import { notFound } from 'next/navigation';
+import { connection } from 'next/server';
 import ClinicalDocumentBuilder from './_components/clinical-document-builder';
 
 interface NewClinicalDocumentPageProps {
@@ -30,7 +30,6 @@ export default async function NewClinicalDocumentPage({
 	requireStaff(context);
 
 	const { id } = await params;
-
 	const pet = await getPetById(id);
 
 	if (!pet) {
@@ -39,12 +38,22 @@ export default async function NewClinicalDocumentPage({
 
 	const latestWeight = pet.weightHistory?.[0]?.weightInGrams ?? null;
 
-	const tutors = pet.petTutors
-		.map(({ tutor }) => tutor.user.name)
-		.filter(Boolean)
-		.join(', ');
+	const tutors = pet.petTutors.map(({ tutor }) => ({
+		id: tutor.id,
+		name: tutor.user.name,
+	}));
 
 	const gender = pet.gender === 'male' ? 'Macho' : 'Fêmea';
+
+	const age = formatAgeShort(new Date(`${pet.birthDate}T12:00:00`));
+	const weight = formatWeight(latestWeight);
+	const sex = pet.gender === 'male' ? 'M' : 'F';
+	const date = new Date().toLocaleDateString('pt-BR', {
+		day: 'numeric',
+		month: 'long',
+		year: 'numeric',
+		timeZone: 'America/Campo_Grande',
+	});
 
 	return (
 		<PageContainer>
@@ -68,7 +77,6 @@ export default async function NewClinicalDocumentPage({
 						<div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5'>
 							<div>
 								<p className='text-xs text-muted-foreground'>Tutor</p>
-								<p className='font-medium'>{tutors || '-'}</p>
 							</div>
 
 							<div>
@@ -96,7 +104,19 @@ export default async function NewClinicalDocumentPage({
 					</div>
 				</div>
 
-				<ClinicalDocumentBuilder />
+				<ClinicalDocumentBuilder
+					petId={pet.id}
+					tutors={tutors}
+					patient={{
+						name: pet.name,
+						species: pet.breed.specie.name,
+						breed: pet.breed.name,
+						age,
+						weight,
+						sex,
+						date,
+					}}
+				/>
 			</PageContent>
 		</PageContainer>
 	);

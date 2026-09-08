@@ -5,13 +5,19 @@ import {
 	petWeightsTable,
 	prescriptionItemsTable,
 	prescriptionsTable,
+	breedsTable,
+	customersTable,
+	petsTable,
+	petTutorsTable,
+	speciesTable,
+	usersTable,
 } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
 import { resolveClinicalDoctorId } from '@/lib/security/clinical-access';
 import { assertCanAccessPet } from '@/lib/security/pet-access';
-import { asc, count, desc, eq, ilike, inArray } from 'drizzle-orm';
+import { asc, and, count, desc, eq, ilike, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { MAX_PAGE_SIZE, PaginatedData } from '../config/consts';
 import {
@@ -19,6 +25,9 @@ import {
 	PrescriptionsWithRelations,
 } from '../schema/prescriptions.schema';
 import { escapeHtml, sanitizeRichTextHtml } from '@/lib/security/html';
+import { formatAgeShort } from '@/api/util';
+import { formatWeight } from '@/helpers/weight';
+import { savePrescriptionDocumentSchema } from '../schema/prescription-document.schema';
 
 const buildPrescriptionContent = (
 	prescriptionItems: Array<{
@@ -208,3 +217,119 @@ export const getPrescriptionById = async (prescriptionId: string) => {
 		},
 	};
 };
+
+export const savePrescriptionDocument = actionClient
+	.schema(savePrescriptionDocumentSchema)
+	.action(async ({ parsedInput }) => {
+		const context = await requireAuthContext();
+
+		const doctorId = resolveClinicalDoctorId(context, parsedInput.doctorId);
+
+		await assertCanAccessPet(context, parsedInput.petId);
+
+		// Confirma que o tutor selecionado realmente pertence ao pet.
+		const [tutor] = await db
+			.select({
+				id: customersTable.id,
+				name: usersTable.name,
+			})
+			.from(petTutorsTable)
+			.innerJoin(
+				customersTable,
+				eq(petTutorsTable.customerId, customersTable.id),
+			)
+			.innerJoin(usersTable, eq(customersTable.userId, usersTable.id))
+			.where(
+				and(
+					eq(petTutorsTable.petId, parsedInput.petId),
+					eq(petTutorsTable.customerId, parsedInput.tutorId),
+				),
+			)
+			.limit(1);
+
+		if (!tutor) {
+			throw new Error('Tutor não pertence ao paciente');
+		}
+
+		// Dados atuais do paciente.
+		const [pet] = await db
+			.select({
+				id: petsTable.id,
+				name: petsTable.name,
+				birthDate: petsTable.birthDate,
+				gender: petsTable.gender,
+				breed: breedsTable.name,
+				species: speciesTable.name,
+			})
+			.from(petsTable)
+			.innerJoin(breedsTable, eq(petsTable.breedId, breedsTable.id))
+			.innerJoin(speciesTable, eq(breedsTable.specieId, speciesTable.id))
+			.where(eq(petsTable.id, parsedInput.petId))
+			.limit(1);
+
+		if (!pet) {
+			throw new Error('Paciente não encontrado');
+		}
+
+		const [latestWeight] = await db
+			.select({
+				weightInGrams: petWeightsTable.weightInGrams,
+			})
+			.from(petWeightsTable)
+			.where(eq(petWeightsTable.petId, parsedInput.petId))
+			.orderBy(desc(petWeightsTable.measuredAt))
+			.limit(1);
+
+		const items = parsedInput.items.map((item) => ({
+			sourceId: item.sourceId,
+			name: item.name,
+			pharmacy: item.pharmacy,
+			quantity: item.quantity,
+			orientations: sanitizeRichTextHtml(item.orientations),
+		}));
+
+		const documentData = {
+			tutor: {
+				id: tutor.id,
+				name: tutor.name,
+			},
+
+			patient: {
+				name: pet.name,
+				species: pet.species,
+				breed: pet.breed,
+				age: formatAgeShort(new Date(`${pet.birthDate}T12:00:00`)),
+				weight: formatWeight(latestWeight?.weightInGrams ?? null),
+				sex: pet.gender === 'male' ? 'M' : 'F',
+			},
+
+			administrationRoute: parsedInput.administrationRoute,
+
+			items,
+		};
+
+		const content = buildPrescriptionContent(items);
+
+		const [prescription] = await db
+			.insert(prescriptionsTable)
+			.values({
+				petId: parsedInput.petId,
+				doctorId,
+				content,
+				documentData,
+				issuedAt: new Date(),
+			})
+			.returning({
+				id: prescriptionsTable.id,
+			});
+
+		revalidatePath(`/pets/${parsedInput.petId}`);
+
+		revalidatePath('/prescriptions');
+
+		return {
+			success: true,
+			id: prescription.id,
+			message: 'Receita salva com sucesso!',
+		};
+	});

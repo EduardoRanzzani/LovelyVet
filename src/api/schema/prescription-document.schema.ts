@@ -32,3 +32,17 @@ export type PrescriptionDocumentItem = z.infer<
 export type PrescriptionDocumentData = z.infer<
 	typeof prescriptionDocumentDataSchema
 >;
+
+export const savePrescriptionDocumentSchema = z.object({
+	petId: z.uuid(),
+	tutorId: z.uuid(),
+	doctorId: z.uuid(),
+	administrationRoute: z.string().trim(),
+	items: z
+		.array(prescriptionDocumentItemSchema)
+		.min(1, 'Adicione pelo menos um medicamento'),
+});
+
+export type SavePrescriptionDocumentSchema = z.infer<
+	typeof savePrescriptionDocumentSchema
+>;

@@ -15,10 +15,10 @@ import {
 } from '@/components/ui/select';
 import { PlusIcon, Trash2Icon } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useFieldArray, useForm } from 'react-hook-form';
+import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 
-interface PrescriptionDraftItem {
+export interface PrescriptionDraftItem {
 	sourceId: string | null;
 	name: string;
 	pharmacy: string;
@@ -27,16 +27,26 @@ interface PrescriptionDraftItem {
 }
 
 interface PrescriptionDraft {
+	administrationRoute: string;
 	items: PrescriptionDraftItem[];
 }
 
-export default function PrescriptionBuilder() {
+interface PrescriptionBuilderProps {
+	onItemsChange?: (items: PrescriptionDraftItem[]) => void;
+	onAdministrationRouteChange?: (value: string) => void;
+}
+
+export default function PrescriptionBuilder({
+	onItemsChange,
+	onAdministrationRouteChange,
+}: PrescriptionBuilderProps) {
 	const [catalog, setCatalog] = useState<PrescriptionItemsWithRelations[]>([]);
 	const [selectedCatalogItem, setSelectedCatalogItem] = useState<string>('');
 	const [isLoadingCatalog, setIsLoadingCatalog] = useState(true);
 
 	const form = useForm<PrescriptionDraft>({
 		defaultValues: {
+			administrationRoute: '',
 			items: [],
 		},
 	});
@@ -45,6 +55,24 @@ export default function PrescriptionBuilder() {
 		control: form.control,
 		name: 'items',
 	});
+
+	const items = useWatch({
+		control: form.control,
+		name: 'items',
+	});
+
+	const administrationRoute = useWatch({
+		control: form.control,
+		name: 'administrationRoute',
+	});
+
+	useEffect(() => {
+		onItemsChange?.(items ?? []);
+	}, [items, onItemsChange]);
+
+	useEffect(() => {
+		onAdministrationRouteChange?.(administrationRoute ?? '');
+	}, [administrationRoute, onAdministrationRouteChange]);
 
 	useEffect(() => {
 		const loadCatalog = async () => {
@@ -97,6 +125,13 @@ export default function PrescriptionBuilder() {
 	return (
 		<div className='space-y-6'>
 			<div className='rounded-lg border bg-muted/30 p-4'>
+				<div className='space-y-2 mb-4'>
+					<Label>Via de administração</Label>
+					<Input
+						{...form.register('administrationRoute')}
+						placeholder='Ex.: USO ORAL, USO TÓPICO, USO OTOLÓGICO...'
+					/>
+				</div>
 				<div className='flex flex-col gap-3 lg:flex-row lg:items-end'>
 					<div className='flex-1 space-y-2'>
 						<Label>Adicionar do catálogo</Label>
