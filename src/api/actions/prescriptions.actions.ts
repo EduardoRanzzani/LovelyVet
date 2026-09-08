@@ -28,6 +28,7 @@ import { escapeHtml, sanitizeRichTextHtml } from '@/lib/security/html';
 import { formatAgeShort } from '@/api/util';
 import { formatWeight } from '@/helpers/weight';
 import { savePrescriptionDocumentSchema } from '../schema/prescription-document.schema';
+import { updatePrescriptionDocumentSchema } from '../schema/prescription-document.schema';
 
 const buildPrescriptionContent = (
 	prescriptionItems: Array<{
@@ -331,5 +332,133 @@ export const savePrescriptionDocument = actionClient
 			success: true,
 			id: prescription.id,
 			message: 'Receita salva com sucesso!',
+		};
+	});
+
+export const updatePrescriptionDocument = actionClient
+	.schema(updatePrescriptionDocumentSchema)
+	.action(async ({ parsedInput }) => {
+		const context = await requireAuthContext();
+
+		requireStaff(context);
+
+		const existingPrescription = await db.query.prescriptionsTable.findFirst({
+			columns: {
+				id: true,
+				petId: true,
+			},
+			where: (prescriptions, { eq }) =>
+				eq(prescriptions.id, parsedInput.prescriptionId),
+		});
+
+		if (!existingPrescription) {
+			throw new Error('Receita não encontrada');
+		}
+
+		/*
+		 * Evita trocar a receita para outro paciente
+		 * durante uma edição.
+		 */
+		if (existingPrescription.petId !== parsedInput.petId) {
+			throw new Error('Paciente inválido para esta receita');
+		}
+
+		await assertCanAccessPet(context, existingPrescription.petId);
+
+		const doctorId = resolveClinicalDoctorId(context, parsedInput.doctorId);
+
+		const [tutor] = await db
+			.select({
+				id: customersTable.id,
+				name: usersTable.name,
+			})
+			.from(petTutorsTable)
+			.innerJoin(
+				customersTable,
+				eq(petTutorsTable.customerId, customersTable.id),
+			)
+			.innerJoin(usersTable, eq(customersTable.userId, usersTable.id))
+			.where(
+				and(
+					eq(petTutorsTable.petId, parsedInput.petId),
+					eq(petTutorsTable.customerId, parsedInput.tutorId),
+				),
+			)
+			.limit(1);
+
+		if (!tutor) {
+			throw new Error('Tutor não pertence ao paciente');
+		}
+
+		const [pet] = await db
+			.select({
+				name: petsTable.name,
+				birthDate: petsTable.birthDate,
+				gender: petsTable.gender,
+				breed: breedsTable.name,
+				species: speciesTable.name,
+			})
+			.from(petsTable)
+			.innerJoin(breedsTable, eq(petsTable.breedId, breedsTable.id))
+			.innerJoin(speciesTable, eq(breedsTable.specieId, speciesTable.id))
+			.where(eq(petsTable.id, parsedInput.petId))
+			.limit(1);
+
+		if (!pet) {
+			throw new Error('Paciente não encontrado');
+		}
+
+		const [latestWeight] = await db
+			.select({
+				weightInGrams: petWeightsTable.weightInGrams,
+			})
+			.from(petWeightsTable)
+			.where(eq(petWeightsTable.petId, parsedInput.petId))
+			.orderBy(desc(petWeightsTable.measuredAt))
+			.limit(1);
+
+		const items = parsedInput.items.map((item) => ({
+			sourceId: item.sourceId,
+			name: item.name,
+			pharmacy: item.pharmacy,
+			quantity: item.quantity,
+			orientations: sanitizeRichTextHtml(item.orientations),
+		}));
+
+		const documentData = {
+			tutor: {
+				id: tutor.id,
+				name: tutor.name,
+			},
+			patient: {
+				name: pet.name,
+				species: pet.species,
+				breed: pet.breed,
+				age: formatAgeShort(new Date(`${pet.birthDate}T12:00:00`)),
+				weight: formatWeight(latestWeight?.weightInGrams ?? null),
+				sex: pet.gender === 'male' ? 'M' : 'F',
+			},
+			administrationRoute: parsedInput.administrationRoute,
+			items,
+		};
+
+		const content = buildPrescriptionContent(items);
+
+		await db
+			.update(prescriptionsTable)
+			.set({
+				doctorId,
+				content,
+				documentData,
+				updatedAt: new Date(),
+			})
+			.where(eq(prescriptionsTable.id, parsedInput.prescriptionId));
+
+		revalidatePath(`/pets/${parsedInput.petId}`);
+		revalidatePath('/prescriptions');
+
+		return {
+			success: true,
+			message: 'Receita atualizada com sucesso!',
 		};
 	});

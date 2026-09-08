@@ -46,3 +46,12 @@ export const savePrescriptionDocumentSchema = z.object({
 export type SavePrescriptionDocumentSchema = z.infer<
 	typeof savePrescriptionDocumentSchema
 >;
+
+export const updatePrescriptionDocumentSchema =
+	savePrescriptionDocumentSchema.extend({
+		prescriptionId: z.uuid(),
+	});
+
+export type UpdatePrescriptionDocumentSchema = z.infer<
+	typeof updatePrescriptionDocumentSchema
+>;
