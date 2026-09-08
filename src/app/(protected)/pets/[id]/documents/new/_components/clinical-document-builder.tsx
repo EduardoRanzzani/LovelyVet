@@ -34,6 +34,7 @@ import {
 	updatePrescriptionDocument,
 } from '@/api/actions/prescriptions.actions';
 import RichTextClinicalDocument from '@/components/clinical-documents/rich-text-clinical-document';
+import { saveClinicalDocument } from '@/api/actions/clinical-documents.actions';
 
 interface ClinicalDocumentBuilderProps {
 	petId: string;
@@ -141,6 +142,16 @@ export default function ClinicalDocumentBuilder({
 		},
 	});
 
+	const saveClinicalDocumentAction = useAction(saveClinicalDocument, {
+		onSuccess: ({ data }) => {
+			toast.success(data?.message ?? 'Documento salvo com sucesso!');
+		},
+		onError: ({ error }) => {
+			console.error(error);
+			toast.error('Não foi possível salvar o documento.');
+		},
+	});
+
 	const handleSavePrescription = () => {
 		if (!canSavePrescription) {
 			return;
@@ -164,6 +175,31 @@ export default function ClinicalDocumentBuilder({
 		}
 
 		savePrescriptionAction.execute(payload);
+	};
+
+	const hasRichTextContent = (content: string) => {
+		return (
+			content
+				.replace(/<[^>]*>/g, '')
+				.replace(/&nbsp;/gi, ' ')
+				.trim().length > 0
+		);
+	};
+
+	const handleSaveRichTextDocument = (
+		type: 'referral' | 'exam_request',
+		content: string,
+	) => {
+		if (!selectedTutorId || !hasRichTextContent(content)) {
+			return;
+		}
+		saveClinicalDocumentAction.execute({
+			petId,
+			tutorId: selectedTutorId,
+			doctorId: REGINA_DOCTOR_ID,
+			type,
+			content,
+		});
 	};
 
 	return (
@@ -308,6 +344,26 @@ export default function ClinicalDocumentBuilder({
 								placeholder='Digite o encaminhamento...'
 								onContentChange={setReferralContent}
 							/>
+
+							<div className='mt-6 flex justify-end'>
+								<Button
+									type='button'
+									onClick={() =>
+										handleSaveRichTextDocument('referral', referralContent)
+									}
+									disabled={
+										!selectedTutorId ||
+										!hasRichTextContent(referralContent) ||
+										saveClinicalDocumentAction.isExecuting
+									}
+								>
+									<SaveIcon className='size-4' />
+
+									{saveClinicalDocumentAction.isExecuting
+										? 'Salvando...'
+										: 'Salvar encaminhamento'}
+								</Button>
+							</div>
 						</div>
 
 						<div className='min-w-0'>
@@ -352,6 +408,29 @@ export default function ClinicalDocumentBuilder({
 								placeholder='Digite os exames solicitados e as orientações...'
 								onContentChange={setExamRequestContent}
 							/>
+
+							<div className='mt-6 flex justify-end'>
+								<Button
+									type='button'
+									onClick={() =>
+										handleSaveRichTextDocument(
+											'exam_request',
+											examRequestContent,
+										)
+									}
+									disabled={
+										!selectedTutorId ||
+										!hasRichTextContent(examRequestContent) ||
+										saveClinicalDocumentAction.isExecuting
+									}
+								>
+									<SaveIcon className='size-4' />
+
+									{saveClinicalDocumentAction.isExecuting
+										? 'Salvando...'
+										: 'Salvar solicitação'}
+								</Button>
+							</div>
 						</div>
 
 						<div className='min-w-0'>
