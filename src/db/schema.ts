@@ -5,6 +5,7 @@ import {
 	date,
 	index,
 	integer,
+	jsonb,
 	pgEnum,
 	pgTable,
 	primaryKey,
@@ -13,6 +14,7 @@ import {
 	timestamp,
 	uuid,
 } from 'drizzle-orm/pg-core';
+import type { PrescriptionDocumentData } from '@/api/schema/prescription-document.schema';
 
 // --- ENUMS ---
 
@@ -288,6 +290,7 @@ export const prescriptionsTable = pgTable('prescriptions', {
 		.references(() => doctorsTable.id),
 	appointmentId: uuid('appointment_id').references(() => appointmentsTable.id),
 	content: text('content').notNull(),
+	documentData: jsonb('document_data').$type<PrescriptionDocumentData>(),
 	issuedAt: timestamp('issued_at').defaultNow().notNull(),
 	createdAt: timestamp('created_at').defaultNow().notNull(),
 	updatedAt: timestamp('updated_at')
