@@ -2,7 +2,6 @@
 
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileTextIcon, PrinterIcon, StethoscopeIcon } from 'lucide-react';
 import PrescriptionBuilder, {
 	type PrescriptionDraftItem,
 } from './prescription-builder';
@@ -19,14 +18,22 @@ import {
 import { useRef, useState } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { REGINA_DOCTOR_ID } from '@/api/config/consts';
-import { SaveIcon } from 'lucide-react';
+import {
+	FileSearchIcon,
+	FileTextIcon,
+	PrinterIcon,
+	SaveIcon,
+	StethoscopeIcon,
+} from 'lucide-react';
 import { useAction } from 'next-safe-action/hooks';
 import { toast } from 'sonner';
 import type { PrescriptionDocumentData } from '@/api/schema/prescription-document.schema';
+import RichTextDocumentBuilder from './rich-text-document-builder';
 import {
 	savePrescriptionDocument,
 	updatePrescriptionDocument,
 } from '@/api/actions/prescriptions.actions';
+import RichTextClinicalDocument from '@/components/clinical-documents/rich-text-clinical-document';
 
 interface ClinicalDocumentBuilderProps {
 	petId: string;
@@ -35,6 +42,8 @@ interface ClinicalDocumentBuilderProps {
 	patient: PrescriptionPatientData;
 	tutors: ClinicalDocumentTutor[];
 }
+
+type ClinicalDocumentType = 'prescription' | 'referral' | 'exam-request';
 
 export interface ClinicalDocumentTutor {
 	id: string;
@@ -48,6 +57,10 @@ export default function ClinicalDocumentBuilder({
 	patient,
 	tutors,
 }: ClinicalDocumentBuilderProps) {
+	const [referralContent, setReferralContent] = useState('');
+	const [examRequestContent, setExamRequestContent] = useState('');
+	const [documentType, setDocumentType] =
+		useState<ClinicalDocumentType>('prescription');
 	const [prescriptionItems, setPrescriptionItems] = useState<
 		PrescriptionDraftItem[]
 	>(initialPrescription?.items ?? []);
@@ -175,7 +188,12 @@ export default function ClinicalDocumentBuilder({
 				</Select>
 			</div>
 
-			<Tabs defaultValue='prescription'>
+			<Tabs
+				value={documentType}
+				onValueChange={(value) =>
+					setDocumentType(value as ClinicalDocumentType)
+				}
+			>
 				<div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
 					<TabsList>
 						<TabsTrigger value='prescription' className={'w-60'}>
@@ -186,6 +204,11 @@ export default function ClinicalDocumentBuilder({
 						<TabsTrigger value='referral' className={'w-60'}>
 							<StethoscopeIcon className='size-4' />
 							Encaminhamento
+						</TabsTrigger>
+
+						<TabsTrigger value='exam-request' className={'w-60'}>
+							<FileSearchIcon className='size-4' />
+							Solicitação de Exame
 						</TabsTrigger>
 					</TabsList>
 
@@ -269,19 +292,89 @@ export default function ClinicalDocumentBuilder({
 				</TabsContent>
 
 				<TabsContent value='referral' className='mt-6'>
-					<div className='rounded-xl border bg-card p-6'>
-						<div className='mb-6'>
-							<h2 className='text-lg font-semibold'>Encaminhamento</h2>
+					<div className='grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(500px,0.9fr)]'>
+						<div className='min-w-0 rounded-xl border bg-card p-6'>
+							<div className='mb-6'>
+								<h2 className='text-lg font-semibold'>Encaminhamento</h2>
 
-							<p className='text-sm text-muted-foreground'>
-								Preencha as informações necessárias para o encaminhamento.
-							</p>
+								<p className='text-sm text-muted-foreground'>
+									Descreva todas as informações necessárias para o profissional
+									que receberá o paciente.
+								</p>
+							</div>
+
+							<RichTextDocumentBuilder
+								label='Conteúdo do encaminhamento'
+								placeholder='Digite o encaminhamento...'
+								onContentChange={setReferralContent}
+							/>
 						</div>
 
-						<div className='flex min-h-64 items-center justify-center rounded-lg border border-dashed'>
-							<p className='text-sm text-muted-foreground'>
-								O formulário de encaminhamento será adicionado aqui.
-							</p>
+						<div className='min-w-0'>
+							<div className='sticky top-6'>
+								<div className='mb-3'>
+									<h3 className='font-semibold'>Prévia</h3>
+
+									<p className='text-sm text-muted-foreground'>
+										Visualização aproximada da impressão em A4.
+									</p>
+								</div>
+
+								<div className='overflow-auto rounded-xl border bg-muted/40 p-4'>
+									<RichTextClinicalDocument
+										patient={{
+											...patient,
+											tutorName: selectedTutorName,
+										}}
+										title='Encaminhamento'
+										content={referralContent}
+									/>
+								</div>
+							</div>
+						</div>
+					</div>
+				</TabsContent>
+
+				<TabsContent value='exam-request' className='mt-6'>
+					<div className='grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(500px,0.9fr)]'>
+						<div className='min-w-0 rounded-xl border bg-card p-6'>
+							<div className='mb-6'>
+								<h2 className='text-lg font-semibold'>Solicitação de Exame</h2>
+
+								<p className='text-sm text-muted-foreground'>
+									Informe os exames solicitados e todas as orientações
+									necessárias.
+								</p>
+							</div>
+
+							<RichTextDocumentBuilder
+								label='Conteúdo da solicitação'
+								placeholder='Digite os exames solicitados e as orientações...'
+								onContentChange={setExamRequestContent}
+							/>
+						</div>
+
+						<div className='min-w-0'>
+							<div className='sticky top-6'>
+								<div className='mb-3'>
+									<h3 className='font-semibold'>Prévia</h3>
+
+									<p className='text-sm text-muted-foreground'>
+										Visualização aproximada da impressão em A4.
+									</p>
+								</div>
+
+								<div className='overflow-auto rounded-xl border bg-muted/40 p-4'>
+									<RichTextClinicalDocument
+										patient={{
+											...patient,
+											tutorName: selectedTutorName,
+										}}
+										title='Solicitação de Exame'
+										content={examRequestContent}
+									/>
+								</div>
+							</div>
 						</div>
 					</div>
 				</TabsContent>
