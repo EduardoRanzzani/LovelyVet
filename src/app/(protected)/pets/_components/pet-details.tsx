@@ -137,7 +137,7 @@ const PetDetailsClient = ({
 			doctor: p.doctor.user.name,
 			avatarPerson: toTimelinePerson(p.doctor.user),
 			content: (
-				<div className='flex flex-col gap-2'>
+				<div className='flex flex-col gap-3'>
 					<div
 						className='prose prose-sm dark:prose-invert max-w-none'
 						dangerouslySetInnerHTML={{
@@ -145,11 +145,25 @@ const PetDetailsClient = ({
 						}}
 					/>
 
-					<Button variant={'outline'} asChild>
-						<Link href={`/prescriptions/print/${p.id}`}>
-							<PrinterIcon /> Imprimir
-						</Link>
-					</Button>
+					<div className='flex flex-wrap gap-2'>
+						{!isCustomer && p.documentData && (
+							<Button variant='outline' size='sm' asChild>
+								<Link
+									href={`/pets/${pet.id}/documents/new?prescriptionId=${p.id}`}
+								>
+									<SquarePenIcon className='size-4' />
+									Editar
+								</Link>
+							</Button>
+						)}
+
+						<Button variant='outline' size='sm' asChild>
+							<Link href={`/prescriptions/print/${p.id}`}>
+								<PrinterIcon className='size-4' />
+								Imprimir
+							</Link>
+						</Button>
+					</div>
 				</div>
 			),
 			icon: <SquarePenIcon className='w-5 h-5 text-accent-foreground' />,
