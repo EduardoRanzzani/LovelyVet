@@ -151,3 +151,31 @@ export const saveClinicalDocument = actionClient
 					: 'Solicitação de exame salva com sucesso!',
 		};
 	});
+
+export const getClinicalDocumentById = async (id: string) => {
+	const context = await requireAuthContext();
+
+	const [document] = await db
+		.select({
+			id: clinicalDocumentsTable.id,
+			petId: clinicalDocumentsTable.petId,
+			doctorId: clinicalDocumentsTable.doctorId,
+			type: clinicalDocumentsTable.type,
+			content: clinicalDocumentsTable.content,
+			documentData: clinicalDocumentsTable.documentData,
+			issuedAt: clinicalDocumentsTable.issuedAt,
+			createdAt: clinicalDocumentsTable.createdAt,
+			updatedAt: clinicalDocumentsTable.updatedAt,
+		})
+		.from(clinicalDocumentsTable)
+		.where(eq(clinicalDocumentsTable.id, id))
+		.limit(1);
+
+	if (!document) {
+		return null;
+	}
+
+	await assertCanAccessPet(context, document.petId);
+
+	return document;
+};

@@ -24,6 +24,8 @@ export interface TimelineItem {
 	type:
 		| 'record'
 		| 'prescription'
+		| 'referral'
+		| 'exam_request'
 		| 'weight'
 		| 'appointment'
 		| 'vaccine'
@@ -47,6 +49,8 @@ export const timelineItemSchema = z.object({
 		[
 			'record',
 			'prescription',
+			'referral',
+			'exam_request',
 			'weight',
 			'appointment',
 			'vaccine',

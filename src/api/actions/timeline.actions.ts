@@ -2,6 +2,7 @@
 
 import { db } from '@/db';
 import {
+	clinicalDocumentsTable,
 	petNotesTable,
 	petWeightsTable,
 	prescriptionsTable,
@@ -60,6 +61,18 @@ export const deleteTimelineItem = actionClient
 				await db
 					.delete(prescriptionsTable)
 					.where(eq(prescriptionsTable.id, id));
+				break;
+			case 'referral':
+			case 'exam_request':
+				const document = await db.query.clinicalDocumentsTable.findFirst({
+					where: eq(clinicalDocumentsTable.id, id),
+				});
+				if (!document) {
+					throw new Error('Documento clínico não encontrado');
+				}
+				await db
+					.delete(clinicalDocumentsTable)
+					.where(eq(clinicalDocumentsTable.id, id));
 				break;
 		}
 

@@ -59,6 +59,8 @@ export default function ClinicalDocumentBuilder({
 	tutors,
 }: ClinicalDocumentBuilderProps) {
 	const [referralContent, setReferralContent] = useState('');
+	const referralPrintRef = useRef<HTMLDivElement>(null);
+	const examRequestPrintRef = useRef<HTMLDivElement>(null);
 	const [examRequestContent, setExamRequestContent] = useState('');
 	const [documentType, setDocumentType] =
 		useState<ClinicalDocumentType>('prescription');
@@ -201,6 +203,53 @@ export default function ClinicalDocumentBuilder({
 			content,
 		});
 	};
+
+	const clinicalDocumentPrintPageStyle = `
+	@page {
+		size: A4 portrait;
+		margin: 0;
+	}
+
+	@media print {
+		html,
+		body {
+			width: 210mm !important;
+			height: 297mm !important;
+			margin: 0 !important;
+			padding: 0 !important;
+			background: white !important;
+		}
+
+		.clinical-document-print-area {
+			width: 210mm !important;
+			height: 297mm !important;
+			max-width: none !important;
+
+			margin: 0 !important;
+			padding: 0 !important;
+
+			overflow: hidden !important;
+			box-shadow: none !important;
+
+			background: white !important;
+
+			-webkit-print-color-adjust: exact !important;
+			print-color-adjust: exact !important;
+		}
+	}
+`;
+
+	const handlePrintReferral = useReactToPrint({
+		contentRef: referralPrintRef,
+		documentTitle: `Encaminhamento - ${patient.name}`,
+		pageStyle: clinicalDocumentPrintPageStyle,
+	});
+
+	const handlePrintExamRequest = useReactToPrint({
+		contentRef: examRequestPrintRef,
+		documentTitle: `Solicitação de Exame - ${patient.name}`,
+		pageStyle: clinicalDocumentPrintPageStyle,
+	});
 
 	return (
 		<div className='mt-6'>
@@ -345,7 +394,17 @@ export default function ClinicalDocumentBuilder({
 								onContentChange={setReferralContent}
 							/>
 
-							<div className='mt-6 flex justify-end'>
+							<div className='mt-6 flex justify-end gap-2'>
+								<Button
+									type='button'
+									variant='outline'
+									onClick={handlePrintReferral}
+									disabled={!hasRichTextContent(referralContent)}
+								>
+									<PrinterIcon className='size-4' />
+									Imprimir
+								</Button>
+
 								<Button
 									type='button'
 									onClick={() =>
@@ -378,6 +437,7 @@ export default function ClinicalDocumentBuilder({
 
 								<div className='overflow-auto rounded-xl border bg-muted/40 p-4'>
 									<RichTextClinicalDocument
+										printRef={referralPrintRef}
 										patient={{
 											...patient,
 											tutorName: selectedTutorName,
@@ -409,7 +469,17 @@ export default function ClinicalDocumentBuilder({
 								onContentChange={setExamRequestContent}
 							/>
 
-							<div className='mt-6 flex justify-end'>
+							<div className='mt-6 flex justify-end gap-2'>
+								<Button
+									type='button'
+									variant='outline'
+									onClick={handlePrintExamRequest}
+									disabled={!hasRichTextContent(examRequestContent)}
+								>
+									<PrinterIcon className='size-4' />
+									Imprimir
+								</Button>
+
 								<Button
 									type='button'
 									onClick={() =>
@@ -445,6 +515,7 @@ export default function ClinicalDocumentBuilder({
 
 								<div className='overflow-auto rounded-xl border bg-muted/40 p-4'>
 									<RichTextClinicalDocument
+										printRef={examRequestPrintRef}
 										patient={{
 											...patient,
 											tutorName: selectedTutorName,

@@ -4,6 +4,7 @@ import { db } from '@/db';
 import {
 	appointmentsTable,
 	breedsTable,
+	clinicalDocumentsTable,
 	customersTable,
 	medicalRecordsTable,
 	petsTable,
@@ -185,6 +186,10 @@ export const getPetById = async (
 			},
 			notes: {
 				with: { author: true },
+			},
+			clinicalDocuments: {
+				orderBy: desc(clinicalDocumentsTable.issuedAt),
+				with: { doctor: { with: { user: true } } },
 			},
 		},
 	});

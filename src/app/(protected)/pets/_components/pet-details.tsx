@@ -169,6 +169,44 @@ const PetDetailsClient = ({
 			icon: <SquarePenIcon className='w-5 h-5 text-accent-foreground' />,
 			color: 'bg-prescription/30',
 		})) || []),
+		...(pet.clinicalDocuments?.map((document) => {
+			const isReferral = document.type === 'referral';
+			return {
+				type: document.type,
+				id: document.id,
+				date: new Date(document.issuedAt),
+				title: isReferral ? 'Encaminhamento' : 'Solicitação de Exame',
+				doctor: document.doctor.user.name,
+				avatarPerson: toTimelinePerson(document.doctor.user),
+				content: (
+					<div className='flex flex-col gap-3'>
+						<div
+							className='prose prose-sm dark:prose-invert max-w-none'
+							dangerouslySetInnerHTML={{
+								__html: document.content,
+							}}
+						/>
+
+						<div className='flex flex-wrap gap-2'>
+							<Button variant='outline' size='sm' asChild>
+								<Link href={`/clinical-documents/print/${document.id}`}>
+									<PrinterIcon className='size-4' />
+									Imprimir
+								</Link>
+							</Button>
+						</div>
+					</div>
+				),
+
+				icon: isReferral ? (
+					<StethoscopeIcon className='h-5 w-5 text-accent-foreground' />
+				) : (
+					<FileIcon className='h-5 w-5 text-accent-foreground' />
+				),
+
+				color: 'bg-document/30',
+			} satisfies TimelineItem;
+		}) || []),
 		...(pet.weightHistory?.map((w) => ({
 			type: 'weight' as const,
 			id: w.id,

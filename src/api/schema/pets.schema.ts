@@ -2,6 +2,7 @@ import {
 	appointmentItemsTable,
 	appointmentsTable,
 	breedsTable,
+	clinicalDocumentsTable,
 	customersTable,
 	doctorsTable,
 	medicalRecordsTable,
@@ -67,18 +68,17 @@ export type PetsWithRelations = typeof petsTable.$inferSelect & {
 			user: typeof usersTable.$inferSelect;
 		};
 	})[];
+	clinicalDocuments?: (typeof clinicalDocumentsTable.$inferSelect & {
+		doctor: typeof doctorsTable.$inferSelect & {
+			user: typeof usersTable.$inferSelect;
+		};
+	})[];
 	weightInGrams?: number;
 };
 
 /** Nomes dos tutores para exibição (pet carregado com `petTutors.tutor.user`). */
 type PetWithTutorNames = {
-	petTutors: {
-		tutor: {
-			user: {
-				name: string;
-			};
-		};
-	}[];
+	petTutors: { tutor: { user: { name: string } } }[];
 };
 
 export function formatPetTutorNames(pet: PetWithTutorNames): string {
@@ -114,14 +114,6 @@ export type CreatePetWithTutorAndBreedSchema = z.infer<
 export type PetOption = {
 	id: string;
 	name: string;
-	breed: {
-		specieId: string;
-	};
-	petTutors: {
-		tutor: {
-			user: {
-				name: string;
-			};
-		};
-	}[];
+	breed: { specieId: string };
+	petTutors: { tutor: { user: { name: string } } }[];
 };

@@ -60,15 +60,8 @@ const rolePermissions: Record<UserRole, string[]> = {
 		'/dashboard',
 		'/pets',
 		'/appointments',
-
-		/*
-		 * Customer pode acessar apenas a rota
-		 * de impressão da receita.
-		 *
-		 * O acesso à receita específica ainda
-		 * passa por assertCanAccessPet().
-		 */
 		'/prescriptions/print',
+		'/clinical-documents/print',
 	],
 };
 
