@@ -13,6 +13,7 @@ import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
 import { connection } from 'next/server';
 import { notFound } from 'next/navigation';
+import ClinicalDocumentBuilder from './_components/clinical-document-builder';
 
 interface NewClinicalDocumentPageProps {
 	params: Promise<{
@@ -94,6 +95,8 @@ export default async function NewClinicalDocumentPage({
 						</div>
 					</div>
 				</div>
+
+				<ClinicalDocumentBuilder />
 			</PageContent>
 		</PageContainer>
 	);
