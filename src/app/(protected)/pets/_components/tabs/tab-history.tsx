@@ -3,13 +3,19 @@ import { TimelineItem } from '@/api/schema/timeline.schema';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TabsContent } from '@/components/ui/tabs';
-import { FileIcon, FlaskConicalIcon, StethoscopeIcon } from 'lucide-react';
+import {
+	FileIcon,
+	FilePenLineIcon,
+	FlaskConicalIcon,
+	StethoscopeIcon,
+} from 'lucide-react';
 import DialogNotes from '../dialogs/dialog-notes';
 import DialogPrescription from '../dialogs/dialog-prescription';
 import DialogServices from '../dialogs/dialog-services';
 import DialogVaccine from '../dialogs/dialog-vaccine';
 import DialogWeight from '../dialogs/dialog-weight';
 import PetTimelineClient from './history/pet-history-timeline';
+import Link from 'next/link';
 
 interface TabHistoryProps {
 	doctors: DoctorsWithRelations[];
@@ -50,7 +56,12 @@ const TabHistory = ({
 
 					<DialogVaccine petId={petId} doctors={doctors} />
 
-					<DialogPrescription petId={petId} doctors={doctors} />
+					<Button asChild className='bg-prescription hover:bg-prescription/80'>
+						<Link href={`/pets/${petId}/documents/new`}>
+							<FilePenLineIcon />
+							Receita / Encaminhamento
+						</Link>
+					</Button>
 
 					<DialogNotes petId={petId} />
 				</div>
