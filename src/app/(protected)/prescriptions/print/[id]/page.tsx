@@ -1,20 +1,34 @@
-import { getPrescriptionById } from '@/api/actions/prescriptions.actions';
-import PrescriptionLayout from '../../_component/prescription-layout';
+import { getPrescriptionDocumentById } from '@/api/actions/prescriptions.actions';
+import { connection } from 'next/server';
+import { notFound } from 'next/navigation';
+import PrescriptionPrintClient from './prescription-print-client';
 
-export default async function PrintRecipePage({
+interface PrintPrescriptionPageProps {
+	params: Promise<{
+		id: string;
+	}>;
+}
+
+export default async function PrintPrescriptionPage({
 	params,
-}: {
-	params: Promise<{ id: string }>;
-}) {
+}: PrintPrescriptionPageProps) {
+	await connection();
+
 	const { id } = await params;
 
-	const recipeData = await getPrescriptionById(id);
+	const prescription = await getPrescriptionDocumentById(id);
+
+	if (!prescription || !prescription.documentData) {
+		notFound();
+	}
 
 	return (
-		<PrescriptionLayout
-			pet={recipeData.pet}
-			prescriptionItems={recipeData.content}
-			recipeDate={recipeData.createdAt}
-		/>
+		<div className='mx-auto max-w-5xl p-6'>
+			<PrescriptionPrintClient
+				petId={prescription.petId}
+				documentData={prescription.documentData}
+				issuedAt={prescription.issuedAt.toISOString()}
+			/>
+		</div>
 	);
 }

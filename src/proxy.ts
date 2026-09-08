@@ -4,6 +4,7 @@ import { normalizeUserRole, type UserRole } from './lib/security/roles';
 import { isPathWithinRoute } from './lib/security/routes';
 
 const isWebhookRoute = createRouteMatcher(['/api/webhooks/clerk']);
+
 const isPublicRoute = createRouteMatcher([
 	'/sign-in(.*)',
 	'/sign-up(.*)',
@@ -18,6 +19,7 @@ const isInternalPrintRequest = (req: NextRequest): boolean => {
 	}
 
 	const secretFromQuery = req.nextUrl.searchParams.get('secret');
+
 	return secretFromQuery === secretFromEnv;
 };
 
@@ -39,6 +41,7 @@ const rolePermissions: Record<UserRole, string[]> = {
 		'/clinics',
 		'/prescriptions-items',
 	],
+
 	doctor: [
 		'/dashboard',
 		'/pets',
@@ -52,21 +55,42 @@ const rolePermissions: Record<UserRole, string[]> = {
 		'/shifts',
 		'/prescriptions-items',
 	],
-	customer: ['/dashboard', '/pets', '/appointments'],
+
+	customer: [
+		'/dashboard',
+		'/pets',
+		'/appointments',
+
+		/*
+		 * Customer pode acessar apenas a rota
+		 * de impressão da receita.
+		 *
+		 * O acesso à receita específica ainda
+		 * passa por assertCanAccessPet().
+		 */
+		'/prescriptions/print',
+	],
 };
 
 export default clerkMiddleware(async (auth, req) => {
-	// 1. Ignora Webhooks e requisições internas de PDF com segredo válido
+	/*
+	 * 1. Webhooks e requisições internas
+	 * de PDF com segredo válido.
+	 */
 	if (isWebhookRoute(req) || isInternalPrintRequest(req)) {
 		return NextResponse.next();
 	}
 
-	// 2. Se for rota pública
+	/*
+	 * 2. Rotas públicas.
+	 */
 	if (isPublicRoute(req)) {
 		return NextResponse.next();
 	}
 
-	// 3. Autenticação para rotas privadas
+	/*
+	 * 3. Demais rotas exigem autenticação.
+	 */
 	const { userId, sessionClaims } = await auth();
 
 	if (!userId) {
@@ -78,14 +102,15 @@ export default clerkMiddleware(async (auth, req) => {
 	const { nextUrl } = req;
 	const pathname = nextUrl.pathname;
 
-	const allowedRoutes = rolePermissions[userRole];
-	const isAllowed = allowedRoutes.some((route) =>
-		isPathWithinRoute(pathname, route),
-	);
-
 	if (pathname === '/') {
 		return NextResponse.redirect(new URL('/dashboard', req.url));
 	}
+
+	const allowedRoutes = rolePermissions[userRole];
+
+	const isAllowed = allowedRoutes.some((route) =>
+		isPathWithinRoute(pathname, route),
+	);
 
 	if (!isAllowed) {
 		return NextResponse.redirect(new URL('/dashboard', req.url));
