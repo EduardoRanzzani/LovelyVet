@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileTextIcon, PrinterIcon, StethoscopeIcon } from 'lucide-react';
+import PrescriptionBuilder from './prescription-builder';
 
 export default function ClinicalDocumentBuilder() {
 	return (
@@ -37,11 +38,7 @@ export default function ClinicalDocumentBuilder() {
 							</p>
 						</div>
 
-						<div className='flex min-h-64 items-center justify-center rounded-lg border border-dashed'>
-							<p className='text-sm text-muted-foreground'>
-								Os itens da receita serão adicionados aqui.
-							</p>
-						</div>
+						<PrescriptionBuilder />
 					</div>
 				</TabsContent>
 
