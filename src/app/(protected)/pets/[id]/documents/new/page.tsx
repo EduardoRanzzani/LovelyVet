@@ -96,10 +96,6 @@ export default async function NewClinicalDocumentPage({
 
 						<div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5'>
 							<div>
-								<p className='text-xs text-muted-foreground'>Tutor</p>
-							</div>
-
-							<div>
 								<p className='text-xs text-muted-foreground'>Idade</p>
 								<p className='font-medium'>
 									{formatAge(new Date(`${pet.birthDate}T12:00:00`))}
