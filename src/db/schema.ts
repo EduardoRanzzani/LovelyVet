@@ -17,7 +17,10 @@ import {
 import type { PrescriptionDocumentData } from '@/api/schema/prescription-document.schema';
 
 // --- ENUMS ---
-
+export const clinicalDocumentTypeEnum = pgEnum('clinical_document_type', [
+	'referral',
+	'exam_request',
+]);
 export const userRoleEnum = pgEnum('user_role', USER_ROLES);
 export const sexEnum = pgEnum('sex', ['male', 'female']);
 export const petStatusEnum = pgEnum('pet_status', ['alive', 'dead', 'missing']);
@@ -29,6 +32,7 @@ export const appointmentStatusEnum = pgEnum('appointment_status', [
 	'cancelled',
 	'no_show',
 ]);
+import type { ClinicalDocumentSnapshot } from '@/api/schema/clinical-documents.schema';
 
 // --- TABLES ---
 
@@ -299,6 +303,29 @@ export const prescriptionsTable = pgTable('prescriptions', {
 		.notNull(),
 });
 
+// Documentos clínicos de texto rico
+export const clinicalDocumentsTable = pgTable('clinical_documents', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	petId: uuid('pet_id')
+		.notNull()
+		.references(() => petsTable.id),
+	doctorId: uuid('doctor_id')
+		.notNull()
+		.references(() => doctorsTable.id),
+	appointmentId: uuid('appointment_id').references(() => appointmentsTable.id),
+	type: clinicalDocumentTypeEnum('type').notNull(),
+	content: text('content').notNull(),
+	documentData: jsonb('document_data')
+		.$type<ClinicalDocumentSnapshot>()
+		.notNull(),
+	issuedAt: timestamp('issued_at').defaultNow().notNull(),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at')
+		.defaultNow()
+		.$onUpdate(() => new Date())
+		.notNull(),
+});
+
 // Itens da receita (Catálogo de medicamentos)
 export const prescriptionItemsTable = pgTable('prescription_items', {
 	id: uuid('id').primaryKey().defaultRandom(),
@@ -480,6 +507,7 @@ export const petsRelations = relations(petsTable, ({ one, many }) => ({
 	attachments: many(petAttachmentsTable),
 	notes: many(petNotesTable),
 	prescriptions: many(prescriptionsTable),
+	clinicalDocuments: many(clinicalDocumentsTable),
 }));
 
 export const petWeightsRelations = relations(petWeightsTable, ({ one }) => ({
@@ -645,6 +673,24 @@ export const petNotesRelations = relations(petNotesTable, ({ one }) => ({
 export const clinicsRelations = relations(clinicsTable, ({ many }) => ({
 	shifts: many(shiftsTable),
 }));
+
+export const clinicalDocumentsRelations = relations(
+	clinicalDocumentsTable,
+	({ one }) => ({
+		pet: one(petsTable, {
+			fields: [clinicalDocumentsTable.petId],
+			references: [petsTable.id],
+		}),
+		doctor: one(doctorsTable, {
+			fields: [clinicalDocumentsTable.doctorId],
+			references: [doctorsTable.id],
+		}),
+		appointment: one(appointmentsTable, {
+			fields: [clinicalDocumentsTable.appointmentId],
+			references: [appointmentsTable.id],
+		}),
+	}),
+);
 
 // import { relations } from 'drizzle-orm';
 // import {
