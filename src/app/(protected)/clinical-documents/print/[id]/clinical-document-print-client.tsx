@@ -8,7 +8,7 @@ import RichTextClinicalDocument from '@/components/clinical-documents/rich-text-
 import { Button } from '@/components/ui/button';
 import { ArrowLeftIcon, PrinterIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
 
 interface ClinicalDocumentPrintClientProps {
@@ -26,8 +26,6 @@ export default function ClinicalDocumentPrintClient({
 	documentData,
 	issuedAt,
 }: ClinicalDocumentPrintClientProps) {
-	const printRef = useRef<HTMLDivElement>(null);
-
 	const title = type === 'referral' ? 'Encaminhamento' : 'Solicitação de Exame';
 
 	const date = new Date(issuedAt).toLocaleDateString('pt-BR', {
@@ -37,46 +35,63 @@ export default function ClinicalDocumentPrintClient({
 		timeZone: 'America/Campo_Grande',
 	});
 
+	const printRef = useRef<HTMLDivElement>(null);
+
+	const hasAutoPrintedRef = useRef(false);
+
 	const handlePrint = useReactToPrint({
 		contentRef: printRef,
 
 		documentTitle: `${title} - ${documentData.patient.name}`,
 
 		pageStyle: `
-				@page {
-					size: A4 portrait;
-					margin: 0;
+			@page {
+				size: A4 portrait;
+				margin: 0;
+			}
+
+			@media print {
+				html,
+				body {
+					width: 210mm !important;
+					height: 297mm !important;
+					margin: 0 !important;
+					padding: 0 !important;
+					background: white !important;
 				}
 
-				@media print {
-					html,
-					body {
-						width: 210mm !important;
-						height: 297mm !important;
-						margin: 0 !important;
-						padding: 0 !important;
-						background: white !important;
-					}
+				.prescription-print-area {
+					width: 210mm !important;
+					height: 297mm !important;
+					max-width: none !important;
+					margin: 0 !important;
+					padding: 0 !important;
+					overflow: hidden !important;
+					box-shadow: none !important;
+					background: white !important;
 
-					.clinical-document-print-area {
-						width: 210mm !important;
-						height: 297mm !important;
-						max-width: none !important;
-
-						margin: 0 !important;
-						padding: 0 !important;
-
-						overflow: hidden !important;
-						box-shadow: none !important;
-
-						background: white !important;
-
-						-webkit-print-color-adjust: exact !important;
-						print-color-adjust: exact !important;
-					}
+					-webkit-print-color-adjust: exact !important;
+					print-color-adjust: exact !important;
 				}
-			`,
+			}
+		`,
 	});
+
+	useEffect(() => {
+		const timeout = window.setTimeout(() => {
+			if (hasAutoPrintedRef.current) {
+				return;
+			}
+
+			hasAutoPrintedRef.current = true;
+
+			handlePrint();
+		}, 300);
+
+		return () => {
+			window.clearTimeout(timeout);
+		};
+	}, [handlePrint]);
 
 	return (
 		<div className='space-y-4'>

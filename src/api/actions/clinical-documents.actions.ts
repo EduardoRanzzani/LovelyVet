@@ -141,6 +141,7 @@ export const saveClinicalDocument = actionClient
 			});
 
 		revalidatePath(`/pets/${parsedInput.petId}`);
+		revalidatePath('/pets');
 
 		return {
 			success: true,
