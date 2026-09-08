@@ -129,17 +129,16 @@ export default function PrescriptionBuilder({
 	return (
 		<div className='space-y-6'>
 			<div className='rounded-lg border bg-muted/30 p-4'>
-				<div className='space-y-2 mb-4'>
-					<Label>Via de administração</Label>
-					<Input
-						{...form.register('administrationRoute')}
-						placeholder='Ex.: USO ORAL, USO TÓPICO, USO OTOLÓGICO...'
-					/>
-				</div>
-				<div className='flex flex-col gap-3 lg:flex-row lg:items-end'>
+				<div className='flex flex-col lg:flex-row gap-4 mb-4'>
+					<div className='flex-1 space-y-2'>
+						<Label>Via de administração</Label>
+						<Input
+							{...form.register('administrationRoute')}
+							placeholder='Ex.: USO ORAL, USO TÓPICO, USO OTOLÓGICO...'
+						/>
+					</div>
 					<div className='flex-1 space-y-2'>
 						<Label>Adicionar do catálogo</Label>
-
 						<Select
 							value={selectedCatalogItem}
 							onValueChange={setSelectedCatalogItem}
@@ -164,17 +163,24 @@ export default function PrescriptionBuilder({
 							</SelectContent>
 						</Select>
 					</div>
-
+				</div>
+				<div className='flex flex-col gap-3 lg:flex-row lg:items-end'>
 					<Button
 						type='button'
 						onClick={handleAddFromCatalog}
 						disabled={!selectedCatalogItem}
+						className={'w-full lg:flex-1'}
 					>
 						<PlusIcon className='size-4' />
 						Adicionar
 					</Button>
 
-					<Button type='button' variant='outline' onClick={handleAddBlank}>
+					<Button
+						type='button'
+						variant='outline'
+						onClick={handleAddBlank}
+						className={'w-full lg:flex-1'}
+					>
 						<PlusIcon className='size-4' />
 						Medicamento avulso
 					</Button>
