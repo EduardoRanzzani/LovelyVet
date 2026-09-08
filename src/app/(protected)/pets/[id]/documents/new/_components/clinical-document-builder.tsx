@@ -400,6 +400,7 @@ export default function ClinicalDocumentBuilder({
 									variant='outline'
 									onClick={handlePrintReferral}
 									disabled={!hasRichTextContent(referralContent)}
+									className={'w-full lg:w-60'}
 								>
 									<PrinterIcon className='size-4' />
 									Imprimir
@@ -415,6 +416,7 @@ export default function ClinicalDocumentBuilder({
 										!hasRichTextContent(referralContent) ||
 										saveClinicalDocumentAction.isExecuting
 									}
+									className={'w-full lg:w-60'}
 								>
 									<SaveIcon className='size-4' />
 
@@ -475,6 +477,7 @@ export default function ClinicalDocumentBuilder({
 									variant='outline'
 									onClick={handlePrintExamRequest}
 									disabled={!hasRichTextContent(examRequestContent)}
+									className={'w-full lg:w-60'}
 								>
 									<PrinterIcon className='size-4' />
 									Imprimir
@@ -493,6 +496,7 @@ export default function ClinicalDocumentBuilder({
 										!hasRichTextContent(examRequestContent) ||
 										saveClinicalDocumentAction.isExecuting
 									}
+									className={'w-full lg:w-60'}
 								>
 									<SaveIcon className='size-4' />
 
