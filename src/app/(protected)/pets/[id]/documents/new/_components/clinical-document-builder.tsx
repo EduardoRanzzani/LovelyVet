@@ -332,28 +332,30 @@ export default function ClinicalDocumentBuilder({
 				</div>
 
 				<TabsContent value='prescription' className='mt-6'>
-					<div className='rounded-xl border bg-card p-6'>
+					<div className='rounded-xl border bg-card p-4'>
 						<div className='grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(500px,0.9fr)]'>
-							<div className='min-w-0'>
-								<div className='mb-3'>
-									<h3 className='font-semibold'>Receita</h3>
+							<div className='min-w-0 rounded-xl border bg-card p-6'>
+								<div className='min-w-0'>
+									<div className='mb-3'>
+										<h3 className='font-semibold'>Receita</h3>
 
-									<p className='text-sm text-muted-foreground'>
-										Adicione os medicamentos e as orientações da receita.
-									</p>
+										<p className='text-sm text-muted-foreground'>
+											Adicione os medicamentos e as orientações da receita.
+										</p>
+									</div>
+
+									<PrescriptionBuilder
+										initialItems={initialPrescription?.items ?? []}
+										initialAdministrationRoute={
+											initialPrescription?.administrationRoute ?? ''
+										}
+										onItemsChange={setPrescriptionItems}
+										onAdministrationRouteChange={setAdministrationRoute}
+									/>
 								</div>
-
-								<PrescriptionBuilder
-									initialItems={initialPrescription?.items ?? []}
-									initialAdministrationRoute={
-										initialPrescription?.administrationRoute ?? ''
-									}
-									onItemsChange={setPrescriptionItems}
-									onAdministrationRouteChange={setAdministrationRoute}
-								/>
 							</div>
 
-							<div className='min-w-0'>
+							<div className='min-w-0 rounded-xl border bg-card p-6'>
 								<div className='sticky top-6'>
 									<div className='mb-3'>
 										<h3 className='font-semibold'>Prévia</h3>
@@ -377,76 +379,78 @@ export default function ClinicalDocumentBuilder({
 				</TabsContent>
 
 				<TabsContent value='referral' className='mt-6'>
-					<div className='grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(500px,0.9fr)]'>
-						<div className='min-w-0 rounded-xl border bg-card p-6'>
-							<div className='mb-6'>
-								<h2 className='text-lg font-semibold'>Encaminhamento</h2>
-
-								<p className='text-sm text-muted-foreground'>
-									Descreva todas as informações necessárias para o profissional
-									que receberá o paciente.
-								</p>
-							</div>
-
-							<RichTextDocumentBuilder
-								label='Conteúdo do encaminhamento'
-								placeholder='Digite o encaminhamento...'
-								onContentChange={setReferralContent}
-							/>
-
-							<div className='mt-6 flex justify-end gap-2'>
-								<Button
-									type='button'
-									variant='outline'
-									onClick={handlePrintReferral}
-									disabled={!hasRichTextContent(referralContent)}
-									className={'w-full lg:w-60'}
-								>
-									<PrinterIcon className='size-4' />
-									Imprimir
-								</Button>
-
-								<Button
-									type='button'
-									onClick={() =>
-										handleSaveRichTextDocument('referral', referralContent)
-									}
-									disabled={
-										!selectedTutorId ||
-										!hasRichTextContent(referralContent) ||
-										saveClinicalDocumentAction.isExecuting
-									}
-									className={'w-full lg:w-60'}
-								>
-									<SaveIcon className='size-4' />
-
-									{saveClinicalDocumentAction.isExecuting
-										? 'Salvando...'
-										: 'Salvar encaminhamento'}
-								</Button>
-							</div>
-						</div>
-
-						<div className='min-w-0'>
-							<div className='sticky top-6'>
-								<div className='mb-3'>
-									<h3 className='font-semibold'>Prévia</h3>
+					<div className='rounded-xl border bg-card p-4'>
+						<div className='grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(500px,0.9fr)]'>
+							<div className='min-w-0 rounded-xl border bg-card p-6'>
+								<div className='mb-6'>
+									<h2 className='text-lg font-semibold'>Encaminhamento</h2>
 
 									<p className='text-sm text-muted-foreground'>
-										Visualização aproximada da impressão em A4.
+										Descreva todas as informações necessárias para o
+										profissional que receberá o paciente.
 									</p>
 								</div>
 
-								<div className='overflow-auto rounded-xl border bg-muted/40 p-4'>
-									<RichTextClinicalDocument
-										printRef={referralPrintRef}
-										patient={{
-											...patient,
-											tutorName: selectedTutorName,
-										}}
-										title='Encaminhamento'
-										content={referralContent}
-									/>
+								<RichTextDocumentBuilder
+									label='Conteúdo do encaminhamento'
+									placeholder='Digite o encaminhamento...'
+									onContentChange={setReferralContent}
+								/>
+
+								<div className='mt-6 flex justify-end gap-2'>
+									<Button
+										type='button'
+										variant='outline'
+										onClick={handlePrintReferral}
+										disabled={!hasRichTextContent(referralContent)}
+										className={'w-full lg:w-60'}
+									>
+										<PrinterIcon className='size-4' />
+										Imprimir
+									</Button>
+
+									<Button
+										type='button'
+										onClick={() =>
+											handleSaveRichTextDocument('referral', referralContent)
+										}
+										disabled={
+											!selectedTutorId ||
+											!hasRichTextContent(referralContent) ||
+											saveClinicalDocumentAction.isExecuting
+										}
+										className={'w-full lg:w-60'}
+									>
+										<SaveIcon className='size-4' />
+
+										{saveClinicalDocumentAction.isExecuting
+											? 'Salvando...'
+											: 'Salvar encaminhamento'}
+									</Button>
+								</div>
+							</div>
+
+							<div className='min-w-0 rounded-xl border bg-card p-6'>
+								<div className='sticky top-6'>
+									<div className='mb-3'>
+										<h3 className='font-semibold'>Prévia</h3>
+
+										<p className='text-sm text-muted-foreground'>
+											Visualização aproximada da impressão em A4.
+										</p>
+									</div>
+
+									<div className='overflow-auto rounded-xl border bg-muted/40 p-4'>
+										<RichTextClinicalDocument
+											printRef={referralPrintRef}
+											patient={{
+												...patient,
+												tutorName: selectedTutorName,
+											}}
+											title='Encaminhamento'
+											content={referralContent}
+										/>
+									</div>
 								</div>
 							</div>
 						</div>
@@ -454,79 +458,83 @@ export default function ClinicalDocumentBuilder({
 				</TabsContent>
 
 				<TabsContent value='exam-request' className='mt-6'>
-					<div className='grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(500px,0.9fr)]'>
-						<div className='min-w-0 rounded-xl border bg-card p-6'>
-							<div className='mb-6'>
-								<h2 className='text-lg font-semibold'>Solicitação de Exame</h2>
-
-								<p className='text-sm text-muted-foreground'>
-									Informe os exames solicitados e todas as orientações
-									necessárias.
-								</p>
-							</div>
-
-							<RichTextDocumentBuilder
-								label='Conteúdo da solicitação'
-								placeholder='Digite os exames solicitados e as orientações...'
-								onContentChange={setExamRequestContent}
-							/>
-
-							<div className='mt-6 flex justify-end gap-2'>
-								<Button
-									type='button'
-									variant='outline'
-									onClick={handlePrintExamRequest}
-									disabled={!hasRichTextContent(examRequestContent)}
-									className={'w-full lg:w-60'}
-								>
-									<PrinterIcon className='size-4' />
-									Imprimir
-								</Button>
-
-								<Button
-									type='button'
-									onClick={() =>
-										handleSaveRichTextDocument(
-											'exam_request',
-											examRequestContent,
-										)
-									}
-									disabled={
-										!selectedTutorId ||
-										!hasRichTextContent(examRequestContent) ||
-										saveClinicalDocumentAction.isExecuting
-									}
-									className={'w-full lg:w-60'}
-								>
-									<SaveIcon className='size-4' />
-
-									{saveClinicalDocumentAction.isExecuting
-										? 'Salvando...'
-										: 'Salvar solicitação'}
-								</Button>
-							</div>
-						</div>
-
-						<div className='min-w-0'>
-							<div className='sticky top-6'>
-								<div className='mb-3'>
-									<h3 className='font-semibold'>Prévia</h3>
+					<div className='rounded-xl border bg-card p-4'>
+						<div className='grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(500px,0.9fr)]'>
+							<div className='min-w-0 rounded-xl border bg-card p-6'>
+								<div className='mb-6'>
+									<h2 className='text-lg font-semibold'>
+										Solicitação de Exame
+									</h2>
 
 									<p className='text-sm text-muted-foreground'>
-										Visualização aproximada da impressão em A4.
+										Informe os exames solicitados e todas as orientações
+										necessárias.
 									</p>
 								</div>
 
-								<div className='overflow-auto rounded-xl border bg-muted/40 p-4'>
-									<RichTextClinicalDocument
-										printRef={examRequestPrintRef}
-										patient={{
-											...patient,
-											tutorName: selectedTutorName,
-										}}
-										title='Solicitação de Exame'
-										content={examRequestContent}
-									/>
+								<RichTextDocumentBuilder
+									label='Conteúdo da solicitação'
+									placeholder='Digite os exames solicitados e as orientações...'
+									onContentChange={setExamRequestContent}
+								/>
+
+								<div className='mt-6 flex justify-end gap-2'>
+									<Button
+										type='button'
+										variant='outline'
+										onClick={handlePrintExamRequest}
+										disabled={!hasRichTextContent(examRequestContent)}
+										className={'w-full lg:w-60'}
+									>
+										<PrinterIcon className='size-4' />
+										Imprimir
+									</Button>
+
+									<Button
+										type='button'
+										onClick={() =>
+											handleSaveRichTextDocument(
+												'exam_request',
+												examRequestContent,
+											)
+										}
+										disabled={
+											!selectedTutorId ||
+											!hasRichTextContent(examRequestContent) ||
+											saveClinicalDocumentAction.isExecuting
+										}
+										className={'w-full lg:w-60'}
+									>
+										<SaveIcon className='size-4' />
+
+										{saveClinicalDocumentAction.isExecuting
+											? 'Salvando...'
+											: 'Salvar solicitação'}
+									</Button>
+								</div>
+							</div>
+
+							<div className='min-w-0 rounded-xl border bg-card p-6'>
+								<div className='sticky top-6'>
+									<div className='mb-3'>
+										<h3 className='font-semibold'>Prévia</h3>
+
+										<p className='text-sm text-muted-foreground'>
+											Visualização aproximada da impressão em A4.
+										</p>
+									</div>
+
+									<div className='overflow-auto rounded-xl border bg-muted/40 p-4'>
+										<RichTextClinicalDocument
+											printRef={examRequestPrintRef}
+											patient={{
+												...patient,
+												tutorName: selectedTutorName,
+											}}
+											title='Solicitação de Exame'
+											content={examRequestContent}
+										/>
+									</div>
 								</div>
 							</div>
 						</div>
