@@ -3,8 +3,8 @@
 import { WhatsappIcon } from '@/components/icons/icon-whatsapp';
 import { sanitizeRichTextHtml } from '@/lib/security/html';
 import Image from 'next/image';
-import type { PrescriptionDraftItem } from './prescription-builder';
 import type { RefObject } from 'react';
+import type { PrescriptionDraftItem } from './prescription-builder';
 
 export interface PrescriptionPatientData {
 	name: string;
@@ -39,13 +39,12 @@ export default function PrescriptionPreview({
 			>
 				<div className='relative flex h-full flex-col px-[18mm] pb-[12mm] pt-[8mm] text-black'>
 					{/* Marca d'água */}
-					<div className='pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.035]'>
+					<div className='absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] print:opacity-[0.03] z-0 mt-60'>
 						<Image
-							src='/logo.png'
-							alt=''
-							width={520}
-							height={520}
-							className='w-[55%] object-contain'
+							src={'/logo.png'}
+							alt={`Marca d'agua`}
+							width={600}
+							height={600}
 						/>
 					</div>
 
@@ -61,19 +60,25 @@ export default function PrescriptionPreview({
 					</div>
 
 					{/* Cabeçalho */}
-					<header className='relative z-10 mb-[5%] text-center'>
-						<Image
-							src='/logo.png'
-							alt='LovelyVet'
-							width={90}
-							height={90}
-							className='mx-auto mb-1 w-[12%] min-w-16 object-contain'
-						/>
-						<h1 className='text-[16px] font-semibold'>
-							Dra. Regina de Oliveira Maciel
-						</h1>
-						<p className='text-[11px]'>Médica Veterinária CRMV/MS 9193</p>
-						<p className='text-[11px]'>SIPEAGRO MV00802562025</p>
+					<header className='text-center pb-6 mb-4'>
+						<div className='flex items-center justify-center'>
+							<Image
+								src={'/logo.png'}
+								alt='logo'
+								width={100}
+								height={100}
+								draggable={false}
+							/>
+						</div>
+						<div className='flex flex-col'>
+							<h1 className='font-semibold text-xl'>
+								Dra. Regina de Oliveira Maciel
+							</h1>
+							<h2 className='font-normal -mt-1'>
+								Médica Veterinária CRMV/MS 9193
+							</h2>
+							<h2 className='font-normal -mt-1'>SIPEAGRO MV00802562025</h2>
+						</div>
 					</header>
 
 					{/* Tutor / paciente */}
@@ -153,39 +158,40 @@ export default function PrescriptionPreview({
 					</main>
 
 					{/* Rodapé */}
-					<footer className='relative z-10'>
+					<footer className='flex flex-col gap-10 mb-0'>
 						<div className='mb-[5%] flex justify-end'>
-							<div className='text-center text-[11px]'>
+							<div className='text-center text-sm'>
 								<p className='font-semibold'>M.V. Regina de Oliveira Maciel</p>
 								<p>CRMV/MS 9193</p>
 								<p>SIPEAGRO MV00802562025</p>
 							</div>
 						</div>
 
-						<p className='mb-2 text-[11px]'>Campo Grande, {patient.date}.</p>
+						<div className='flex items-center gap-1 w-full'>
+							Campo Grande,
+							<span>{patient.date}</span>
+						</div>
 
-						<div className='space-y-1 text-[clamp(8px,0.9vw,12px)]'>
+						<div className='flex flex-col gap-2'>
 							{/* <div className='flex items-center gap-2'>
-								<GoogleMapsIcon className='size-4 shrink-0' />
-								<span>Rua Celita Lage Brandão, 184. Jd. Itamaracá</span>
+								<GoogleMapsIcon className='w-4 h-4' />
+								Rua Celita Lage Brandão, 184. Jd. Itamaracá - Campo Grande/MS
 							</div> */}
-
 							<div className='flex items-center gap-2'>
-								<WhatsappIcon className='size-4 shrink-0' />
-								<span>(67) 99120-1007</span>
+								<WhatsappIcon className='w-4 h-4' />
+								(67) 99120-1007
 							</div>
 						</div>
 					</footer>
 
-					{/* Patas rodapé */}
-					<div className='pointer-events-none absolute bottom-[-2] right-[-4] w-[30%] rotate-180'>
-						{/* <div className='pointer-events-none absolute left-[-4] top-[-2] w-[30%]'></div> */}
+					{/* Decoração de Patas - Rodapé */}
+					<div className='flex absolute w-[30%] pointer-events-none bottom-0 right-0 justify-end'>
 						<Image
 							src='/paw-decoration.png'
-							alt=''
+							alt='Decoração rodapé'
 							width={300}
 							height={300}
-							className='w-full object-contain'
+							className='object-contain object-bottom'
 						/>
 					</div>
 				</div>

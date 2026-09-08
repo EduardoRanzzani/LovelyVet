@@ -1,4 +1,3 @@
-
 'use client';
 import { PetsWithRelations } from '@/api/schema/pets.schema';
 import { PrescriptionItemsWithRelations } from '@/api/schema/prescriptions-items.schema';
@@ -77,13 +76,13 @@ const PrescriptionLayout = ({
 
 				<div className='h-full relative flex flex-col z-10 p-0 print:p-0'>
 					{/* Decoração de Patas - Topo */}
-					<div className='absolute w-full pointer-events-none -top-14 -left-14'>
+					<div className='pointer-events-none absolute left-[-4] top-[-2] w-[30%]'>
 						<Image
 							src='/paw-decoration.png'
-							alt='Decoração topo'
+							alt=''
 							width={300}
 							height={300}
-							className='object-contain object-top'
+							className='w-full object-contain'
 						/>
 					</div>
 

@@ -155,26 +155,30 @@ export default function ClinicalDocumentBuilder({
 						</TabsTrigger>
 					</TabsList>
 
-					<Button
-						type='button'
-						onClick={handleSavePrescription}
-						disabled={
-							!canSavePrescription || savePrescriptionAction.isExecuting
-						}
-					>
-						<SaveIcon className='size-4' />
-						{savePrescriptionAction.isExecuting ? 'Salvando...' : 'Salvar'}
-					</Button>
+					<div className={'flex flex-row gap-2 w-80'}>
+						<Button
+							type='button'
+							onClick={handleSavePrescription}
+							disabled={
+								!canSavePrescription || savePrescriptionAction.isExecuting
+							}
+							className={'flex-1'}
+						>
+							<SaveIcon className='size-4' />
+							{savePrescriptionAction.isExecuting ? 'Salvando...' : 'Salvar'}
+						</Button>
 
-					<Button
-						type='button'
-						variant='outline'
-						onClick={handlePrintPrescription}
-						disabled={!canPrintPrescription}
-					>
-						<PrinterIcon className='size-4' />
-						Imprimir
-					</Button>
+						<Button
+							type='button'
+							variant='outline'
+							onClick={handlePrintPrescription}
+							disabled={!canPrintPrescription}
+							className={'flex-1'}
+						>
+							<PrinterIcon className='size-4' />
+							Imprimir
+						</Button>
+					</div>
 				</div>
 
 				<TabsContent value='prescription' className='mt-6'>
