@@ -18,14 +18,20 @@ import {
 } from '@/components/ui/select';
 import { useRef, useState } from 'react';
 import { useReactToPrint } from 'react-to-print';
-import { savePrescriptionDocument } from '@/api/actions/prescriptions.actions';
 import { REGINA_DOCTOR_ID } from '@/api/config/consts';
 import { SaveIcon } from 'lucide-react';
 import { useAction } from 'next-safe-action/hooks';
 import { toast } from 'sonner';
+import type { PrescriptionDocumentData } from '@/api/schema/prescription-document.schema';
+import {
+	savePrescriptionDocument,
+	updatePrescriptionDocument,
+} from '@/api/actions/prescriptions.actions';
 
 interface ClinicalDocumentBuilderProps {
 	petId: string;
+	prescriptionId?: string;
+	initialPrescription?: PrescriptionDocumentData | null;
 	patient: PrescriptionPatientData;
 	tutors: ClinicalDocumentTutor[];
 }
@@ -37,14 +43,20 @@ export interface ClinicalDocumentTutor {
 
 export default function ClinicalDocumentBuilder({
 	petId,
+	prescriptionId,
+	initialPrescription,
 	patient,
 	tutors,
 }: ClinicalDocumentBuilderProps) {
 	const [prescriptionItems, setPrescriptionItems] = useState<
 		PrescriptionDraftItem[]
-	>([]);
-	const [administrationRoute, setAdministrationRoute] = useState('');
-	const [selectedTutorId, setSelectedTutorId] = useState(tutors[0]?.id ?? '');
+	>(initialPrescription?.items ?? []);
+	const [administrationRoute, setAdministrationRoute] = useState(
+		initialPrescription?.administrationRoute ?? '',
+	);
+	const [selectedTutorId, setSelectedTutorId] = useState(
+		initialPrescription?.tutor.id ?? tutors[0]?.id ?? '',
+	);
 	const selectedTutor = tutors.find((tutor) => tutor.id === selectedTutorId);
 	const selectedTutorName = selectedTutor?.name ?? '-';
 
@@ -106,17 +118,39 @@ export default function ClinicalDocumentBuilder({
 		},
 	});
 
+	const updatePrescriptionAction = useAction(updatePrescriptionDocument, {
+		onSuccess: () => {
+			toast.success('Receita atualizada com sucesso!');
+		},
+		onError: ({ error }) => {
+			console.error(error);
+			toast.error('Não foi possível atualizar a receita.');
+		},
+	});
+
 	const handleSavePrescription = () => {
 		if (!canSavePrescription) {
 			return;
 		}
-		savePrescriptionAction.execute({
+
+		const payload = {
 			petId,
 			tutorId: selectedTutorId,
 			doctorId: REGINA_DOCTOR_ID,
 			administrationRoute,
 			items: prescriptionItems,
-		});
+		};
+
+		if (prescriptionId) {
+			updatePrescriptionAction.execute({
+				...payload,
+				prescriptionId,
+			});
+
+			return;
+		}
+
+		savePrescriptionAction.execute(payload);
 	};
 
 	return (
@@ -144,28 +178,36 @@ export default function ClinicalDocumentBuilder({
 			<Tabs defaultValue='prescription'>
 				<div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
 					<TabsList>
-						<TabsTrigger value='prescription'>
+						<TabsTrigger value='prescription' className={'w-60'}>
 							<FileTextIcon className='size-4' />
 							Receita
 						</TabsTrigger>
 
-						<TabsTrigger value='referral'>
+						<TabsTrigger value='referral' className={'w-60'}>
 							<StethoscopeIcon className='size-4' />
 							Encaminhamento
 						</TabsTrigger>
 					</TabsList>
 
-					<div className={'flex flex-row gap-2 w-80'}>
+					<div className={'flex flex-row gap-2'}>
 						<Button
 							type='button'
 							onClick={handleSavePrescription}
 							disabled={
-								!canSavePrescription || savePrescriptionAction.isExecuting
+								!canSavePrescription ||
+								savePrescriptionAction.isExecuting ||
+								updatePrescriptionAction.isExecuting
 							}
-							className={'flex-1'}
+							className={'w-40'}
 						>
 							<SaveIcon className='size-4' />
-							{savePrescriptionAction.isExecuting ? 'Salvando...' : 'Salvar'}
+
+							{savePrescriptionAction.isExecuting ||
+							updatePrescriptionAction.isExecuting
+								? 'Salvando...'
+								: prescriptionId
+									? 'Atualizar'
+									: 'Salvar'}
 						</Button>
 
 						<Button
@@ -173,7 +215,7 @@ export default function ClinicalDocumentBuilder({
 							variant='outline'
 							onClick={handlePrintPrescription}
 							disabled={!canPrintPrescription}
-							className={'flex-1'}
+							className={'w-40'}
 						>
 							<PrinterIcon className='size-4' />
 							Imprimir
@@ -183,17 +225,21 @@ export default function ClinicalDocumentBuilder({
 
 				<TabsContent value='prescription' className='mt-6'>
 					<div className='rounded-xl border bg-card p-6'>
-						<div className='mb-6'>
-							<h2 className='text-lg font-semibold'>Receita</h2>
-
-							<p className='text-sm text-muted-foreground'>
-								Adicione os medicamentos e as orientações da receita.
-							</p>
-						</div>
-
 						<div className='grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(500px,0.9fr)]'>
 							<div className='min-w-0'>
+								<div className='mb-3'>
+									<h3 className='font-semibold'>Receita</h3>
+
+									<p className='text-sm text-muted-foreground'>
+										Adicione os medicamentos e as orientações da receita.
+									</p>
+								</div>
+
 								<PrescriptionBuilder
+									initialItems={initialPrescription?.items ?? []}
+									initialAdministrationRoute={
+										initialPrescription?.administrationRoute ?? ''
+									}
 									onItemsChange={setPrescriptionItems}
 									onAdministrationRouteChange={setAdministrationRoute}
 								/>

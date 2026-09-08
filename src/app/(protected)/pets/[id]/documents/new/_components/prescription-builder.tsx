@@ -32,11 +32,15 @@ interface PrescriptionDraft {
 }
 
 interface PrescriptionBuilderProps {
+	initialItems?: PrescriptionDraftItem[];
+	initialAdministrationRoute?: string;
 	onItemsChange?: (items: PrescriptionDraftItem[]) => void;
 	onAdministrationRouteChange?: (value: string) => void;
 }
 
 export default function PrescriptionBuilder({
+	initialItems = [],
+	initialAdministrationRoute = '',
 	onItemsChange,
 	onAdministrationRouteChange,
 }: PrescriptionBuilderProps) {
@@ -46,8 +50,8 @@ export default function PrescriptionBuilder({
 
 	const form = useForm<PrescriptionDraft>({
 		defaultValues: {
-			administrationRoute: '',
-			items: [],
+			administrationRoute: initialAdministrationRoute,
+			items: initialItems,
 		},
 	});
 

@@ -14,15 +14,20 @@ import { requireStaff } from '@/lib/security/authorization';
 import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import ClinicalDocumentBuilder from './_components/clinical-document-builder';
+import { getPrescriptionDocumentById } from '@/api/actions/prescriptions.actions';
 
 interface NewClinicalDocumentPageProps {
 	params: Promise<{
 		id: string;
 	}>;
+	searchParams: Promise<{
+		prescriptionId?: string;
+	}>;
 }
 
 export default async function NewClinicalDocumentPage({
 	params,
+	searchParams,
 }: NewClinicalDocumentPageProps) {
 	await connection();
 
@@ -30,9 +35,24 @@ export default async function NewClinicalDocumentPage({
 	requireStaff(context);
 
 	const { id } = await params;
+	const { prescriptionId } = await searchParams;
+
 	const pet = await getPetById(id);
 
 	if (!pet) {
+		notFound();
+	}
+
+	const prescription = prescriptionId
+		? await getPrescriptionDocumentById(prescriptionId)
+		: null;
+
+	if (
+		prescriptionId &&
+		(!prescription ||
+			prescription.petId !== pet.id ||
+			!prescription.documentData)
+	) {
 		notFound();
 	}
 
@@ -106,6 +126,8 @@ export default async function NewClinicalDocumentPage({
 
 				<ClinicalDocumentBuilder
 					petId={pet.id}
+					prescriptionId={prescription?.id}
+					initialPrescription={prescription?.documentData ?? null}
 					tutors={tutors}
 					patient={{
 						name: pet.name,
