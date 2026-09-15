@@ -1,8 +1,7 @@
 'use server';
 
 import { db } from '@/db';
-import { doctorsTable, shiftsTable } from '@/db/schema';
-import { sendWhatsappMessageInternal } from '@/lib/integrations/whatsapp';
+import { shiftsTable } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
@@ -13,7 +12,7 @@ import {
 	startOfMonth,
 	subMonths,
 } from 'date-fns';
-import { and, eq, gte, lte } from 'drizzle-orm';
+import { and, gte, lte } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { monthNames } from '../config/consts';
 import {
@@ -88,7 +87,7 @@ export const upsertShift = actionClient
 		const endDate = addHours(startTime, Number(duration));
 		const amount = amountInCents ? amountInCents * 100 : null;
 
-		const isNewRegistration = !parsedInput.id;
+		// const isNewRegistration = !parsedInput.id;
 
 		const shiftResult = await db.transaction(async (tx) => {
 			const [insertedShift] = await tx
@@ -120,37 +119,37 @@ export const upsertShift = actionClient
 			if (!insertedShift) throw new Error('Erro ao salvar plantão');
 		});
 
-		if (isNewRegistration) {
-			const doctor = await db.query.doctorsTable.findFirst({
-				where: eq(doctorsTable.id, doctorId),
-				with: {
-					user: true,
-				},
-			});
+		// if (isNewRegistration) {
+		// 	const doctor = await db.query.doctorsTable.findFirst({
+		// 		where: eq(doctorsTable.id, doctorId),
+		// 		with: {
+		// 			user: true,
+		// 		},
+		// 	});
 
-			if (doctor?.phone) {
-				// Formatador para: "23/04/2026 às 18:30"
-				const formattedDate = new Intl.DateTimeFormat('pt-BR', {
-					dateStyle: 'short',
-					timeStyle: 'short',
-				})
-					.format(startTime)
-					.replace(',', ' às');
+		// 	if (doctor?.phone) {
+		// 		// Formatador para: "23/04/2026 às 18:30"
+		// 		const formattedDate = new Intl.DateTimeFormat('pt-BR', {
+		// 			dateStyle: 'short',
+		// 			timeStyle: 'short',
+		// 		})
+		// 			.format(startTime)
+		// 			.replace(',', ' às');
 
-				let doctorName = doctor.gender === 'male' ? 'Dr. ' : 'Dra. ';
-				doctorName += doctor.user.name.substring(
-					0,
-					doctor.user.name.indexOf(' '),
-				);
+		// 		let doctorName = doctor.gender === 'male' ? 'Dr. ' : 'Dra. ';
+		// 		doctorName += doctor.user.name.substring(
+		// 			0,
+		// 			doctor.user.name.indexOf(' '),
+		// 		);
 
-				await sendWhatsappMessageInternal({
-					number: '55' + doctor.phone.replace(/\D/g, ''),
-					text: `Olá ${doctorName}, seu plantão em ${clinicName} foi agendado para ${formattedDate}.`,
-					delay: 1200,
-					linkPreview: false,
-				});
-			}
-		}
+		// 		await sendWhatsappMessageInternal({
+		// 			number: '55' + doctor.phone.replace(/\D/g, ''),
+		// 			text: `Olá ${doctorName}, seu plantão em ${clinicName} foi agendado para ${formattedDate}.`,
+		// 			delay: 1200,
+		// 			linkPreview: false,
+		// 		});
+		// 	}
+		// }
 
 		revalidatePath('/shifts');
 		return shiftResult;
