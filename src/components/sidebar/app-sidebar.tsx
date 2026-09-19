@@ -16,6 +16,7 @@ import { useUser } from '@clerk/nextjs';
 import {
 	CalculatorIcon,
 	CalendarIcon,
+	CalendarDaysIcon,
 	ChevronRightIcon,
 	CogIcon,
 	HospitalIcon,
@@ -85,6 +86,12 @@ const AppSidebar = () => {
 			url: '/appointments',
 			icon: CalendarIcon,
 			roles: ['admin', 'doctor', 'customer'],
+		},
+		{
+			title: 'Agenda',
+			url: '/agenda',
+			icon: CalendarDaysIcon,
+			roles: ['admin', 'doctor'],
 		},
 		{
 			title: 'Plantões',

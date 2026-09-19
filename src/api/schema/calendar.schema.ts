@@ -10,7 +10,7 @@ export type CalendarAppointmentEntry = {
 	title: string;
 	startAt: Date;
 	endAt: Date | null;
-	blocksSchedule: true;
+	blocksSchedule: boolean;
 	status: AppointmentStatus;
 	pet: {
 		id: string;
@@ -26,7 +26,7 @@ export type CalendarShiftEntry = {
 	title: string;
 	startAt: Date;
 	endAt: Date;
-	blocksSchedule: true;
+	blocksSchedule: boolean;
 	clinicId: string | null;
 };
 
@@ -37,7 +37,7 @@ export type CalendarPersonalEntry = {
 	title: string;
 	startAt: Date;
 	endAt: Date;
-	blocksSchedule: true;
+	blocksSchedule: boolean;
 };
 
 export type CalendarCareReminderEntry = {

@@ -24,6 +24,7 @@ export const getCalendarEntries = async (
 	monthName?: string,
 	extraMonths?: boolean,
 	doctorId?: string,
+	year?: number,
 ): Promise<CalendarEntry[]> => {
 	const context = await requireAuthContext();
 
@@ -44,7 +45,8 @@ export const getCalendarEntries = async (
 	}
 
 	const now = new Date();
-	const year = now.getFullYear();
+	const referenceYear =
+		year && Number.isInteger(year) ? year : now.getFullYear();
 
 	const monthIndex = monthName
 		? monthNames.indexOf(monthName.toLowerCase())
@@ -52,7 +54,7 @@ export const getCalendarEntries = async (
 
 	const safeMonthIndex = monthIndex === -1 ? now.getMonth() : monthIndex;
 
-	const referenceDate = new Date(year, safeMonthIndex, 1);
+	const referenceDate = new Date(referenceYear, safeMonthIndex, 1);
 
 	let startRange = startOfMonth(referenceDate);
 	let endRange = endOfMonth(referenceDate);
@@ -181,7 +183,7 @@ export const getCalendarEntries = async (
 			title: `Atendimento - ${appointment.pet.name}`,
 			startAt: appointment.scheduledAt,
 			endAt: appointment.endsAt,
-			blocksSchedule: true,
+			blocksSchedule: !['cancelled', 'no_show'].includes(appointment.status),
 			status: appointment.status,
 			pet: {
 				id: appointment.pet.id,
