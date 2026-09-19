@@ -4,7 +4,9 @@ import { db } from '@/db';
 import {
 	appointmentItemsTable,
 	appointmentsTable,
+	calendarEventsTable,
 	petsTable,
+	shiftsTable,
 } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
 import {
@@ -14,8 +16,28 @@ import {
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
 import { assertCanAccessPet } from '@/lib/security/pet-access';
-import { addMonths, endOfMonth, startOfMonth, subMonths } from 'date-fns';
-import { and, count, desc, eq, exists, gte, ilike, lte, ne } from 'drizzle-orm';
+import {
+	addMinutes,
+	addMonths,
+	endOfMonth,
+	startOfMonth,
+	subMonths,
+} from 'date-fns';
+import {
+	and,
+	count,
+	desc,
+	eq,
+	exists,
+	gt,
+	gte,
+	ilike,
+	lt,
+	lte,
+	ne,
+	notInArray,
+	sql,
+} from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
 import { MAX_PAGE_SIZE, monthNames, PaginatedData } from '../config/consts';
@@ -98,14 +120,6 @@ export const getAppointmentsPaginated = async (
 
 	const pageCount = Math.ceil(totalCount / limit);
 
-	/*
-	 * Mesmo depois de restringir quais appointments
-	 * o customer pode consultar, um pet pode possuir
-	 * múltiplos tutores.
-	 *
-	 * Não devemos enviar os dados pessoais dos outros
-	 * tutores ao navegador.
-	 */
 	const safeData: AppointmentListItem[] = data.map((appointment) => ({
 		...appointment,
 		doctor: {
@@ -244,11 +258,11 @@ export const upsertAppointment = actionClient
 		try {
 			await db.transaction(async (tx) => {
 				/*
-				 * Não confiamos no preço
-				 * enviado pelo browser.
+				 * Não confiamos em preço nem duração
+				 * enviados pelo browser.
 				 *
-				 * O valor oficial vem dos
-				 * serviços armazenados no banco.
+				 * Os valores oficiais vêm dos serviços
+				 * armazenados no banco.
 				 */
 				const servicesData = await tx.query.servicesTable.findMany({
 					where: (table, { inArray }) => inArray(table.id, services),
@@ -271,6 +285,43 @@ export const upsertAppointment = actionClient
 				);
 
 				/*
+				 * O término do atendimento é calculado
+				 * exclusivamente no backend.
+				 *
+				 * Dessa forma o cliente não consegue
+				 * manipular a duração pelo payload.
+				 */
+				const totalDurationMinutes = servicesData.reduce(
+					(total, service) => total + service.durationMinutes,
+					0,
+				);
+
+				if (totalDurationMinutes <= 0) {
+					throw new Error('A duração total do atendimento é inválida');
+				}
+
+				const endsAt = addMinutes(data.scheduledAt, totalDurationMinutes);
+
+				/*
+				 * Serializa alterações da agenda
+				 * deste veterinário.
+				 *
+				 * Sem isso duas requisições concorrentes
+				 * poderiam consultar a disponibilidade
+				 * simultaneamente e ambas inserir
+				 * appointments no mesmo intervalo.
+				 *
+				 * O lock dura somente até o término
+				 * desta transaction.
+				 */
+				await tx.execute(sql`
+					SELECT pg_advisory_xact_lock(
+						hashtext('lovelyvet:doctor_schedule'),
+						hashtext(${data.doctorId})
+					)
+				`);
+
+				/*
 				 * Customer nunca controla
 				 * diretamente o status.
 				 */
@@ -286,26 +337,98 @@ export const upsertAppointment = actionClient
 					petId: data.petId,
 					doctorId: data.doctorId,
 					scheduledAt: data.scheduledAt,
+					endsAt,
 					status,
 					notes: data.notes,
 					totalPriceInCents,
 				};
 
 				/*
-				 * Validação de conflito
-				 * de horário.
+				 * Um intervalo conflita quando:
+				 *
+				 * existingStart < requestedEnd
+				 * &&
+				 * existingEnd > requestedStart
+				 *
+				 * Portanto:
+				 *
+				 * 08:00 - 08:30
+				 * 08:30 - 09:00
+				 *
+				 * é permitido.
+				 *
+				 * Enquanto:
+				 *
+				 * 08:00 - 08:30
+				 * 08:20 - 09:00
+				 *
+				 * é conflito.
 				 */
-				const conflict = await tx.query.appointmentsTable.findFirst({
+				const appointmentConflict = await tx.query.appointmentsTable.findFirst({
+					columns: {
+						id: true,
+					},
 					where: and(
 						eq(appointmentsTable.doctorId, data.doctorId),
-						eq(appointmentsTable.scheduledAt, data.scheduledAt),
+						lt(appointmentsTable.scheduledAt, endsAt),
+						gt(appointmentsTable.endsAt, data.scheduledAt),
+						notInArray(appointmentsTable.status, ['cancelled', 'no_show']),
 						id ? ne(appointmentsTable.id, id) : undefined,
 					),
 				});
 
-				if (conflict) {
+				if (appointmentConflict) {
 					throw new Error(
-						'O veterinário já possui um agendamento neste horário.',
+						'O horário selecionado não está disponível para este veterinário.',
+					);
+				}
+
+				/*
+				 * Um plantão ocupa o intervalo inteiro.
+				 *
+				 * Não revelamos detalhes do plantão
+				 * para quem está tentando realizar
+				 * um agendamento.
+				 */
+				const shiftConflict = await tx.query.shiftsTable.findFirst({
+					columns: {
+						id: true,
+					},
+					where: and(
+						eq(shiftsTable.doctorId, data.doctorId),
+						lt(shiftsTable.startTime, endsAt),
+						gt(shiftsTable.endTime, data.scheduledAt),
+					),
+				});
+
+				if (shiftConflict) {
+					throw new Error(
+						'O horário selecionado não está disponível para este veterinário.',
+					);
+				}
+
+				/*
+				 * Compromissos pessoais também
+				 * bloqueiam o intervalo.
+				 *
+				 * Retornamos somente indisponibilidade,
+				 * nunca título ou descrição do evento.
+				 */
+				const calendarEventConflict =
+					await tx.query.calendarEventsTable.findFirst({
+						columns: {
+							id: true,
+						},
+						where: and(
+							eq(calendarEventsTable.doctorId, data.doctorId),
+							lt(calendarEventsTable.startTime, endsAt),
+							gt(calendarEventsTable.endTime, data.scheduledAt),
+						),
+					});
+
+				if (calendarEventConflict) {
+					throw new Error(
+						'O horário selecionado não está disponível para este veterinário.',
 					);
 				}
 
@@ -363,6 +486,7 @@ export const upsertAppointment = actionClient
 			};
 		} catch (error: unknown) {
 			console.error('Erro no upsert:', error);
+
 			if (error instanceof Error) {
 				throw error;
 			}
