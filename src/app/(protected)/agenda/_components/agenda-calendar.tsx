@@ -2,7 +2,10 @@
 
 import { getCalendarEventDetails } from '@/api/actions/calendar-events.actions';
 import { monthNames } from '@/api/config/consts';
-import type { CalendarEntry } from '@/api/schema/calendar.schema';
+import type {
+	CalendarCareReminderEntry,
+	CalendarEntry,
+} from '@/api/schema/calendar.schema';
 import type { DoctorsWithRelations } from '@/api/schema/doctors.schema';
 import { CustomCalendar } from '@/components/ui/custom-calendar';
 import { Dialog } from '@/components/ui/dialog';
@@ -38,6 +41,7 @@ import CalendarEventForm, {
 	type PersonalCalendarEventDetails,
 } from './calendar-event-form';
 import LoadingDialog from '@/components/ui/loading';
+import CareReminderDialog from './care-reminder-dialog';
 
 interface AgendaCalendarClientProps {
 	entriesPromise: Promise<CalendarEntry[]>;
@@ -55,36 +59,28 @@ const AgendaCalendarClient = ({
 	selectedDoctorId,
 }: AgendaCalendarClientProps) => {
 	const entries = use(entriesPromise);
-
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
-
 	const [isFormOpen, setIsFormOpen] = useState(false);
-
 	const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-
 	const [selectedPersonalEvent, setSelectedPersonalEvent] = useState<
 		PersonalCalendarEventDetails | undefined
 	>();
-
+	const [selectedCareReminder, setSelectedCareReminder] = useState<
+		CalendarCareReminderEntry | undefined
+	>();
 	const monthParam = searchParams.get('month');
-
 	const yearParam = Number(searchParams.get('year'));
-
 	const now = new Date();
-
 	const monthIndex = monthParam
 		? monthNames.indexOf(monthParam.toLowerCase())
 		: now.getMonth();
-
 	const safeMonthIndex = monthIndex >= 0 ? monthIndex : now.getMonth();
-
 	const safeYear =
 		Number.isInteger(yearParam) && yearParam > 0
 			? yearParam
 			: now.getFullYear();
-
 	const currentMonth = new Date(safeYear, safeMonthIndex, 1);
 
 	const eventDetailsAction = useAction(getCalendarEventDetails, {
@@ -113,33 +109,37 @@ const AgendaCalendarClient = ({
 
 	const handleMonthChange = (newDate: Date) => {
 		const params = new URLSearchParams(searchParams);
-
 		params.set('month', monthNames[newDate.getMonth()]);
-
 		params.set('year', String(newDate.getFullYear()));
-
 		router.push(`${pathname}?${params.toString()}`);
 	};
 
 	const handleDoctorChange = (doctorId: string) => {
 		const params = new URLSearchParams(searchParams);
-
 		if (doctorId === 'all') {
 			params.delete('doctor');
 		} else {
 			params.set('doctor', doctorId);
 		}
-
 		router.push(`${pathname}?${params.toString()}`);
 	};
 
 	const handleNewEvent = (date: Date) => {
+		setSelectedCareReminder(undefined);
 		setSelectedPersonalEvent(undefined);
 		setSelectedDate(date);
 		setIsFormOpen(true);
 	};
 
+	const handleCareReminder = (reminder: CalendarCareReminderEntry) => {
+		setSelectedPersonalEvent(undefined);
+		setSelectedDate(null);
+		setSelectedCareReminder(reminder);
+		setIsFormOpen(true);
+	};
+
 	const handleEditPersonalEvent = (id: string) => {
+		setSelectedCareReminder(undefined);
 		eventDetailsAction.execute({ id });
 	};
 
@@ -147,6 +147,7 @@ const AgendaCalendarClient = ({
 		setIsFormOpen(false);
 		setSelectedDate(null);
 		setSelectedPersonalEvent(undefined);
+		setSelectedCareReminder(undefined);
 
 		router.refresh();
 	};
@@ -228,8 +229,6 @@ const AgendaCalendarClient = ({
 	};
 
 	const renderEntry = (entry: CalendarEntry, date: Date) => {
-		const isPersonal = entry.kind === 'personal';
-
 		const isStart =
 			entry.kind !== 'care_reminder' &&
 			isSameDay(new Date(entry.startAt), date);
@@ -249,14 +248,21 @@ const AgendaCalendarClient = ({
 				onClick={(event) => {
 					event.stopPropagation();
 
-					if (isPersonal) {
+					if (entry.kind === 'personal') {
 						handleEditPersonalEvent(entry.id);
+
+						return;
+					}
+
+					if (entry.kind === 'care_reminder') {
+						handleCareReminder(entry);
 					}
 				}}
 				className={cn(
 					'rounded-sm border-l-2 p-1.5 text-[10px]',
 					className,
-					isPersonal && 'cursor-pointer hover:opacity-80',
+					(entry.kind === 'personal' || entry.kind === 'care_reminder') &&
+						'cursor-pointer hover:opacity-80',
 					entry.kind === 'appointment' && !entry.blocksSchedule && 'opacity-50',
 				)}
 			>
@@ -377,6 +383,7 @@ const AgendaCalendarClient = ({
 					if (!open) {
 						setSelectedDate(null);
 						setSelectedPersonalEvent(undefined);
+						setSelectedCareReminder(undefined);
 					}
 				}}
 			>
@@ -389,7 +396,14 @@ const AgendaCalendarClient = ({
 					onDayClick={handleNewEvent}
 				/>
 
-				{isFormOpen && (
+				{isFormOpen && selectedCareReminder && (
+					<CareReminderDialog
+						reminder={selectedCareReminder}
+						onSuccess={handleFormSuccess}
+					/>
+				)}
+
+				{isFormOpen && !selectedCareReminder && (
 					<CalendarEventForm
 						key={
 							selectedPersonalEvent?.id ??

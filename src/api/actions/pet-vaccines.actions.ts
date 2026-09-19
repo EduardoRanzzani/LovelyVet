@@ -107,19 +107,14 @@ export const insertVaccine = actionClient
 			 * Não o reabrimos caso alguém edite
 			 * posteriormente o registro da vacina.
 			 */
-			if (existingReminder?.status === 'completed') {
+			if (existingReminder && existingReminder.status !== 'pending') {
 				return;
 			}
 
 			if (existingReminder) {
 				await tx
 					.update(careRemindersTable)
-					.set({
-						...reminderData,
-						status: 'pending',
-						completedAt: null,
-						updatedAt: new Date(),
-					})
+					.set({ ...reminderData, updatedAt: new Date() })
 					.where(eq(careRemindersTable.id, existingReminder.id));
 
 				return;
