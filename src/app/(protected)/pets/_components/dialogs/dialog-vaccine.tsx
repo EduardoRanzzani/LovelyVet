@@ -24,7 +24,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { BanIcon, Loader2Icon, SaveIcon, SyringeIcon } from 'lucide-react';
 import { useAction } from 'next-safe-action/hooks';
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 
 interface DialogVaccineProps {
@@ -42,11 +42,17 @@ const DialogVaccine = ({ petId, doctors }: DialogVaccineProps) => {
 			petId,
 			name: '',
 			applicationDate: new Date(),
+			nextDoseType: 'booster' as const,
 			daysToNextDose: undefined,
 			lotNumber: '',
 			manufacturer: '',
 			doctorId: REGINA_DOCTOR_ID,
 		},
+	});
+
+	const nextDoseType = useWatch({
+		control: form.control,
+		name: 'nextDoseType',
 	});
 
 	const insertVaccineAction = useAction(insertVaccine, {
@@ -55,9 +61,10 @@ const DialogVaccine = ({ petId, doctors }: DialogVaccineProps) => {
 			setOpen(false);
 			form.reset();
 		},
-		onError: (err) => {
-			console.error('Erro ao salvar o registro de vacinação:', { err });
-			toast.error('Ocorreu um erro ao salvar o registro de vacinação.');
+		onError: ({ error }) => {
+			toast.error(
+				error.serverError ?? 'Não foi possível salvar o registro de vacinação.',
+			);
 		},
 	});
 
@@ -71,8 +78,6 @@ const DialogVaccine = ({ petId, doctors }: DialogVaccineProps) => {
 	const onSubmit = (data: CreateVaccineSchema) => {
 		insertVaccineAction.execute(data);
 	};
-
-	console.log('Errors:', form.formState.errors);
 
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
@@ -111,25 +116,60 @@ const DialogVaccine = ({ petId, doctors }: DialogVaccineProps) => {
 							error={form.formState.errors.name?.message}
 						/>
 
-						<span className='flex flex-col lg:flex-row gap-4 w-full'>
+						<div className='flex flex-col gap-4'>
 							<DatePickerForm
 								label='Data da Aplicação'
 								name='applicationDate'
 								control={form.control}
-								className='w-full lg:flex-1'
+								className='w-full'
 								error={form.formState.errors.applicationDate?.message}
 							/>
 
-							<InputForm
-								label='Dias para Próxima Dose'
-								name='daysToNextDose'
-								type='number'
-								placeholder='Ex: 30'
-								register={form.register}
-								className='w-full lg:flex-1'
-								error={form.formState.errors.daysToNextDose?.message}
+							<SelectForm
+								label='Próxima dose'
+								name='nextDoseType'
+								control={form.control}
+								options={[
+									{
+										value: 'booster',
+										label: 'Reforço em alguns dias',
+									},
+									{
+										value: 'annual',
+										label: 'Reforço anual',
+									},
+									{
+										value: 'none',
+										label: 'Sem próxima dose',
+									},
+								]}
+								error={form.formState.errors.nextDoseType?.message}
 							/>
-						</span>
+
+							{nextDoseType === 'booster' && (
+								<InputForm
+									label='Dias para Próxima Dose'
+									name='daysToNextDose'
+									type='number'
+									placeholder='Ex: 21 ou 30'
+									register={form.register}
+									error={form.formState.errors.daysToNextDose?.message}
+								/>
+							)}
+
+							{nextDoseType === 'annual' && (
+								<p className='text-sm text-muted-foreground'>
+									O lembrete será criado automaticamente para 1 ano após a
+									aplicação.
+								</p>
+							)}
+
+							{nextDoseType === 'none' && (
+								<p className='text-sm text-muted-foreground'>
+									Nenhum lembrete de próxima dose será criado.
+								</p>
+							)}
+						</div>
 
 						<SelectForm
 							label='Veterinário'
