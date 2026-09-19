@@ -32,10 +32,12 @@ import {
 	gt,
 	gte,
 	ilike,
+	isNull,
 	lt,
 	lte,
 	ne,
 	notInArray,
+	or,
 	sql,
 } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
@@ -45,6 +47,7 @@ import {
 	AppointmentListItem,
 	AppointmentsWithRelations,
 	createAppointmentSchema,
+	getDoctorAvailabilitySchema,
 } from '../schema/appointments.schema';
 
 export const getAppointmentsPaginated = async (
@@ -217,6 +220,172 @@ export const getAppointments = async (
 
 	return appointments as AppointmentsWithRelations[];
 };
+
+export const getDoctorAvailability = actionClient
+	.schema(getDoctorAvailabilitySchema)
+	.action(async ({ parsedInput }) => {
+		await requireAuthContext();
+
+		const { doctorId, serviceIds, dayStart, dayEnd, appointmentId } =
+			parsedInput;
+
+		/*
+		 * Não confiamos na duração enviada pelo navegador.
+		 * Ela é sempre derivada dos serviços no banco.
+		 */
+		const servicesData = await db.query.servicesTable.findMany({
+			columns: {
+				id: true,
+				durationMinutes: true,
+			},
+			where: (table, { inArray }) => inArray(table.id, serviceIds),
+		});
+
+		if (servicesData.length !== new Set(serviceIds).size) {
+			throw new Error('Um ou mais serviços selecionados são inválidos.');
+		}
+
+		const durationMinutes = servicesData.reduce(
+			(total, service) => total + service.durationMinutes,
+			0,
+		);
+
+		if (durationMinutes <= 0) {
+			throw new Error('A duração dos serviços selecionados é inválida.');
+		}
+
+		/*
+		 * Somente buscamos intervalos ocupados.
+		 *
+		 * Nenhuma informação privada é devolvida ao cliente:
+		 * nem título de calendar_event,
+		 * nem clínica,
+		 * nem pet de outro atendimento.
+		 */
+		const [appointments, shifts, personalEvents] = await Promise.all([
+			db.query.appointmentsTable.findMany({
+				where: and(
+					eq(appointmentsTable.doctorId, doctorId),
+					lt(appointmentsTable.scheduledAt, dayEnd),
+					or(
+						gt(appointmentsTable.endsAt, dayStart),
+						isNull(appointmentsTable.endsAt),
+					),
+					notInArray(appointmentsTable.status, ['cancelled', 'no_show']),
+					appointmentId ? ne(appointmentsTable.id, appointmentId) : undefined,
+				),
+
+				columns: {
+					id: true,
+					scheduledAt: true,
+					endsAt: true,
+				},
+
+				with: {
+					items: {
+						columns: {},
+						with: { service: { columns: { durationMinutes: true } } },
+					},
+				},
+			}),
+
+			db.query.shiftsTable.findMany({
+				where: and(
+					eq(shiftsTable.doctorId, doctorId),
+					lt(shiftsTable.startTime, dayEnd),
+					gt(shiftsTable.endTime, dayStart),
+				),
+
+				columns: {
+					startTime: true,
+					endTime: true,
+				},
+			}),
+
+			db.query.calendarEventsTable.findMany({
+				where: and(
+					eq(calendarEventsTable.doctorId, doctorId),
+					lt(calendarEventsTable.startTime, dayEnd),
+					gt(calendarEventsTable.endTime, dayStart),
+				),
+
+				columns: { startTime: true, endTime: true },
+			}),
+		]);
+
+		const busyIntervals = [
+			...appointments.map((appointment) => {
+				/*
+				 * endsAt já é preenchido pelos appointments
+				 * novos.
+				 *
+				 * Este fallback mantém a consulta robusta
+				 * caso algum registro legado apareça.
+				 */
+				const fallbackDuration =
+					appointment.items.reduce(
+						(total, item) => total + item.service.durationMinutes,
+						0,
+					) || 30;
+
+				return {
+					start: appointment.scheduledAt,
+					end:
+						appointment.endsAt ??
+						addMinutes(appointment.scheduledAt, fallbackDuration),
+				};
+			}),
+
+			...shifts.map((shift) => ({
+				start: shift.startTime,
+				end: shift.endTime,
+			})),
+
+			...personalEvents.map((event) => ({
+				start: event.startTime,
+				end: event.endTime,
+			})),
+		].filter((interval) => interval.start < dayEnd && interval.end > dayStart);
+
+		/*
+		 * Mantemos os mesmos 5 minutos já usados
+		 * pelo DateTimePicker atual.
+		 */
+		const availableStarts: string[] = [];
+
+		for (
+			let cursor = new Date(dayStart);
+			cursor < dayEnd;
+			cursor = addMinutes(cursor, 5)
+		) {
+			const candidateEnd = addMinutes(cursor, durationMinutes);
+
+			/*
+			 * Não oferecemos um horário cujo atendimento
+			 * terminaria no dia seguinte.
+			 */
+			if (candidateEnd > dayEnd) {
+				break;
+			}
+
+			const hasConflict = busyIntervals.some(
+				(interval) => interval.start < candidateEnd && interval.end > cursor,
+			);
+
+			if (!hasConflict) {
+				availableStarts.push(cursor.toISOString());
+			}
+		}
+
+		return {
+			doctorId,
+			serviceIds: [...serviceIds].sort(),
+			dayStart: dayStart.toISOString(),
+			dayEnd: dayEnd.toISOString(),
+			durationMinutes,
+			availableStarts,
+		};
+	});
 
 export const upsertAppointment = actionClient
 	.schema(createAppointmentSchema)

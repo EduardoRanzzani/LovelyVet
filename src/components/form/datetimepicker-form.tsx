@@ -18,7 +18,7 @@ import {
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Loader2Icon } from 'lucide-react';
 import { useState } from 'react';
 import { Control, Controller, FieldValues, Path } from 'react-hook-form';
 
@@ -31,6 +31,11 @@ interface DateTimePickerFormProps<T extends FieldValues> {
 	disabled?: boolean;
 	placeholder?: string;
 	className?: string;
+
+	availableTimes?: string[];
+	availabilityLoading?: boolean;
+	onDateChange?: (date: Date) => void;
+	onOpenWithDate?: (date: Date | null) => void;
 }
 
 const DateTimePickerForm = <T extends FieldValues>({
@@ -42,6 +47,10 @@ const DateTimePickerForm = <T extends FieldValues>({
 	disabled,
 	placeholder = 'Selecione data e hora',
 	className,
+	availableTimes,
+	availabilityLoading = false,
+	onDateChange,
+	onOpenWithDate,
 }: DateTimePickerFormProps<T>) => {
 	const [isOpen, setIsOpen] = useState(false);
 
@@ -66,6 +75,22 @@ const DateTimePickerForm = <T extends FieldValues>({
 					const fieldValue = field.value as unknown;
 					const selectedDate = fieldValue instanceof Date ? fieldValue : null;
 
+					const isTimeAvailable = (hour: string, minute: string) => {
+						if (availableTimes === undefined) {
+							return true;
+						}
+
+						return availableTimes.includes(`${hour}:${minute}`);
+					};
+
+					const hasAvailableTimeInHour = (hour: string) => {
+						if (availableTimes === undefined) {
+							return true;
+						}
+
+						return minutes.some((minute) => isTimeAvailable(hour, minute));
+					};
+
 					const handleTimeChange = (
 						type: 'hour' | 'minute',
 						timeValue: string,
@@ -75,14 +100,37 @@ const DateTimePickerForm = <T extends FieldValues>({
 
 						if (type === 'hour') {
 							newDate.setHours(parseInt(timeValue, 10));
+							const currentMinute = format(newDate, 'mm');
+
+							if (
+								availableTimes !== undefined &&
+								!isTimeAvailable(timeValue, currentMinute)
+							) {
+								const firstAvailableMinute = minutes.find((minute) =>
+									isTimeAvailable(timeValue, minute),
+								);
+
+								if (firstAvailableMinute) {
+									newDate.setMinutes(parseInt(firstAvailableMinute, 10));
+								}
+							}
 						} else {
 							newDate.setMinutes(parseInt(timeValue, 10));
 						}
+
 						field.onChange(newDate);
 					};
 
 					return (
-						<Popover open={isOpen} onOpenChange={setIsOpen}>
+						<Popover
+							open={isOpen}
+							onOpenChange={(open) => {
+								setIsOpen(open);
+								if (open) {
+									onOpenWithDate?.(selectedDate);
+								}
+							}}
+						>
 							<PopoverTrigger asChild>
 								<Button
 									variant='outline'
@@ -121,6 +169,7 @@ const DateTimePickerForm = <T extends FieldValues>({
 											newDate.setHours(9, 0);
 										}
 										field.onChange(newDate);
+										onDateChange?.(newDate);
 									}}
 									locale={ptBR}
 									initialFocus
@@ -140,7 +189,11 @@ const DateTimePickerForm = <T extends FieldValues>({
 											</SelectTrigger>
 											<SelectContent>
 												{hours.map((h) => (
-													<SelectItem key={h} value={h}>
+													<SelectItem
+														key={h}
+														value={h}
+														disabled={!hasAvailableTimeInHour(h)}
+													>
 														{h}h
 													</SelectItem>
 												))}
@@ -161,7 +214,18 @@ const DateTimePickerForm = <T extends FieldValues>({
 											</SelectTrigger>
 											<SelectContent>
 												{minutes.map((m) => (
-													<SelectItem key={m} value={m}>
+													<SelectItem
+														key={m}
+														value={m}
+														disabled={
+															selectedDate
+																? !isTimeAvailable(
+																		format(selectedDate, 'HH'),
+																		m,
+																	)
+																: false
+														}
+													>
 														{m}
 													</SelectItem>
 												))}
@@ -169,6 +233,22 @@ const DateTimePickerForm = <T extends FieldValues>({
 										</Select>
 									</div>
 								</div>
+
+								{availabilityLoading && (
+									<div className='flex items-center gap-2 border-t px-3 py-2 text-xs text-muted-foreground'>
+										<Loader2Icon className='size-3 animate-spin' />
+										Verificando disponibilidade...
+									</div>
+								)}
+
+								{!availabilityLoading &&
+									availableTimes !== undefined &&
+									availableTimes.length === 0 && (
+										<p className='border-t px-3 py-2 text-xs text-destructive'>
+											Não há horário disponível neste dia para a duração
+											selecionada.
+										</p>
+									)}
 
 								<div className='p-2 pb-3 px-3'>
 									<Button

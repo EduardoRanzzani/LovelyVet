@@ -1,6 +1,9 @@
 'use client';
 
-import { upsertAppointment } from '@/api/actions/appointments.actions';
+import {
+	getDoctorAvailability,
+	upsertAppointment,
+} from '@/api/actions/appointments.actions';
 import { REGINA_DOCTOR_ID } from '@/api/config/consts';
 import {
 	AppointmentListItem,
@@ -29,9 +32,10 @@ import { useUser } from '@clerk/nextjs';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { BanIcon, Loader2Icon, SaveIcon } from 'lucide-react';
 import { useAction } from 'next-safe-action/hooks';
-import { useEffect } from 'react'; // Adicione o useEffect
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
+import { endOfDay, format, startOfDay } from 'date-fns';
+import { useState } from 'react';
 
 interface AppointmentFormClientProps {
 	appointment?: AppointmentListItem;
@@ -40,6 +44,9 @@ interface AppointmentFormClientProps {
 	services: ServicesWithRelations[];
 	onSuccess?: () => void;
 }
+
+const getServicesKey = (serviceIds: string[]) =>
+	[...serviceIds].sort().join(',');
 
 const AppointmentFormClient = ({
 	appointment,
@@ -50,6 +57,14 @@ const AppointmentFormClient = ({
 }: AppointmentFormClientProps) => {
 	const { user } = useUser();
 	const isCustomer = user?.publicMetadata?.role === 'customer';
+
+	const [availability, setAvailability] = useState<{
+		doctorId: string;
+		servicesKey: string;
+		dayKey: string;
+		durationMinutes: number;
+		availableTimes: string[];
+	} | null>(null);
 
 	const form = useForm<CreateAppointmentSchema>({
 		resolver: zodResolver(createAppointmentSchema),
@@ -71,8 +86,15 @@ const AppointmentFormClient = ({
 	});
 
 	// 1. Monitorar o pet selecionado
-	const selectedPetId = form.watch('petId');
-	const selectedServicesIds = form.watch('services');
+	const [
+		selectedPetId,
+		selectedServicesIds,
+		selectedDoctorId,
+		selectedScheduledAt,
+	] = useWatch({
+		control: form.control,
+		name: ['petId', 'services', 'doctorId', 'scheduledAt'],
+	});
 
 	// 2. Identificar a espécie
 	const selectedPet = pets.find((p) => p.id === selectedPetId);
@@ -86,48 +108,23 @@ const AppointmentFormClient = ({
 		return service.specieId === specieIdOfSelectedPet || !service.specieId;
 	});
 
-	// 4. EFEITO DE LIMPEZA CORRIGIDO
-	useEffect(() => {
-		// IMPORTANTE: Se estamos editando, não queremos limpar os campos na primeira renderização
-		// A limpeza só deve ocorrer se o PetId mudar e o objeto do Pet já estiver localizado
-		if (!selectedPet) return;
+	const formSubmit = (data: CreateAppointmentSchema) => {
+		if (currentAvailableTimes) {
+			const selectedTime = format(data.scheduledAt, 'HH:mm');
 
-		const currentServices = form.getValues('services');
-		if (currentServices && currentServices.length > 0) {
-			// Validamos contra a lista mestre de services, não contra a variável filtrada de renderização
-			const validServices = currentServices.filter((id) => {
-				const service = services.find((s) => s.id === id);
-				if (!service) return false;
-				// É válido se: for geral OU for da espécie do pet selecionado
-				return (
-					!service.specieId || service.specieId === selectedPet.breed?.specieId
-				);
-			});
-
-			if (validServices.length !== currentServices.length) {
-				form.setValue('services', validServices);
+			if (!currentAvailableTimes.includes(selectedTime)) {
+				form.setError('scheduledAt', {
+					type: 'manual',
+					message: 'O horário selecionado não está mais disponível.',
+				});
+				return;
 			}
 		}
-		// Removemos filteredServices das dependências para evitar loops e limpezas precoces
-	}, [selectedPetId, selectedPet, services, form]);
 
-	// 5. Cálculo do valor total (Mantido)
-	useEffect(() => {
-		if (selectedServicesIds && selectedServicesIds.length > 0) {
-			const total = services
-				.filter((s) => selectedServicesIds.includes(s.id))
-				.reduce((acc, curr) => acc + curr.priceInCents / 100, 0);
-			form.setValue('totalPriceInCents', total, { shouldValidate: true });
-		} else {
-			form.setValue('totalPriceInCents', 0);
-		}
-	}, [selectedServicesIds, services, form]);
-
-	const formSubmit = (data: CreateAppointmentSchema) => {
 		upsertAppointmentAction.execute({
 			...data,
 			id: appointment?.id,
-			status: appointment?.status || 'pending',
+			status: appointment?.status ?? 'pending',
 		});
 	};
 
@@ -137,11 +134,71 @@ const AppointmentFormClient = ({
 			toast.success('Agendamento salvo com sucesso!');
 			form.reset();
 		},
-		onError: (err) => {
-			console.error('Erro ao salvar agendamento:', err);
-			toast.error('Ocorreu um erro ao salvar o agendamento.');
+		onError: ({ error }) => {
+			toast.error(
+				error.serverError ?? 'Não foi possível salvar o agendamento.',
+			);
 		},
 	});
+
+	const availabilityAction = useAction(getDoctorAvailability, {
+		onSuccess: ({ data }) => {
+			if (!data) return;
+			setAvailability({
+				doctorId: data.doctorId,
+				servicesKey: data.serviceIds.join(','),
+				dayKey: format(new Date(data.dayStart), 'yyyy-MM-dd'),
+				durationMinutes: data.durationMinutes,
+				availableTimes: data.availableStarts.map((value) =>
+					format(new Date(value), 'HH:mm'),
+				),
+			});
+		},
+
+		onError: ({ error }) => {
+			setAvailability(null);
+			toast.error(
+				error.serverError ?? 'Não foi possível verificar a disponibilidade.',
+			);
+		},
+	});
+
+	const requestAvailability = ({
+		doctorId,
+		serviceIds,
+		date,
+	}: {
+		doctorId: string;
+		serviceIds: string[];
+		date: Date;
+	}) => {
+		if (!doctorId || serviceIds.length === 0) {
+			setAvailability(null);
+			return;
+		}
+
+		availabilityAction.execute({
+			doctorId,
+			serviceIds,
+			dayStart: startOfDay(date),
+			dayEnd: endOfDay(date),
+			appointmentId: appointment?.id ?? undefined,
+		});
+	};
+
+	const selectedServicesKey = getServicesKey(selectedServicesIds ?? []);
+
+	const selectedDayKey = selectedScheduledAt
+		? format(selectedScheduledAt, 'yyyy-MM-dd')
+		: '';
+
+	const currentAvailableTimes =
+		availability &&
+		availability.doctorId === selectedDoctorId &&
+		availability.servicesKey === selectedServicesKey &&
+		availability.dayKey === selectedDayKey
+			? availability.availableTimes
+			: undefined;
 
 	return (
 		<DialogContent
@@ -175,6 +232,51 @@ const AppointmentFormClient = ({
 								value: pet.id,
 								label: `${pet.name} ${!isCustomer ? `(${formatPetTutorNames(pet)})` : ''}`,
 							}))}
+							onSelect={(value) => {
+								const petId = String(value);
+								const pet = pets.find((item) => item.id === petId);
+
+								if (!pet) return;
+								const currentServices = form.getValues('services') ?? [];
+								const validServices = currentServices.filter((serviceId) => {
+									const service = services.find(
+										(item) => item.id === serviceId,
+									);
+
+									if (!service) {
+										return false;
+									}
+
+									return (
+										!service.specieId ||
+										service.specieId === pet.breed?.specieId
+									);
+								});
+
+								if (validServices.length !== currentServices.length) {
+									form.setValue('services', validServices, {
+										shouldDirty: true,
+										shouldValidate: true,
+									});
+
+									const total = services
+										.filter((service) => validServices.includes(service.id))
+										.reduce(
+											(sum, service) => sum + service.priceInCents / 100,
+											0,
+										);
+
+									form.setValue('totalPriceInCents', total, {
+										shouldValidate: true,
+									});
+								}
+
+								requestAvailability({
+									doctorId: form.getValues('doctorId'),
+									serviceIds: validServices,
+									date: form.getValues('scheduledAt'),
+								});
+							}}
 						/>
 
 						<SelectForm
@@ -186,6 +288,15 @@ const AppointmentFormClient = ({
 								value: doctor.id,
 								label: doctor.user.name,
 							}))}
+							onSelect={(value) => {
+								requestAvailability({
+									doctorId: String(value),
+
+									serviceIds: form.getValues('services') ?? [],
+
+									date: form.getValues('scheduledAt'),
+								});
+							}}
 						/>
 
 						<SelectForm
@@ -198,6 +309,30 @@ const AppointmentFormClient = ({
 								value: service.id,
 								label: `${service.name} - R$ ${(service.priceInCents / 100).toFixed(2)}`,
 							}))}
+							onSelect={(value) => {
+								const serviceIds = Array.isArray(value)
+									? value.map(String)
+									: [];
+
+								const total = services
+									.filter((service) => serviceIds.includes(service.id))
+									.reduce(
+										(sum, service) => sum + service.priceInCents / 100,
+										0,
+									);
+
+								form.setValue('totalPriceInCents', total, {
+									shouldValidate: true,
+								});
+
+								requestAvailability({
+									doctorId: form.getValues('doctorId'),
+
+									serviceIds,
+
+									date: form.getValues('scheduledAt'),
+								});
+							}}
 						/>
 
 						<div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
@@ -206,6 +341,24 @@ const AppointmentFormClient = ({
 								control={form.control}
 								name='scheduledAt'
 								error={form.formState.errors.scheduledAt?.message}
+								availableTimes={currentAvailableTimes}
+								availabilityLoading={availabilityAction.isPending}
+								onOpenWithDate={(date) => {
+									if (!date) return;
+
+									requestAvailability({
+										doctorId: form.getValues('doctorId'),
+										serviceIds: form.getValues('services') ?? [],
+										date,
+									});
+								}}
+								onDateChange={(date) => {
+									requestAvailability({
+										doctorId: form.getValues('doctorId'),
+										serviceIds: form.getValues('services') ?? [],
+										date,
+									});
+								}}
 							/>
 
 							<MoneyInputForm

@@ -62,3 +62,25 @@ export type AppointmentListItem = Omit<
 		petTutors: { tutor: { user: { name: string } } }[];
 	};
 };
+
+export const getDoctorAvailabilitySchema = z
+	.object({
+		doctorId: z.uuid(),
+		serviceIds: z.array(z.uuid()).nonempty(),
+		dayStart: z.date(),
+		dayEnd: z.date(),
+		appointmentId: z.uuid().optional().nullable(),
+	})
+	.superRefine((data, ctx) => {
+		if (data.dayEnd <= data.dayStart) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['dayEnd'],
+				message: 'Período inválido',
+			});
+		}
+	});
+
+export type GetDoctorAvailabilitySchema = z.infer<
+	typeof getDoctorAvailabilitySchema
+>;
