@@ -59,7 +59,7 @@ const ShiftFormClient = ({
 		resolver: zodResolver(createShiftSchema),
 		defaultValues: {
 			doctorId: shift?.doctorId || REGINA_DOCTOR_ID,
-			clinicId: shift?.clinicId || '',
+			clinicId: shift?.clinicId ?? '',
 			startTime: shift?.startTime
 				? new Date(shift.startTime)
 				: selectedDate || new Date(),
