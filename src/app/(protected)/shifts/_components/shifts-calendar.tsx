@@ -16,17 +16,20 @@ import {
 } from 'date-fns';
 import { ClockIcon, HospitalIcon, MoonIcon, SunIcon } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { ClinicShiftOption } from '@/api/schema/clinics.schema';
 import { use, useMemo, useState } from 'react';
 import ShiftFormClient from './shift-form';
 
 interface ShiftsCalendarClientProps {
 	shiftsPromise: Promise<ShiftsWithRelations[]>;
 	doctors: DoctorsWithRelations[];
+	clinics: ClinicShiftOption[];
 }
 
 const ShiftsCalendarClient = ({
 	shiftsPromise,
 	doctors,
+	clinics,
 }: ShiftsCalendarClientProps) => {
 	const shifts = use(shiftsPromise);
 	const searchParams = useSearchParams();
@@ -239,6 +242,7 @@ const ShiftsCalendarClient = ({
 						}
 						shift={selectedShift}
 						doctors={doctors}
+						clinics={clinics}
 						selectedDate={selectedDate}
 						onSuccess={() => {
 							setIsFormOpen(false);

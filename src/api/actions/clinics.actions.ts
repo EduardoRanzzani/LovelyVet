@@ -7,9 +7,13 @@ import { asc, count, eq, ilike, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
 import { PaginatedData } from '../config/consts';
-import { Clinics, createClinicSchema } from '../schema/clinics.schema';
+import {
+	Clinics,
+	ClinicShiftOption,
+	createClinicSchema,
+} from '../schema/clinics.schema';
 import { requireAuthContext } from '@/lib/security/auth-context';
-import { requireAdmin } from '@/lib/security/authorization';
+import { requireAdmin, requireStaff } from '@/lib/security/authorization';
 
 export const getClinicsPaginated = async (
 	page: number,
@@ -60,6 +64,23 @@ export const getClinicsPaginated = async (
 			limit,
 		},
 	};
+};
+
+export const getClinicsForShiftSelection = async (): Promise<
+	ClinicShiftOption[]
+> => {
+	const context = await requireAuthContext();
+	requireStaff(context);
+
+	return db
+		.select({
+			id: clinicsTable.id,
+			name: clinicsTable.name,
+			defaultShiftPriceInCents: clinicsTable.defaultShiftPriceInCents,
+			isActive: clinicsTable.isActive,
+		})
+		.from(clinicsTable)
+		.orderBy(asc(clinicsTable.name));
 };
 
 export const upsertClinic = actionClient

@@ -12,6 +12,7 @@ import CustomCalendarSkeleton from '@/components/ui/custom-calendar-skeleton';
 import LoadingDialog from '@/components/ui/loading';
 import { Suspense } from 'react';
 import ShiftsCalendarClient from './_components/shifts-calendar';
+import { getClinicsForShiftSelection } from '@/api/actions/clinics.actions';
 
 interface ShiftsPageProps {
 	searchParams: Promise<{ month?: string }>;
@@ -25,7 +26,11 @@ const ShiftsPage = async ({ searchParams }: ShiftsPageProps) => {
 
 	// Busca os dados
 	const shiftsPromise = getShifts(currentMonth, true);
-	const doctors = await getDoctors();
+
+	const [doctors, clinics] = await Promise.all([
+		getDoctors(),
+		getClinicsForShiftSelection(),
+	]);
 
 	return (
 		<PageContainer>
@@ -50,6 +55,7 @@ const ShiftsPage = async ({ searchParams }: ShiftsPageProps) => {
 					<ShiftsCalendarClient
 						shiftsPromise={shiftsPromise}
 						doctors={doctors}
+						clinics={clinics}
 					/>
 				</Suspense>
 			</PageContent>

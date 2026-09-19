@@ -13,7 +13,7 @@ export const createShiftSchema = z.object({
 		.string()
 		.uuid({ message: 'O campo veterinário é obrigatório' })
 		.min(1, 'O campo veterinário é obrigatório'),
-	clinicName: z.string().min(1, 'O campo nome da clínica é obrigatório'),
+	clinicId: z.string().uuid({ message: 'O campo clínica é obrigatório' }),
 	startTime: z.date({ message: 'Data de início é obrigatória' }),
 	// .refine((date) => date >= new Date(new Date().setSeconds(0, 0)), {
 	// 	message: 'A data de início não pode ser anterior ao horário atual',

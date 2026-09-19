@@ -3,6 +3,11 @@ import { z } from 'zod';
 
 export type Clinics = typeof clinicsTable.$inferSelect;
 
+export type ClinicShiftOption = Pick<
+	Clinics,
+	'id' | 'name' | 'defaultShiftPriceInCents' | 'isActive'
+>;
+
 export const createClinicSchema = z.object({
 	id: z.uuid().optional().nullable(),
 	name: z.string().nonempty({ message: 'O nome da clínicca é obrigatório' }),

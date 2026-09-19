@@ -1,6 +1,7 @@
 import { upsertShift } from '@/api/actions/shifts.actions';
 import { REGINA_DOCTOR_ID } from '@/api/config/consts';
 import { DoctorsWithRelations } from '@/api/schema/doctors.schema';
+import { ClinicShiftOption } from '@/api/schema/clinics.schema';
 import {
 	createShiftSchema,
 	CreateShiftSchema,
@@ -31,6 +32,7 @@ import { toast } from 'sonner';
 interface ShiftFormProps {
 	shift?: ShiftsWithRelations;
 	doctors: DoctorsWithRelations[];
+	clinics: ClinicShiftOption[];
 	selectedDate?: Date | null;
 	onSuccess?: () => void;
 }
@@ -38,6 +40,7 @@ interface ShiftFormProps {
 const ShiftFormClient = ({
 	shift,
 	doctors,
+	clinics,
 	selectedDate,
 	onSuccess,
 }: ShiftFormProps) => {
@@ -56,18 +59,23 @@ const ShiftFormClient = ({
 		resolver: zodResolver(createShiftSchema),
 		defaultValues: {
 			doctorId: shift?.doctorId || REGINA_DOCTOR_ID,
-			clinicName: shift?.clinicName || '',
+			clinicId: shift?.clinicId || '',
 			startTime: shift?.startTime
 				? new Date(shift.startTime)
 				: selectedDate || new Date(),
 			duration: calculatedDuration,
 			requesterName: shift?.requesterName || undefined,
-			amountInCents: shift?.amountInCents
-				? shift.amountInCents / 100
-				: undefined,
+			amountInCents:
+				shift?.amountInCents !== null && shift?.amountInCents !== undefined
+					? shift.amountInCents / 100
+					: undefined,
 			isPaid: shift?.isPaid || false,
 		},
 	});
+
+	const availableClinics = clinics.filter(
+		(clinic) => clinic.isActive || clinic.id === shift?.clinicId,
+	);
 
 	const formSubmit = (data: CreateShiftSchema) => {
 		upsertShiftAction.execute({
@@ -138,11 +146,39 @@ const ShiftFormClient = ({
 							/>
 						</div>
 
-						<InputForm
-							register={form.register}
-							label='Nome da clínica:'
-							name='clinicName'
-							error={form.formState.errors.clinicName?.message}
+						<SelectForm
+							control={form.control}
+							label='Clínica:'
+							name='clinicId'
+							error={form.formState.errors.clinicId?.message}
+							options={availableClinics.map((clinic) => ({
+								value: clinic.id,
+								label: clinic.isActive
+									? clinic.name
+									: `${clinic.name} (inativa)`,
+							}))}
+							onSelect={(value) => {
+								if (typeof value !== 'string') {
+									return;
+								}
+
+								const selectedClinic = clinics.find(
+									(clinic) => clinic.id === value,
+								);
+
+								if (!selectedClinic) {
+									return;
+								}
+
+								form.setValue(
+									'amountInCents',
+									selectedClinic.defaultShiftPriceInCents / 100,
+									{
+										shouldDirty: true,
+										shouldValidate: true,
+									},
+								);
+							}}
 						/>
 
 						<div className='flex flex-col lg:flex-row gap-4'>
