@@ -2,13 +2,14 @@
 
 import {
 	deleteCalendarEvent,
+	getCalendarEventAvailability,
 	upsertCalendarEvent,
 } from '@/api/actions/calendar-events.actions';
-import type { DoctorsWithRelations } from '@/api/schema/doctors.schema';
 import {
 	createCalendarEventSchema,
 	type CreateCalendarEventSchema,
 } from '@/api/schema/calendar-event.schema';
+import type { DoctorsWithRelations } from '@/api/schema/doctors.schema';
 import DateTimePickerForm from '@/components/form/datetimepicker-form';
 import InputForm from '@/components/form/input-form';
 import SelectForm from '@/components/form/select-form';
@@ -33,11 +34,21 @@ import {
 import LoadingDialog from '@/components/ui/loading';
 import { Textarea } from '@/components/ui/textarea';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { addHours, set } from 'date-fns';
+import {
+	addHours,
+	addMinutes,
+	differenceInMinutes,
+	endOfDay,
+	format,
+	set,
+	startOfDay,
+} from 'date-fns';
 import { BanIcon, Loader2Icon, SaveIcon } from 'lucide-react';
 import { useAction } from 'next-safe-action/hooks';
-import { useForm } from 'react-hook-form';
+import { useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
+import { REGINA_DOCTOR_ID } from '@/api/config/consts';
 
 export type PersonalCalendarEventDetails = {
 	id: string;
@@ -57,6 +68,13 @@ interface CalendarEventFormProps {
 	viewerDoctorId: string | null;
 	onSuccess?: () => void;
 }
+
+type AvailabilityState = {
+	doctorId: string;
+	dayKey: string;
+	durationMinutes: number;
+	availableTimes: string[];
+};
 
 const CalendarEventForm = ({
 	event,
@@ -84,9 +102,8 @@ const CalendarEventForm = ({
 
 	const defaultDoctorId =
 		event?.doctorId ??
-		(viewerRole === 'doctor'
-			? (viewerDoctorId ?? '')
-			: (selectedDoctorId ?? ''));
+		(viewerRole === 'doctor' ? viewerDoctorId : selectedDoctorId) ??
+		REGINA_DOCTOR_ID;
 
 	const availableDoctors =
 		viewerRole === 'doctor'
@@ -104,6 +121,15 @@ const CalendarEventForm = ({
 			notes: event?.notes ?? '',
 		},
 	});
+
+	const [doctorId, startTime, endTime] = useWatch({
+		control: form.control,
+		name: ['doctorId', 'startTime', 'endTime'],
+	});
+
+	const [availability, setAvailability] = useState<AvailabilityState | null>(
+		null,
+	);
 
 	const upsertAction = useAction(upsertCalendarEvent, {
 		onSuccess: () => {
@@ -135,7 +161,97 @@ const CalendarEventForm = ({
 		},
 	});
 
+	const availabilityAction = useAction(getCalendarEventAvailability, {
+		onSuccess: ({ data }) => {
+			if (!data) return;
+
+			setAvailability({
+				doctorId: data.doctorId,
+				dayKey: format(new Date(data.dayStart), 'yyyy-MM-dd'),
+				durationMinutes: data.durationMinutes,
+				availableTimes: data.availableStarts.map((value) =>
+					format(new Date(value), 'HH:mm'),
+				),
+			});
+		},
+		onError: ({ error }) => {
+			setAvailability(null);
+
+			toast.error(
+				error.serverError ?? 'Não foi possível verificar a disponibilidade.',
+			);
+		},
+	});
+
+	const requestAvailability = ({
+		selectedDoctor,
+		start,
+		end,
+	}: {
+		selectedDoctor: string;
+		start: Date;
+		end: Date;
+	}) => {
+		if (!selectedDoctor || !(start instanceof Date) || !(end instanceof Date)) {
+			setAvailability(null);
+			return;
+		}
+
+		const durationMinutes = differenceInMinutes(end, start);
+
+		if (durationMinutes <= 0) {
+			setAvailability(null);
+			return;
+		}
+
+		setAvailability(null);
+
+		availabilityAction.execute({
+			doctorId: selectedDoctor,
+			dayStart: startOfDay(start),
+			dayEnd: endOfDay(start),
+			durationMinutes,
+			eventId: event?.id,
+		});
+	};
+
+	const currentDuration =
+		startTime instanceof Date && endTime instanceof Date
+			? differenceInMinutes(endTime, startTime)
+			: 0;
+
+	const currentDayKey =
+		startTime instanceof Date ? format(startTime, 'yyyy-MM-dd') : '';
+
+	const currentAvailableTimes =
+		availability &&
+		availability.doctorId === doctorId &&
+		availability.dayKey === currentDayKey &&
+		availability.durationMinutes === currentDuration
+			? availability.availableTimes
+			: undefined;
+
+	const currentStartTime =
+		startTime instanceof Date ? format(startTime, 'HH:mm') : '';
+
+	const currentStartIsAvailable =
+		currentAvailableTimes === undefined ||
+		currentAvailableTimes.includes(currentStartTime);
+
 	const formSubmit = (data: CreateCalendarEventSchema) => {
+		if (
+			currentAvailableTimes &&
+			!currentAvailableTimes.includes(format(data.startTime, 'HH:mm'))
+		) {
+			form.setError('startTime', {
+				type: 'manual',
+				message:
+					'O horário selecionado não está disponível para este veterinário.',
+			});
+
+			return;
+		}
+
 		upsertAction.execute({
 			...data,
 			id: event?.id,
@@ -146,7 +262,7 @@ const CalendarEventForm = ({
 
 	return (
 		<DialogContent
-			onInteractOutside={(event) => event.preventDefault()}
+			onInteractOutside={(dialogEvent) => dialogEvent.preventDefault()}
 			showCloseButton={false}
 		>
 			<DialogHeader>
@@ -174,6 +290,17 @@ const CalendarEventForm = ({
 								value: doctor.id,
 								label: doctor.user.name,
 							}))}
+							onSelect={(value) => {
+								const start = form.getValues('startTime');
+
+								const end = form.getValues('endTime');
+
+								requestAvailability({
+									selectedDoctor: String(value),
+									start,
+									end,
+								});
+							}}
 						/>
 
 						<InputForm
@@ -193,6 +320,35 @@ const CalendarEventForm = ({
 								required
 								className='flex-1'
 								error={form.formState.errors.startTime?.message}
+								availableTimes={currentAvailableTimes}
+								availabilityLoading={availabilityAction.isPending}
+								onOpenWithDate={(date) => {
+									if (!date) {
+										return;
+									}
+
+									requestAvailability({
+										selectedDoctor: form.getValues('doctorId'),
+										start: date,
+										end: form.getValues('endTime'),
+									});
+								}}
+								onValueChange={(newStart) => {
+									const duration = currentDuration > 0 ? currentDuration : 60;
+
+									const newEnd = addMinutes(newStart, duration);
+
+									form.setValue('endTime', newEnd, {
+										shouldDirty: true,
+										shouldValidate: true,
+									});
+
+									requestAvailability({
+										selectedDoctor: form.getValues('doctorId'),
+										start: newStart,
+										end: newEnd,
+									});
+								}}
 							/>
 
 							<DateTimePickerForm
@@ -202,8 +358,29 @@ const CalendarEventForm = ({
 								required
 								className='flex-1'
 								error={form.formState.errors.endTime?.message}
+								onValueChange={(newEnd) => {
+									requestAvailability({
+										selectedDoctor: form.getValues('doctorId'),
+										start: form.getValues('startTime'),
+										end: newEnd,
+									});
+								}}
 							/>
 						</div>
+
+						{availabilityAction.isPending && (
+							<p className='text-xs text-muted-foreground'>
+								Verificando disponibilidade do período...
+							</p>
+						)}
+
+						{!availabilityAction.isPending &&
+							currentAvailableTimes !== undefined &&
+							!currentStartIsAvailable && (
+								<p className='text-xs font-medium text-destructive'>
+									Este período está ocupado. Escolha outro horário de início.
+								</p>
+							)}
 
 						<FormField
 							control={form.control}
@@ -254,7 +431,15 @@ const CalendarEventForm = ({
 							</Button>
 						</DialogClose>
 
-						<Button type='submit' disabled={isPending} className='flex-1'>
+						<Button
+							type='submit'
+							disabled={
+								isPending ||
+								availabilityAction.isPending ||
+								!currentStartIsAvailable
+							}
+							className='flex-1'
+						>
 							{upsertAction.isPending ? (
 								<Loader2Icon className='size-4 animate-spin' />
 							) : (

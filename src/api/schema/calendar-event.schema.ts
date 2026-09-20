@@ -3,25 +3,20 @@ import { z } from 'zod';
 export const createCalendarEventSchema = z
 	.object({
 		id: z.string().uuid().optional(),
-
 		doctorId: z.string().uuid({
 			message: 'O veterinário é obrigatório',
 		}),
-
 		title: z
 			.string()
 			.trim()
 			.min(2, 'Informe o compromisso')
 			.max(150, 'O título deve ter no máximo 150 caracteres'),
-
 		startTime: z.date({
 			message: 'Data/hora de início é obrigatória',
 		}),
-
 		endTime: z.date({
 			message: 'Data/hora de término é obrigatória',
 		}),
-
 		notes: z
 			.string()
 			.trim()
@@ -34,6 +29,24 @@ export const createCalendarEventSchema = z
 				code: 'custom',
 				path: ['endTime'],
 				message: 'O término deve ser posterior ao início',
+			});
+		}
+	});
+
+export const getCalendarEventAvailabilitySchema = z
+	.object({
+		doctorId: z.string().uuid(),
+		dayStart: z.date(),
+		dayEnd: z.date(),
+		durationMinutes: z.number().int().positive(),
+		eventId: z.string().uuid().optional().nullable(),
+	})
+	.superRefine((data, ctx) => {
+		if (data.dayEnd <= data.dayStart) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['dayEnd'],
+				message: 'Período inválido',
 			});
 		}
 	});

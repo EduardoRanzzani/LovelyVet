@@ -14,6 +14,7 @@ import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
 import { Suspense } from 'react';
 import AgendaCalendarClient from './_components/agenda-calendar';
+import { REGINA_DOCTOR_ID } from '@/api/config/consts';
 
 interface AgendaPageProps {
 	searchParams: Promise<{
@@ -39,7 +40,7 @@ const AgendaPage = async ({ searchParams }: AgendaPageProps) => {
 	const selectedDoctorId =
 		context.role === 'doctor'
 			? (context.doctorId ?? undefined)
-			: requestedDoctorId;
+			: (requestedDoctorId ?? REGINA_DOCTOR_ID);
 
 	const parsedYear = params.year ? Number(params.year) : undefined;
 

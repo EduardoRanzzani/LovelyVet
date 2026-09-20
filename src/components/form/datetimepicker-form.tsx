@@ -31,11 +31,11 @@ interface DateTimePickerFormProps<T extends FieldValues> {
 	disabled?: boolean;
 	placeholder?: string;
 	className?: string;
-
 	availableTimes?: string[];
 	availabilityLoading?: boolean;
 	onDateChange?: (date: Date) => void;
 	onOpenWithDate?: (date: Date | null) => void;
+	onValueChange?: (date: Date) => void;
 }
 
 const DateTimePickerForm = <T extends FieldValues>({
@@ -51,13 +51,14 @@ const DateTimePickerForm = <T extends FieldValues>({
 	availabilityLoading = false,
 	onDateChange,
 	onOpenWithDate,
+	onValueChange,
 }: DateTimePickerFormProps<T>) => {
 	const [isOpen, setIsOpen] = useState(false);
 
-	// Geradores de opções para evitar hardcoding
 	const hours = Array.from({ length: 24 }, (_, i) =>
 		i.toString().padStart(2, '0'),
 	);
+
 	const minutes = Array.from({ length: 12 }, (_, i) =>
 		(i * 5).toString().padStart(2, '0'),
 	);
@@ -73,6 +74,7 @@ const DateTimePickerForm = <T extends FieldValues>({
 				control={control}
 				render={({ field }) => {
 					const fieldValue = field.value as unknown;
+
 					const selectedDate = fieldValue instanceof Date ? fieldValue : null;
 
 					const isTimeAvailable = (hour: string, minute: string) => {
@@ -91,15 +93,25 @@ const DateTimePickerForm = <T extends FieldValues>({
 						return minutes.some((minute) => isTimeAvailable(hour, minute));
 					};
 
+					const selectedTimeIsAvailable =
+						!selectedDate ||
+						availableTimes === undefined ||
+						isTimeAvailable(
+							format(selectedDate, 'HH'),
+							format(selectedDate, 'mm'),
+						);
+
 					const handleTimeChange = (
 						type: 'hour' | 'minute',
 						timeValue: string,
 					) => {
 						const baseDate = selectedDate || new Date();
+
 						const newDate = new Date(baseDate);
 
 						if (type === 'hour') {
 							newDate.setHours(parseInt(timeValue, 10));
+
 							const currentMinute = format(newDate, 'mm');
 
 							if (
@@ -110,15 +122,27 @@ const DateTimePickerForm = <T extends FieldValues>({
 									isTimeAvailable(timeValue, minute),
 								);
 
-								if (firstAvailableMinute) {
-									newDate.setMinutes(parseInt(firstAvailableMinute, 10));
+								if (!firstAvailableMinute) {
+									return;
 								}
+
+								newDate.setMinutes(parseInt(firstAvailableMinute, 10));
 							}
 						} else {
+							const hour = format(newDate, 'HH');
+
+							if (
+								availableTimes !== undefined &&
+								!isTimeAvailable(hour, timeValue)
+							) {
+								return;
+							}
+
 							newDate.setMinutes(parseInt(timeValue, 10));
 						}
 
 						field.onChange(newDate);
+						onValueChange?.(newDate);
 					};
 
 					return (
@@ -126,6 +150,7 @@ const DateTimePickerForm = <T extends FieldValues>({
 							open={isOpen}
 							onOpenChange={(open) => {
 								setIsOpen(open);
+
 								if (open) {
 									onOpenWithDate?.(selectedDate);
 								}
@@ -137,12 +162,13 @@ const DateTimePickerForm = <T extends FieldValues>({
 									type='button'
 									disabled={disabled}
 									className={cn(
-										'w-full justify-start text-left font-normal h-9 px-3',
+										'h-9 w-full justify-start px-3 text-left font-normal',
 										!selectedDate && 'text-muted-foreground',
 										error && 'border-destructive',
 									)}
 								>
 									<CalendarIcon className='mr-2 h-4 w-4' />
+
 									{selectedDate ? (
 										format(selectedDate, "dd/MM/yyyy 'às' HH:mm", {
 											locale: ptBR,
@@ -152,8 +178,9 @@ const DateTimePickerForm = <T extends FieldValues>({
 									)}
 								</Button>
 							</PopoverTrigger>
+
 							<PopoverContent
-								className='w-auto p-0 flex flex-col'
+								className='flex w-auto flex-col p-0'
 								align='start'
 							>
 								<Calendar
@@ -161,40 +188,48 @@ const DateTimePickerForm = <T extends FieldValues>({
 									selected={selectedDate || undefined}
 									onSelect={(date: Date | undefined) => {
 										if (!date) return;
+
 										const newDate = new Date(date);
+
 										if (selectedDate) {
 											newDate.setHours(selectedDate.getHours());
+
 											newDate.setMinutes(selectedDate.getMinutes());
 										} else {
-											newDate.setHours(9, 0);
+											newDate.setHours(9, 0, 0, 0);
 										}
+
 										field.onChange(newDate);
+
 										onDateChange?.(newDate);
+
+										onValueChange?.(newDate);
 									}}
 									locale={ptBR}
 									initialFocus
 								/>
 
-								<div className='p-3 border-t border-border flex items-center justify-between gap-4 bg-muted/20'>
-									<div className='flex items-center gap-1 w-full'>
-										{/* HORAS */}
+								<div className='flex items-center justify-between gap-4 border-t border-border bg-muted/20 p-3'>
+									<div className='flex w-full items-center gap-1'>
 										<Select
 											value={
 												selectedDate ? format(selectedDate, 'HH') : undefined
 											}
-											onValueChange={(v) => handleTimeChange('hour', v)}
+											disabled={disabled || availabilityLoading}
+											onValueChange={(value) => handleTimeChange('hour', value)}
 										>
-											<SelectTrigger className='flex-1 h-8 text-xs'>
+											<SelectTrigger className='h-8 flex-1 text-xs'>
 												<SelectValue placeholder='00' />
 											</SelectTrigger>
+
 											<SelectContent>
-												{hours.map((h) => (
+												{hours.map((hour) => (
 													<SelectItem
-														key={h}
-														value={h}
-														disabled={!hasAvailableTimeInHour(h)}
+														key={hour}
+														value={hour}
+														disabled={!hasAvailableTimeInHour(hour)}
 													>
-														{h}h
+														{hour}h
 													</SelectItem>
 												))}
 											</SelectContent>
@@ -202,31 +237,34 @@ const DateTimePickerForm = <T extends FieldValues>({
 
 										<span className='text-xs font-bold'>:</span>
 
-										{/* MINUTOS */}
 										<Select
 											value={
 												selectedDate ? format(selectedDate, 'mm') : undefined
 											}
-											onValueChange={(v) => handleTimeChange('minute', v)}
+											disabled={disabled || availabilityLoading}
+											onValueChange={(value) =>
+												handleTimeChange('minute', value)
+											}
 										>
-											<SelectTrigger className='flex-1 h-8 text-xs'>
+											<SelectTrigger className='h-8 flex-1 text-xs'>
 												<SelectValue placeholder='00' />
 											</SelectTrigger>
+
 											<SelectContent>
-												{minutes.map((m) => (
+												{minutes.map((minute) => (
 													<SelectItem
-														key={m}
-														value={m}
+														key={minute}
+														value={minute}
 														disabled={
 															selectedDate
 																? !isTimeAvailable(
 																		format(selectedDate, 'HH'),
-																		m,
+																		minute,
 																	)
 																: false
 														}
 													>
-														{m}
+														{minute}
 													</SelectItem>
 												))}
 											</SelectContent>
@@ -250,11 +288,21 @@ const DateTimePickerForm = <T extends FieldValues>({
 										</p>
 									)}
 
-								<div className='p-2 pb-3 px-3'>
+								{!availabilityLoading &&
+									availableTimes !== undefined &&
+									availableTimes.length > 0 &&
+									!selectedTimeIsAvailable && (
+										<p className='border-t px-3 py-2 text-xs text-destructive'>
+											O horário atual está ocupado. Selecione outro.
+										</p>
+									)}
+
+								<div className='px-3 pb-3 pt-2'>
 									<Button
 										type='button'
 										size='sm'
-										className='w-full text-xs h-8'
+										className='h-8 w-full text-xs'
+										disabled={availabilityLoading || !selectedTimeIsAvailable}
 										onClick={() => setIsOpen(false)}
 									>
 										Confirmar
@@ -266,7 +314,7 @@ const DateTimePickerForm = <T extends FieldValues>({
 				}}
 			/>
 
-			{error && <p className='text-xs text-destructive mt-1'>{error}</p>}
+			{error && <p className='mt-1 text-xs text-destructive'>{error}</p>}
 		</div>
 	);
 };

@@ -1,15 +1,16 @@
 'use server';
 
+import { db } from '@/db';
 import {
 	appointmentsTable,
 	calendarEventsTable,
 	doctorsTable,
 	shiftsTable,
 } from '@/db/schema';
-import { db } from '@/db';
 import { actionClient } from '@/lib/next-safe-action';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
+import { addMinutes } from 'date-fns';
 import {
 	and,
 	eq,
@@ -24,23 +25,141 @@ import {
 } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { createCalendarEventSchema } from '../schema/calendar-event.schema';
+import {
+	createCalendarEventSchema,
+	getCalendarEventAvailabilitySchema,
+} from '../schema/calendar-event.schema';
+
+export const getCalendarEventAvailability = actionClient
+	.schema(getCalendarEventAvailabilitySchema)
+	.action(async ({ parsedInput }) => {
+		const context = await requireAuthContext();
+		requireStaff(context);
+
+		const { doctorId, dayStart, dayEnd, durationMinutes, eventId } =
+			parsedInput;
+
+		if (context.role === 'doctor' && context.doctorId !== doctorId) {
+			throw new Error('Você não possui permissão para consultar esta agenda.');
+		}
+
+		const queryEnd = addMinutes(dayEnd, durationMinutes);
+
+		const [appointments, shifts, personalEvents] = await Promise.all([
+			db.query.appointmentsTable.findMany({
+				columns: {
+					scheduledAt: true,
+					endsAt: true,
+				},
+				with: {
+					items: {
+						columns: {},
+						with: {
+							service: {
+								columns: {
+									durationMinutes: true,
+								},
+							},
+						},
+					},
+				},
+				where: and(
+					eq(appointmentsTable.doctorId, doctorId),
+					lt(appointmentsTable.scheduledAt, queryEnd),
+					or(
+						gt(appointmentsTable.endsAt, dayStart),
+						and(
+							isNull(appointmentsTable.endsAt),
+							gte(appointmentsTable.scheduledAt, dayStart),
+						),
+					),
+					notInArray(appointmentsTable.status, ['cancelled', 'no_show']),
+				),
+			}),
+			db.query.shiftsTable.findMany({
+				columns: {
+					startTime: true,
+					endTime: true,
+				},
+				where: and(
+					eq(shiftsTable.doctorId, doctorId),
+					lt(shiftsTable.startTime, queryEnd),
+					gt(shiftsTable.endTime, dayStart),
+				),
+			}),
+			db.query.calendarEventsTable.findMany({
+				columns: {
+					startTime: true,
+					endTime: true,
+				},
+				where: and(
+					eq(calendarEventsTable.doctorId, doctorId),
+					lt(calendarEventsTable.startTime, queryEnd),
+					gt(calendarEventsTable.endTime, dayStart),
+					eventId ? ne(calendarEventsTable.id, eventId) : undefined,
+				),
+			}),
+		]);
+
+		const busyIntervals = [
+			...appointments.map((appointment) => {
+				const fallbackDuration =
+					appointment.items.reduce(
+						(total, item) => total + item.service.durationMinutes,
+						0,
+					) || 30;
+
+				return {
+					start: appointment.scheduledAt,
+					end:
+						appointment.endsAt ??
+						addMinutes(appointment.scheduledAt, fallbackDuration),
+				};
+			}),
+			...shifts.map((shift) => ({
+				start: shift.startTime,
+				end: shift.endTime,
+			})),
+			...personalEvents.map((event) => ({
+				start: event.startTime,
+				end: event.endTime,
+			})),
+		];
+
+		const availableStarts: string[] = [];
+
+		for (
+			let cursor = new Date(dayStart);
+			cursor <= dayEnd;
+			cursor = addMinutes(cursor, 5)
+		) {
+			const candidateEnd = addMinutes(cursor, durationMinutes);
+
+			const hasConflict = busyIntervals.some(
+				(interval) => interval.start < candidateEnd && interval.end > cursor,
+			);
+
+			if (!hasConflict) {
+				availableStarts.push(cursor.toISOString());
+			}
+		}
+
+		return {
+			doctorId,
+			dayStart: dayStart.toISOString(),
+			durationMinutes,
+			availableStarts,
+		};
+	});
 
 export const upsertCalendarEvent = actionClient
 	.schema(createCalendarEventSchema)
 	.action(async ({ parsedInput }) => {
 		const context = await requireAuthContext();
-
 		requireStaff(context);
 
 		const { id, doctorId, title, startTime, endTime, notes } = parsedInput;
 
-		/*
-		 * Doctor só pode trabalhar com a própria agenda.
-		 *
-		 * Não ignoramos silenciosamente um doctorId diferente,
-		 * pois isso esconderia uma tentativa de manipulação do payload.
-		 */
 		if (context.role === 'doctor' && doctorId !== context.doctorId) {
 			throw new Error(
 				'Você não possui permissão para alterar a agenda deste veterinário.',
@@ -49,9 +168,7 @@ export const upsertCalendarEvent = actionClient
 
 		const result = await db.transaction(async (tx) => {
 			const doctor = await tx.query.doctorsTable.findFirst({
-				columns: {
-					id: true,
-				},
+				columns: { id: true },
 				where: eq(doctorsTable.id, doctorId),
 			});
 
@@ -59,9 +176,6 @@ export const upsertCalendarEvent = actionClient
 				throw new Error('Veterinário não encontrado.');
 			}
 
-			/*
-			 * Se for edição, carregamos primeiro o evento original.
-			 */
 			const existingEvent = id
 				? await tx.query.calendarEventsTable.findFirst({
 						where: eq(calendarEventsTable.id, id),
@@ -72,10 +186,6 @@ export const upsertCalendarEvent = actionClient
 				throw new Error('Compromisso não encontrado.');
 			}
 
-			/*
-			 * Doctor não pode editar compromisso
-			 * pertencente a outro veterinário.
-			 */
 			if (
 				existingEvent &&
 				context.role === 'doctor' &&
@@ -86,13 +196,6 @@ export const upsertCalendarEvent = actionClient
 				);
 			}
 
-			/*
-			 * Em edição por admin, o doctorId pode eventualmente
-			 * mudar.
-			 *
-			 * Travamos a agenda antiga e a nova em ordem estável
-			 * para não criar race condition nem deadlock.
-			 */
 			const doctorIdsToLock = Array.from(
 				new Set(
 					[doctorId, existingEvent?.doctorId].filter((value): value is string =>
@@ -110,91 +213,57 @@ export const upsertCalendarEvent = actionClient
 				`);
 			}
 
-			/*
-			 * ------------------------------------------------
-			 * CONFLITO COM ATENDIMENTOS
-			 * ------------------------------------------------
-			 *
-			 * start < requestedEnd
-			 * &&
-			 * end > requestedStart
-			 *
-			 * Para eventual registro legado com endsAt NULL,
-			 * bloqueamos quando o início do appointment cai
-			 * dentro do compromisso.
-			 *
-			 * Não inventamos duração para o dado legado.
-			 */
-			const appointmentConflict = await tx.query.appointmentsTable.findFirst({
-				columns: {
-					id: true,
-				},
-				where: and(
-					eq(appointmentsTable.doctorId, doctorId),
-
-					lt(appointmentsTable.scheduledAt, endTime),
-
-					or(
-						gt(appointmentsTable.endsAt, startTime),
-
-						and(
-							isNull(appointmentsTable.endsAt),
-							gte(appointmentsTable.scheduledAt, startTime),
-						),
-					),
-
-					notInArray(appointmentsTable.status, ['cancelled', 'no_show']),
-				),
-			});
-
-			if (appointmentConflict) {
-				throw new Error('Já existe um atendimento neste período.');
-			}
-
-			/*
-			 * ------------------------------------------------
-			 * CONFLITO COM PLANTÃO
-			 * ------------------------------------------------
-			 */
 			const shiftConflict = await tx.query.shiftsTable.findFirst({
-				columns: {
-					id: true,
-				},
+				columns: { id: true },
 				where: and(
 					eq(shiftsTable.doctorId, doctorId),
-
 					lt(shiftsTable.startTime, endTime),
-
 					gt(shiftsTable.endTime, startTime),
 				),
 			});
 
 			if (shiftConflict) {
-				throw new Error('Já existe um plantão neste período.');
+				throw new Error(
+					'O horário selecionado não está disponível para este veterinário.',
+				);
 			}
 
-			/*
-			 * ------------------------------------------------
-			 * CONFLITO COM OUTRO COMPROMISSO PESSOAL
-			 * ------------------------------------------------
-			 */
+			const appointmentConflict = await tx.query.appointmentsTable.findFirst({
+				columns: { id: true },
+				where: and(
+					eq(appointmentsTable.doctorId, doctorId),
+					lt(appointmentsTable.scheduledAt, endTime),
+					or(
+						gt(appointmentsTable.endsAt, startTime),
+						and(
+							isNull(appointmentsTable.endsAt),
+							gte(appointmentsTable.scheduledAt, startTime),
+						),
+					),
+					notInArray(appointmentsTable.status, ['cancelled', 'no_show']),
+				),
+			});
+
+			if (appointmentConflict) {
+				throw new Error(
+					'O horário selecionado não está disponível para este veterinário.',
+				);
+			}
+
 			const personalConflict = await tx.query.calendarEventsTable.findFirst({
-				columns: {
-					id: true,
-				},
+				columns: { id: true },
 				where: and(
 					eq(calendarEventsTable.doctorId, doctorId),
-
 					lt(calendarEventsTable.startTime, endTime),
-
 					gt(calendarEventsTable.endTime, startTime),
-
 					id ? ne(calendarEventsTable.id, id) : undefined,
 				),
 			});
 
 			if (personalConflict) {
-				throw new Error('Já existe um compromisso neste período.');
+				throw new Error(
+					'O horário selecionado não está disponível para este veterinário.',
+				);
 			}
 
 			const eventData = {
@@ -237,10 +306,6 @@ export const upsertCalendarEvent = actionClient
 			return createdEvent;
 		});
 
-		/*
-		 * A alteração muda tanto a agenda quanto
-		 * a disponibilidade para novos appointments.
-		 */
 		revalidatePath('/agenda');
 		revalidatePath('/appointments');
 
@@ -255,7 +320,6 @@ export const getCalendarEventDetails = actionClient
 	)
 	.action(async ({ parsedInput }) => {
 		const context = await requireAuthContext();
-
 		requireStaff(context);
 
 		const event = await db.query.calendarEventsTable.findFirst({
@@ -283,7 +347,6 @@ export const deleteCalendarEvent = actionClient
 	)
 	.action(async ({ parsedInput }) => {
 		const context = await requireAuthContext();
-
 		requireStaff(context);
 
 		const event = await db.query.calendarEventsTable.findFirst({
@@ -300,13 +363,6 @@ export const deleteCalendarEvent = actionClient
 			);
 		}
 
-		/*
-		 * Usamos o mesmo lock da agenda.
-		 *
-		 * Não é estritamente necessário para a exclusão,
-		 * mas mantém a alteração da disponibilidade
-		 * serializada com appointments/shifts/events.
-		 */
 		await db.transaction(async (tx) => {
 			await tx.execute(sql`
 				SELECT pg_advisory_xact_lock(
@@ -315,15 +371,18 @@ export const deleteCalendarEvent = actionClient
 				)
 			`);
 
-			await tx
+			const [deletedEvent] = await tx
 				.delete(calendarEventsTable)
-				.where(eq(calendarEventsTable.id, event.id));
+				.where(eq(calendarEventsTable.id, event.id))
+				.returning({ id: calendarEventsTable.id });
+
+			if (!deletedEvent) {
+				throw new Error('Compromisso não encontrado.');
+			}
 		});
 
 		revalidatePath('/agenda');
 		revalidatePath('/appointments');
 
-		return {
-			success: true,
-		};
+		return { success: true };
 	});
