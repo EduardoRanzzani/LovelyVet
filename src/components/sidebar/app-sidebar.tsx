@@ -109,7 +109,7 @@ const AppSidebar = () => {
 
 	const helpers: SidebarItem[] = [
 		{
-			title: 'Alterar Cadastro',
+			title: 'Identidades Clerk',
 			url: '/admin',
 			icon: ShieldUserIcon,
 			roles: ['admin'],

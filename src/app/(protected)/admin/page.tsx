@@ -18,7 +18,7 @@ const AdminPage = async () => {
 		<PageContainer>
 			<PageHeader>
 				<PageHeaderContent>
-					<PageTitle>Mudar cadastro Prod/Dev</PageTitle>
+					<PageTitle>Identidades Clerk</PageTitle>
 				</PageHeaderContent>
 			</PageHeader>
 
