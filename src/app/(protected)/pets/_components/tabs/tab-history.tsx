@@ -31,9 +31,9 @@ const TabHistory = ({
 	onDelete,
 }: TabHistoryProps) => {
 	return (
-		<TabsContent value='history' className='w-full'>
-			<div className='flex flex-col lg:flex-row gap-4'>
-				<div className='grid grid-cols-1 lg:grid-cols-3 gap-2 lg:w-3/5 bg-card lg:max-h-30'>
+		<TabsContent value='history' className='min-w-0 w-full'>
+			<div className='flex min-w-0 flex-col gap-4 lg:flex-row'>
+				<div className='grid grid-cols-2 gap-2 bg-card sm:grid-cols-3 lg:max-h-30 lg:w-3/5'>
 					<DialogWeight petId={petId} />
 
 					<Button className='bg-pathology hover:bg-pathology/80'>
@@ -52,7 +52,10 @@ const TabHistory = ({
 
 					<DialogVaccine petId={petId} doctors={doctors} />
 
-					<Button asChild className='bg-prescription hover:bg-prescription/80'>
+					<Button
+						asChild
+						className='col-span-2 bg-prescription text-xs hover:bg-prescription/80 sm:col-span-1 sm:text-sm'
+					>
 						<Link href={`/pets/${petId}/documents/new`}>
 							<FilePenLineIcon />
 							Receita / Encaminhamento
@@ -62,19 +65,21 @@ const TabHistory = ({
 					<DialogNotes petId={petId} />
 				</div>
 
-				<div className='flex-1 w-full border p-6 rounded-xl bg-muted/20 max-h-100'>
-					<div className='flex items-center justify-between mb-2 pb-4 border-b'>
-						<h3 className='font-bold text-lg'>Histórico Clínico</h3>
+				<div className='min-w-0 w-full flex-1 rounded-xl border bg-muted/20 p-3 sm:p-6 lg:max-h-100'>
+					<div className='mb-3 flex min-w-0 items-center justify-between gap-2 border-b pb-3 sm:mb-2 sm:pb-4'>
+						<h3 className='min-w-0 text-base font-bold sm:text-lg'>
+							Histórico Clínico
+						</h3>
 						<Badge
 							variant={'outline'}
-							className='text-xs px-2 py-1 rounded-full border shadow-sm'
+							className='shrink-0 rounded-full border px-2 py-1 text-[10px] shadow-sm sm:text-xs'
 						>
 							{historyEvents.length} registro
 							{historyEvents.length !== 1 ? 's' : ''}
 						</Badge>
 					</div>
 
-					<div className='pb-20'>
+					<div className='pb-2 sm:pb-8 lg:pb-20'>
 						<PetTimelineClient
 							historyEvents={historyEvents}
 							canDelete={canDelete}

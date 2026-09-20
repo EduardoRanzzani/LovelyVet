@@ -16,7 +16,7 @@ const PetTimelineClient = ({
 	onDelete,
 }: PetTimelineClientProps) => {
 	return (
-		<div className='max-h-70 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-muted'>
+		<div className='min-w-0 md:max-h-70 md:overflow-y-auto md:pr-2 md:scrollbar-thin md:scrollbar-thumb-muted'>
 			{historyEvents.length > 0 ? (
 				historyEvents.map((event, idx) => (
 					<HistoryItem

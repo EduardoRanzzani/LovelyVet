@@ -15,12 +15,12 @@ const TabTimeline = ({
 	onDelete,
 }: TabTimelineProps) => {
 	return (
-		<TabsContent value='timeline'>
-			<div className='flex items-center justify-between my-2 pb-4 border-b'>
-				<h3 className='font-bold text-lg'>Linha do Tempo</h3>
+		<TabsContent value='timeline' className='min-w-0'>
+			<div className='my-2 flex min-w-0 items-center justify-between gap-2 border-b pb-3 sm:pb-4'>
+				<h3 className='min-w-0 text-base font-bold sm:text-lg'>Linha do Tempo</h3>
 				<Badge
 					variant={'outline'}
-					className='text-xs px-2 py-1 rounded-full border shadow-sm'
+					className='shrink-0 rounded-full border px-2 py-1 text-[10px] shadow-sm sm:text-xs'
 				>
 					{historyEvents.length} registro
 					{historyEvents.length !== 1 ? 's' : ''}

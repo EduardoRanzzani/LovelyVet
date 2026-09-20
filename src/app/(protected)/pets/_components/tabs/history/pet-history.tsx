@@ -35,13 +35,13 @@ export const HistoryItem = ({
 	onDelete,
 }: HistoryItemProps) => {
 	return (
-		<div className='flex gap-4 mb-8 relative group'>
+		<div className='group relative mb-5 flex min-w-0 gap-2 sm:mb-8 sm:gap-4'>
 			{/* Linha vertical da timeline */}
-			<div className='absolute left-5 top-10 -bottom-8 w-0.5 bg-muted last:hidden' />
+			<div className='absolute -bottom-5 left-4 top-8 w-0.5 bg-muted sm:-bottom-8 sm:left-5 sm:top-10' />
 
 			{/* Ícone */}
 			<div
-				className={`z-10 flex items-center justify-center w-10 h-10 rounded-full shrink-0 shadow-md ${colorClass} border`}
+				className={`z-10 flex size-8 shrink-0 items-center justify-center rounded-full border shadow-md sm:size-10 ${colorClass}`}
 			>
 				{icon}
 			</div>
@@ -49,18 +49,18 @@ export const HistoryItem = ({
 			{/* Conteúdo */}
 			<div
 				className={cn(
-					'flex flex-col gap-1 w-full border rounded-lg p-4 shadow-md relative',
+					'relative flex min-w-0 flex-1 flex-col gap-1 rounded-lg border p-3 shadow-md sm:p-4',
 					`${colorClass}`,
 				)}
 			>
-				<div className='flex justify-between items-start gap-2'>
-					<div className='flex gap-3 flex-1 min-w-0 items-start pr-2'>
-						<span className='flex items-center gap-2 '>
+				<div className='flex min-w-0 items-start justify-between gap-2'>
+					<div className='flex min-w-0 flex-1 items-start gap-2 sm:gap-3'>
+						<div className='flex min-w-0 flex-1 items-center gap-2'>
 							{avatarPerson ? (
 								<Tooltip>
 									<TooltipTrigger asChild>
 										<Avatar
-											className='h-10 w-10 rounded-full shrink-0'
+											className='size-8 shrink-0 rounded-full sm:size-10'
 											draggable={false}
 										>
 											{avatarPerson.image ? (
@@ -81,15 +81,20 @@ export const HistoryItem = ({
 									</TooltipContent>
 								</Tooltip>
 							) : null}
-							<div className='flex flex-col min-w-0 flex-1'>
-								<h4 className='font-bold text-sm'>{title}</h4>
-								<p className='text-[10px] font-medium uppercase text-muted-foreground'>
-									{format(date, "dd 'de' MMMM 'de' yyyy - HH:mm", {
-										locale: ptBR,
-									})}
+							<div className='flex min-w-0 flex-1 flex-col'>
+								<h4 className='break-words text-sm font-bold'>{title}</h4>
+								<p className='text-[10px] font-medium text-muted-foreground sm:uppercase'>
+									<span className='sm:hidden'>
+										{format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+									</span>
+									<span className='hidden sm:inline'>
+										{format(date, "dd 'de' MMMM 'de' yyyy - HH:mm", {
+											locale: ptBR,
+										})}
+									</span>
 								</p>
 							</div>
-						</span>
+						</div>
 					</div>
 
 					{canDelete && (
@@ -107,7 +112,9 @@ export const HistoryItem = ({
 						__html: content as string,
 					}}
 				/> */}
-				{content}
+				<div className='min-w-0 overflow-x-auto break-words text-sm [overflow-wrap:anywhere] [&_*]:max-w-full'>
+					{content}
+				</div>
 			</div>
 		</div>
 	);

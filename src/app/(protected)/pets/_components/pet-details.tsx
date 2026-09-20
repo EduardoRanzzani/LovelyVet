@@ -246,20 +246,20 @@ const PetDetailsClient = ({
 				? toTimelinePerson(v.doctor.user)
 				: undefined,
 			content: (
-				<div className='grid grid-cols-2'>
-					<p className='flex gap-2'>
+				<div className='grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2'>
+					<p className='flex min-w-0 flex-wrap gap-1 sm:gap-2'>
 						<span className='font-bold'>Vacina: </span>
 						{v.name}
 					</p>
-					<p className='flex gap-2'>
+					<p className='flex min-w-0 flex-wrap gap-1 sm:gap-2'>
 						<span className='font-bold'>Lote:</span>
 						{v.lotNumber}
 					</p>
-					<p className='flex gap-2'>
+					<p className='flex min-w-0 flex-wrap gap-1 sm:gap-2'>
 						<span className='font-bold'>Fabricante:</span>
 						{v.manufacturer}
 					</p>
-					<p className='flex gap-2'>
+					<p className='flex min-w-0 flex-wrap gap-1 sm:gap-2'>
 						<span className='font-bold'>Próxima dose:</span>
 						{formatDate(v.nextDoseDate!, 'dd/MM/yyyy')}
 					</p>
@@ -436,7 +436,7 @@ const PetDetailsClient = ({
 				</div>
 			</div>
 
-			<div className='flex flex-col gap-4 p-5 w-full border border-muted rounded-lg bg-card'>
+			<div className='flex w-full min-w-0 flex-col gap-4 rounded-lg border border-muted bg-card p-3 sm:p-5'>
 				<h2 className='text-xl font-semibold'>Informações Adicionais</h2>
 				<Separator />
 
@@ -474,7 +474,7 @@ const PetDetailsClient = ({
 						))}
 					</TabsList>
 
-					<div className='p-4 border rounded-md bg-card'>
+					<div className='min-w-0 rounded-md border bg-card p-2 sm:p-4'>
 						<TabHistory
 							doctors={doctors}
 							historyEvents={historyEvents}
