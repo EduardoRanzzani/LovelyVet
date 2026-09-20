@@ -35,6 +35,7 @@ import {
 } from '@/api/actions/prescriptions.actions';
 import RichTextClinicalDocument from '@/components/clinical-documents/rich-text-clinical-document';
 import { saveClinicalDocument } from '@/api/actions/clinical-documents.actions';
+import A4DocumentPreview from '@/components/clinical-documents/a4-document-preview';
 
 interface ClinicalDocumentBuilderProps {
 	petId: string;
@@ -466,7 +467,7 @@ export default function ClinicalDocumentBuilder({
 										</p>
 									</div>
 
-									<div className='overflow-auto rounded-xl border bg-muted/40 p-4'>
+									<A4DocumentPreview>
 										<RichTextClinicalDocument
 											printRef={referralPrintRef}
 											patient={{
@@ -476,7 +477,7 @@ export default function ClinicalDocumentBuilder({
 											title='Encaminhamento'
 											content={referralContent}
 										/>
-									</div>
+									</A4DocumentPreview>
 								</div>
 							</div>
 						</div>
@@ -550,7 +551,7 @@ export default function ClinicalDocumentBuilder({
 										</p>
 									</div>
 
-									<div className='overflow-auto rounded-xl border bg-muted/40 p-4'>
+									<A4DocumentPreview>
 										<RichTextClinicalDocument
 											printRef={examRequestPrintRef}
 											patient={{
@@ -560,7 +561,7 @@ export default function ClinicalDocumentBuilder({
 											title='Solicitação de Exame'
 											content={examRequestContent}
 										/>
-									</div>
+									</A4DocumentPreview>
 								</div>
 							</div>
 						</div>
