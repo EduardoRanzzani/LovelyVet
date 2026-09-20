@@ -41,15 +41,9 @@ export default function A4DocumentPreview({
 				@media print {
 					[data-a4-preview-shell],
 					[data-a4-preview-container],
-					[data-a4-preview-viewport] {
-						display: contents !important;
-					}
-
+					[data-a4-preview-viewport],
 					[data-a4-preview-page] {
-						width: 209mm !important;
-						height: 295.6mm !important;
-						margin: 0 auto !important;
-						transform: none !important;
+						display: contents !important;
 					}
 				}
 			`}</style>

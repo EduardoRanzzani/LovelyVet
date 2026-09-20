@@ -42,6 +42,7 @@ export default function ClinicalDocumentPrintClient({
 
 	const handlePrint = useReactToPrint({
 		contentRef: printRef,
+		preserveAfterPrint: true,
 
 		documentTitle: `${title} - ${documentData.patient.name}`,
 
@@ -54,25 +55,23 @@ export default function ClinicalDocumentPrintClient({
 			@media print {
 				html,
 				body {
-					width: 209mm !important;
-					height: 296mm !important;
-					max-height: 296mm !important;
+					width: 210mm !important;
+					height: auto !important;
+					min-height: 0 !important;
 					margin: 0 !important;
 					padding: 0 !important;
-					overflow: hidden !important;
+					overflow: visible !important;
 					background: white !important;
 				}
 
 				.clinical-document-print-area {
-					position: fixed !important;
-					top: 0 !important;
-					left: 50% !important;
-					width: 209mm !important;
-					height: 295.6mm !important;
+					position: relative !important;
+					width: 210mm !important;
+					height: 296mm !important;
 					max-width: none !important;
 					margin: 0 !important;
 					padding: 0 !important;
-					transform: translateX(-50%) !important;
+					transform: none !important;
 					overflow: hidden !important;
 					box-shadow: none !important;
 					background: white !important;
@@ -110,12 +109,12 @@ export default function ClinicalDocumentPrintClient({
 				@media print {
 					html,
 					body {
-						width: 209mm !important;
-						height: 296mm !important;
-						max-height: 296mm !important;
+						width: 210mm !important;
+						height: auto !important;
+						min-height: 0 !important;
 						margin: 0 !important;
 						padding: 0 !important;
-						overflow: hidden !important;
+						overflow: visible !important;
 					}
 
 					body:has(.document-print-page) * {
@@ -128,10 +127,8 @@ export default function ClinicalDocumentPrintClient({
 					}
 
 					body:has(.document-print-page) .clinical-document-print-area {
-						position: fixed !important;
-						top: 0 !important;
-						left: 50% !important;
-						transform: translateX(-50%) !important;
+						position: relative !important;
+						transform: none !important;
 						break-after: avoid !important;
 						break-inside: avoid !important;
 						page-break-after: avoid !important;

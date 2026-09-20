@@ -96,6 +96,7 @@ export default function ClinicalDocumentBuilder({
 
 	const handlePrintPrescription = useReactToPrint({
 		contentRef: prescriptionPrintRef,
+		preserveAfterPrint: true,
 		documentTitle: `Receita - ${patient.name}`,
 		pageStyle: `
 		@page {
@@ -106,24 +107,22 @@ export default function ClinicalDocumentBuilder({
 		@media print {
 			html,
 			body {
-				width: 209mm !important;
-				height: 296mm !important;
-				max-height: 296mm !important;
+				width: 210mm !important;
+				height: auto !important;
+				min-height: 0 !important;
 				margin: 0 !important;
 				padding: 0 !important;
-				overflow: hidden !important;
+				overflow: visible !important;
 			}
 
 			.prescription-print-area {
-				position: fixed !important;
-				top: 0 !important;
-				left: 50% !important;
-				width: 209mm !important;
-				height: 295.6mm !important;
+				position: relative !important;
+				width: 210mm !important;
+				height: 296mm !important;
 				max-width: none !important;
 				margin: 0 !important;
 				box-shadow: none !important;
-				transform: translateX(-50%) !important;
+				transform: none !important;
 				break-after: avoid !important;
 				break-inside: avoid !important;
 				page-break-after: avoid !important;
@@ -226,21 +225,19 @@ export default function ClinicalDocumentBuilder({
 	@media print {
 		html,
 		body {
-			width: 209mm !important;
-			height: 296mm !important;
-			max-height: 296mm !important;
+			width: 210mm !important;
+			height: auto !important;
+			min-height: 0 !important;
 			margin: 0 !important;
 			padding: 0 !important;
-			overflow: hidden !important;
+			overflow: visible !important;
 			background: white !important;
 		}
 
 		.clinical-document-print-area {
-			position: fixed !important;
-			top: 0 !important;
-			left: 50% !important;
-			width: 209mm !important;
-			height: 295.6mm !important;
+			position: relative !important;
+			width: 210mm !important;
+			height: 296mm !important;
 			max-width: none !important;
 
 			margin: 0 !important;
@@ -248,7 +245,7 @@ export default function ClinicalDocumentBuilder({
 
 			overflow: hidden !important;
 			box-shadow: none !important;
-			transform: translateX(-50%) !important;
+			transform: none !important;
 			break-after: avoid !important;
 			break-inside: avoid !important;
 			page-break-after: avoid !important;
@@ -264,12 +261,14 @@ export default function ClinicalDocumentBuilder({
 
 	const handlePrintReferral = useReactToPrint({
 		contentRef: referralPrintRef,
+		preserveAfterPrint: true,
 		documentTitle: `Encaminhamento - ${patient.name}`,
 		pageStyle: clinicalDocumentPrintPageStyle,
 	});
 
 	const handlePrintExamRequest = useReactToPrint({
 		contentRef: examRequestPrintRef,
+		preserveAfterPrint: true,
 		documentTitle: `Solicitação de Exame - ${patient.name}`,
 		pageStyle: clinicalDocumentPrintPageStyle,
 	});
