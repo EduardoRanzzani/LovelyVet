@@ -108,7 +108,7 @@ const CustomerFormClient = ({
 
 			<Form {...form}>
 				<form onSubmit={form.handleSubmit(formSubmit)}>
-					<div className='flex flex-col gap-2 max-h-100 overflow-y-auto px-1 sm:max-h-none sm:overflow-visible'>
+					<div className='flex max-h-[calc(100dvh-12rem)] min-w-0 flex-col gap-2 overflow-y-auto px-1'>
 						<input
 							type='text'
 							{...form.register('userId')}

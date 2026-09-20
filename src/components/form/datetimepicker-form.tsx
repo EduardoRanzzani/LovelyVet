@@ -64,7 +64,7 @@ const DateTimePickerForm = <T extends FieldValues>({
 	);
 
 	return (
-		<div className={cn('flex flex-col gap-1', className)}>
+		<div className={cn('flex min-w-0 flex-col gap-1', className)}>
 			<Label className='text-xs font-medium'>
 				{label} {required && <span className='text-destructive'>*</span>}
 			</Label>
@@ -162,7 +162,7 @@ const DateTimePickerForm = <T extends FieldValues>({
 									type='button'
 									disabled={disabled}
 									className={cn(
-										'h-9 w-full justify-start px-3 text-left font-normal',
+										'h-9 w-full min-w-0 justify-start overflow-hidden px-3 text-left font-normal',
 										!selectedDate && 'text-muted-foreground',
 										error && 'border-destructive',
 									)}
@@ -170,17 +170,19 @@ const DateTimePickerForm = <T extends FieldValues>({
 									<CalendarIcon className='mr-2 h-4 w-4' />
 
 									{selectedDate ? (
-										format(selectedDate, "dd/MM/yyyy 'às' HH:mm", {
-											locale: ptBR,
-										})
+										<span className='truncate'>
+											{format(selectedDate, "dd/MM/yyyy 'às' HH:mm", {
+												locale: ptBR,
+											})}
+										</span>
 									) : (
-										<span>{placeholder}</span>
+										<span className='truncate'>{placeholder}</span>
 									)}
 								</Button>
 							</PopoverTrigger>
 
 							<PopoverContent
-								className='flex w-auto flex-col p-0'
+								className='flex w-auto max-w-[calc(100vw-1rem)] flex-col p-0'
 								align='start'
 							>
 								<Calendar

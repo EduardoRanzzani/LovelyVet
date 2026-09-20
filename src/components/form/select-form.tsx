@@ -221,7 +221,10 @@ const SelectForm = <T extends FieldValues>({
 
 				return (
 					<div
-						className={cn('flex flex-col relative w-full', className)}
+						className={cn(
+							'relative flex w-full min-w-0 max-w-full flex-col',
+							className,
+						)}
 						ref={containerRef}
 					>
 						<label id={labelId} className='mb-1 text-xs font-medium'>
@@ -241,20 +244,18 @@ const SelectForm = <T extends FieldValues>({
 							aria-describedby={error ? errorId : undefined}
 							onKeyDown={handleTriggerKeyDown}
 							className={cn(
-								'border-input h-7 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-all outline-none',
-								'flex items-center justify-between cursor-pointer gap-2',
+								'border-input flex h-9 w-full min-w-0 max-w-full cursor-pointer items-center justify-between gap-2 overflow-hidden rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-all outline-none',
 								'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
 								error ? 'border-destructive' : 'focus-visible:border-ring',
-								className,
 							)}
 							onClick={() => setOpen((prev) => !prev)}
 						>
-							<div className='flex items-center flex-1 min-w-0 gap-1 overflow-hidden'>
+							<div className='flex min-w-0 flex-1 items-center gap-1 overflow-hidden'>
 								{selectedOptions.length > 0 ? (
 									multiple ? (
 										/* RENDERIZAÇÃO MULTIPLE: BADGES */
 										<>
-											<div className='flex items-center gap-1 overflow-hidden flex-nowrap'>
+											<div className='flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-hidden'>
 												{selectedOptions.slice(0, maxVisible).map((opt) => (
 													<span
 														key={opt.key || opt.value.toString()}
@@ -289,7 +290,7 @@ const SelectForm = <T extends FieldValues>({
 										</>
 									) : (
 										/* RENDERIZAÇÃO SINGLE: TEXTO PURO */
-										<span className='truncate text-zinc-900 dark:text-zinc-100'>
+										<span className='block min-w-0 flex-1 truncate text-zinc-900 dark:text-zinc-100'>
 											{selectedOptions[0].label}
 										</span>
 									)
@@ -310,7 +311,7 @@ const SelectForm = <T extends FieldValues>({
 						{/* LISTBOX / DROPDOWN */}
 						{open && (
 							<div
-								className='absolute left-0 right-0 z-1 flex flex-col w-full mt-1 overflow-hidden bg-white border rounded-md shadow-lg border-zinc-300 dark:bg-zinc-950 dark:border-zinc-800 max-h-60'
+								className='absolute left-0 right-0 z-10 mt-1 flex max-h-60 w-full min-w-0 max-w-full flex-col overflow-hidden rounded-md border border-zinc-300 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-950'
 								style={{ top: '100%' }}
 							>
 								<div className='p-2 border-b border-zinc-100 dark:border-zinc-800'>
@@ -379,7 +380,9 @@ const SelectForm = <T extends FieldValues>({
 														className='w-4 h-4 rounded border-zinc-300 accent-primary'
 													/>
 												)}
-												<span className='truncate'>{opt.label}</span>
+												<span className='min-w-0 flex-1 truncate'>
+													{opt.label}
+												</span>
 											</div>
 										);
 									})}

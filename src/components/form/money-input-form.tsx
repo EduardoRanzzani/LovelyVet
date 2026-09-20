@@ -37,7 +37,7 @@ const MoneyInputForm = <T extends FieldValues>({
 	const inputId = props.id || name;
 
 	return (
-		<Field className={cn('flex flex-col gap-1', className)}>
+		<Field className={cn('flex min-w-0 flex-col gap-1', className)}>
 			<Label htmlFor={inputId} className='text-xs font-medium'>
 				{label} {required && <span className='text-destructive'>*</span>}
 			</Label>

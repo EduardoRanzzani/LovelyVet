@@ -40,7 +40,7 @@ const EditorForm = <T extends FieldValues>({
 	placeholder,
 }: EditorFormProps<T>) => {
 	return (
-		<Field className={cn('flex flex-col gap-1', className)}>
+		<Field className={cn('flex min-w-0 flex-col gap-1', className)}>
 			<Label className='text-xs font-medium'>
 				{label} {required && <span className='text-destructive'>*</span>}
 			</Label>

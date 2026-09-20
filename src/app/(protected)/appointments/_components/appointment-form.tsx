@@ -202,6 +202,7 @@ const AppointmentFormClient = ({
 
 	return (
 		<DialogContent
+			className='overflow-hidden sm:max-w-2xl'
 			onInteractOutside={(e) => e.preventDefault()}
 			showCloseButton={false}
 		>
@@ -215,8 +216,12 @@ const AppointmentFormClient = ({
 			</DialogHeader>
 
 			<Form {...form}>
-				<form id='appointmentForm' onSubmit={form.handleSubmit(formSubmit)}>
-					<div className='flex flex-col gap-2 max-h-100 overflow-y-auto px-1 sm:max-h-none sm:overflow-visible'>
+				<form
+					id='appointmentForm'
+					className='min-w-0'
+					onSubmit={form.handleSubmit(formSubmit)}
+				>
+					<div className='flex max-h-[calc(100dvh-12rem)] min-w-0 flex-col gap-2 overflow-y-auto px-1'>
 						<input
 							type='text'
 							className='hidden'
@@ -335,7 +340,7 @@ const AppointmentFormClient = ({
 							}}
 						/>
 
-						<div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
+						<div className='grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2'>
 							<DateTimePickerForm
 								label='Data e Hora:'
 								control={form.control}

@@ -36,7 +36,7 @@ const InputForm = <T extends FieldValues>({
 		/* O segredo está aqui: A className de fora (w-20, flex-1, etc.) 
            deve ir para o Field para que o componente todo mude de tamanho.
         */
-		<Field className={cn('flex flex-col gap-1', className)}>
+		<Field className={cn('flex min-w-0 flex-col gap-1', className)}>
 			<Label htmlFor={inputId} className='text-xs font-medium'>
 				{label} {props.required && <span className='text-destructive'>*</span>}
 			</Label>

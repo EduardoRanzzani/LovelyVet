@@ -35,7 +35,7 @@ const TextareaForm = <T extends FieldValues>({
 		props.id || name || label.replace(/\s+/g, '-').toLowerCase();
 
 	return (
-		<Field className={cn('flex flex-col gap-1', className)}>
+		<Field className={cn('flex min-w-0 flex-col gap-1', className)}>
 			<Label htmlFor={textareaId} className='text-xs font-medium'>
 				{label} {props.required && <span className='text-destructive'>*</span>}
 			</Label>
