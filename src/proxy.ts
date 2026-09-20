@@ -1,5 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { normalizeUserRole, type UserRole } from './lib/security/roles';
 import { isPathWithinRoute } from './lib/security/routes';
 
@@ -10,18 +10,6 @@ const isPublicRoute = createRouteMatcher([
 	'/sign-up(.*)',
 	'/teste',
 ]);
-
-const isInternalPrintRequest = (req: NextRequest): boolean => {
-	const secretFromEnv = process.env.INTERNAL_PDF_SECRET;
-
-	if (!secretFromEnv) {
-		return false;
-	}
-
-	const secretFromQuery = req.nextUrl.searchParams.get('secret');
-
-	return secretFromQuery === secretFromEnv;
-};
 
 const rolePermissions: Record<UserRole, string[]> = {
 	admin: [
@@ -71,10 +59,9 @@ const rolePermissions: Record<UserRole, string[]> = {
 
 export default clerkMiddleware(async (auth, req) => {
 	/*
-	 * 1. Webhooks e requisições internas
-	 * de PDF com segredo válido.
+	 * 1. Webhook público do Clerk.
 	 */
-	if (isWebhookRoute(req) || isInternalPrintRequest(req)) {
+	if (isWebhookRoute(req)) {
 		return NextResponse.next();
 	}
 
