@@ -1,6 +1,7 @@
 'use client';
 
 import type { PrescriptionDocumentData } from '@/api/schema/prescription-document.schema';
+import A4DocumentPreview from '@/components/clinical-documents/a4-document-preview';
 import PrescriptionDocument from '@/components/prescriptions/prescription-document';
 import { Button } from '@/components/ui/button';
 import { ArrowLeftIcon, PrinterIcon } from 'lucide-react';
@@ -46,12 +47,16 @@ export default function PrescriptionPrintClient({
 				body {
 					width: 210mm !important;
 					height: 297mm !important;
+					max-height: 297mm !important;
 					margin: 0 !important;
 					padding: 0 !important;
+					overflow: hidden !important;
 					background: white !important;
 				}
 
 				.prescription-print-area {
+					position: fixed !important;
+					inset: 0 auto auto 0 !important;
 					width: 210mm !important;
 					height: 297mm !important;
 					max-width: none !important;
@@ -60,6 +65,10 @@ export default function PrescriptionPrintClient({
 					overflow: hidden !important;
 					box-shadow: none !important;
 					background: white !important;
+					break-after: avoid !important;
+					break-inside: avoid !important;
+					page-break-after: avoid !important;
+					page-break-inside: avoid !important;
 
 					-webkit-print-color-adjust: exact !important;
 					print-color-adjust: exact !important;
@@ -88,6 +97,16 @@ export default function PrescriptionPrintClient({
 		<div className='document-print-page space-y-4'>
 			<style>{`
 				@media print {
+					html,
+					body {
+						width: 210mm !important;
+						height: 297mm !important;
+						max-height: 297mm !important;
+						margin: 0 !important;
+						padding: 0 !important;
+						overflow: hidden !important;
+					}
+
 					body:has(.document-print-page) * {
 						visibility: hidden !important;
 					}
@@ -98,8 +117,12 @@ export default function PrescriptionPrintClient({
 					}
 
 					body:has(.document-print-page) .prescription-print-area {
-						position: absolute !important;
+						position: fixed !important;
 						inset: 0 auto auto 0 !important;
+						break-after: avoid !important;
+						break-inside: avoid !important;
+						page-break-after: avoid !important;
+						page-break-inside: avoid !important;
 					}
 				}
 			`}</style>
@@ -118,7 +141,7 @@ export default function PrescriptionPrintClient({
 				</Button>
 			</div>
 
-			<div className='overflow-auto rounded-xl bg-muted/40 p-4'>
+			<A4DocumentPreview>
 				<PrescriptionDocument
 					printRef={printRef}
 					patient={{
@@ -131,7 +154,7 @@ export default function PrescriptionPrintClient({
 					items={documentData.items}
 					administrationRoute={documentData.administrationRoute}
 				/>
-			</div>
+			</A4DocumentPreview>
 		</div>
 	);
 }

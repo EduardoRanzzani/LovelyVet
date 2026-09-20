@@ -33,10 +33,34 @@ export default function A4DocumentPreview({
 	}, []);
 
 	return (
-		<div className='overflow-hidden rounded-xl border bg-muted/40 p-2 sm:p-4'>
-			<div ref={previewContainerRef} className='w-full'>
+		<div
+			data-a4-preview-shell
+			className='overflow-hidden rounded-xl border bg-muted/40 p-2 sm:p-4'
+		>
+			<style>{`
+				@media print {
+					[data-a4-preview-shell],
+					[data-a4-preview-container],
+					[data-a4-preview-viewport] {
+						display: contents !important;
+					}
+
+					[data-a4-preview-page] {
+						width: 210mm !important;
+						height: 297mm !important;
+						transform: none !important;
+					}
+				}
+			`}</style>
+
+			<div
+				ref={previewContainerRef}
+				data-a4-preview-container
+				className='w-full'
+			>
 				<div
 					className='mx-auto overflow-hidden'
+					data-a4-preview-viewport
 					style={{
 						width: A4_WIDTH_PX * previewScale,
 						height: A4_HEIGHT_PX * previewScale,
@@ -44,6 +68,7 @@ export default function A4DocumentPreview({
 				>
 					<div
 						className='origin-top-left'
+						data-a4-preview-page
 						style={{
 							width: A4_WIDTH_PX,
 							height: A4_HEIGHT_PX,

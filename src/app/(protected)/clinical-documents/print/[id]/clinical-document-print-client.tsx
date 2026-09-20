@@ -4,6 +4,7 @@ import type {
 	ClinicalDocumentSnapshot,
 	ClinicalDocumentType,
 } from '@/api/schema/clinical-documents.schema';
+import A4DocumentPreview from '@/components/clinical-documents/a4-document-preview';
 import RichTextClinicalDocument from '@/components/clinical-documents/rich-text-clinical-document';
 import { Button } from '@/components/ui/button';
 import { ArrowLeftIcon, PrinterIcon } from 'lucide-react';
@@ -55,12 +56,16 @@ export default function ClinicalDocumentPrintClient({
 				body {
 					width: 210mm !important;
 					height: 297mm !important;
+					max-height: 297mm !important;
 					margin: 0 !important;
 					padding: 0 !important;
+					overflow: hidden !important;
 					background: white !important;
 				}
 
 				.clinical-document-print-area {
+					position: fixed !important;
+					inset: 0 auto auto 0 !important;
 					width: 210mm !important;
 					height: 297mm !important;
 					max-width: none !important;
@@ -69,6 +74,10 @@ export default function ClinicalDocumentPrintClient({
 					overflow: hidden !important;
 					box-shadow: none !important;
 					background: white !important;
+					break-after: avoid !important;
+					break-inside: avoid !important;
+					page-break-after: avoid !important;
+					page-break-inside: avoid !important;
 
 					-webkit-print-color-adjust: exact !important;
 					print-color-adjust: exact !important;
@@ -97,6 +106,16 @@ export default function ClinicalDocumentPrintClient({
 		<div className='document-print-page space-y-4'>
 			<style>{`
 				@media print {
+					html,
+					body {
+						width: 210mm !important;
+						height: 297mm !important;
+						max-height: 297mm !important;
+						margin: 0 !important;
+						padding: 0 !important;
+						overflow: hidden !important;
+					}
+
 					body:has(.document-print-page) * {
 						visibility: hidden !important;
 					}
@@ -107,8 +126,12 @@ export default function ClinicalDocumentPrintClient({
 					}
 
 					body:has(.document-print-page) .clinical-document-print-area {
-						position: absolute !important;
+						position: fixed !important;
 						inset: 0 auto auto 0 !important;
+						break-after: avoid !important;
+						break-inside: avoid !important;
+						page-break-after: avoid !important;
+						page-break-inside: avoid !important;
 					}
 				}
 			`}</style>
@@ -127,7 +150,7 @@ export default function ClinicalDocumentPrintClient({
 				</Button>
 			</div>
 
-			<div className='overflow-auto rounded-xl bg-muted/40 p-4'>
+			<A4DocumentPreview>
 				<RichTextClinicalDocument
 					printRef={printRef}
 					patient={{
@@ -140,7 +163,7 @@ export default function ClinicalDocumentPrintClient({
 					title={title}
 					content={content}
 				/>
-			</div>
+			</A4DocumentPreview>
 		</div>
 	);
 }
