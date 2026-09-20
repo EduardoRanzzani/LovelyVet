@@ -278,63 +278,89 @@ export default function ClinicalDocumentBuilder({
 				onValueChange={(value) =>
 					setDocumentType(value as ClinicalDocumentType)
 				}
+				className='min-w-0'
 			>
-				<div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
-					<TabsList>
-						<TabsTrigger value='prescription' className={'w-60'}>
-							<FileTextIcon className='size-4' />
-							Receita
-						</TabsTrigger>
+				<div className='flex min-w-0 flex-col gap-4 xl:flex-row xl:items-center xl:justify-between'>
+					<div className='min-w-0 xl:max-w-3xl xl:flex-1'>
+						<div className='md:hidden'>
+							<Select
+								value={documentType}
+								onValueChange={(value) =>
+									setDocumentType(value as ClinicalDocumentType)
+								}
+							>
+								<SelectTrigger className='h-11 w-full'>
+									<SelectValue placeholder='Selecione o documento' />
+								</SelectTrigger>
 
-						<TabsTrigger value='referral' className={'w-60'}>
-							<StethoscopeIcon className='size-4' />
-							Encaminhamento
-						</TabsTrigger>
+								<SelectContent>
+									<SelectItem value='prescription'>Receita</SelectItem>
+									<SelectItem value='referral'>Encaminhamento</SelectItem>
+									<SelectItem value='exam-request'>
+										Solicitação de Exame
+									</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
 
-						<TabsTrigger value='exam-request' className={'w-60'}>
-							<FileSearchIcon className='size-4' />
-							Solicitação de Exame
-						</TabsTrigger>
-					</TabsList>
+						<TabsList className='hidden h-auto w-full grid-cols-3 md:grid'>
+							<TabsTrigger value='prescription' className='min-w-0 py-2'>
+								<FileTextIcon className='size-4' />
+								<span className='truncate'>Receita</span>
+							</TabsTrigger>
 
-					<div className={'flex flex-row gap-2'}>
-						<Button
-							type='button'
-							onClick={handleSavePrescription}
-							disabled={
-								!canSavePrescription ||
-								savePrescriptionAction.isExecuting ||
-								updatePrescriptionAction.isExecuting
-							}
-							className={'w-40'}
-						>
-							<SaveIcon className='size-4' />
+							<TabsTrigger value='referral' className='min-w-0 py-2'>
+								<StethoscopeIcon className='size-4' />
+								<span className='truncate'>Encaminhamento</span>
+							</TabsTrigger>
 
-							{savePrescriptionAction.isExecuting ||
-							updatePrescriptionAction.isExecuting
-								? 'Salvando...'
-								: prescriptionId
-									? 'Atualizar'
-									: 'Salvar'}
-						</Button>
-
-						<Button
-							type='button'
-							variant='outline'
-							onClick={handlePrintPrescription}
-							disabled={!canPrintPrescription}
-							className={'w-40'}
-						>
-							<PrinterIcon className='size-4' />
-							Imprimir
-						</Button>
+							<TabsTrigger value='exam-request' className='min-w-0 py-2'>
+								<FileSearchIcon className='size-4' />
+								<span className='truncate'>Solicitação de Exame</span>
+							</TabsTrigger>
+						</TabsList>
 					</div>
+
+					{documentType === 'prescription' && (
+						<div className='grid grid-cols-2 gap-2 sm:flex sm:justify-end'>
+							<Button
+								type='button'
+								onClick={handleSavePrescription}
+								disabled={
+									!canSavePrescription ||
+									savePrescriptionAction.isExecuting ||
+									updatePrescriptionAction.isExecuting
+								}
+								className='min-w-0 sm:w-40'
+							>
+								<SaveIcon className='size-4' />
+
+								{savePrescriptionAction.isExecuting ||
+								updatePrescriptionAction.isExecuting
+									? 'Salvando...'
+									: prescriptionId
+										? 'Atualizar'
+										: 'Salvar'}
+							</Button>
+
+							<Button
+								type='button'
+								variant='outline'
+								onClick={handlePrintPrescription}
+								disabled={!canPrintPrescription}
+								className='min-w-0 sm:w-40'
+							>
+								<PrinterIcon className='size-4' />
+								Imprimir
+							</Button>
+						</div>
+					)}
 				</div>
 
-				<TabsContent value='prescription' className='mt-6'>
-					<div className='rounded-xl border bg-card p-4'>
+				<TabsContent value='prescription' className='mt-4 min-w-0 sm:mt-6'>
+					<div className='min-w-0 rounded-xl border bg-card p-2 sm:p-4'>
 						<div className='grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(500px,0.9fr)]'>
-							<div className='min-w-0 rounded-xl border bg-card p-6'>
+							<div className='min-w-0 rounded-xl border bg-card p-3 sm:p-6'>
 								<div className='min-w-0'>
 									<div className='mb-3'>
 										<h3 className='font-semibold'>Receita</h3>
@@ -355,7 +381,7 @@ export default function ClinicalDocumentBuilder({
 								</div>
 							</div>
 
-							<div className='min-w-0 rounded-xl border bg-card p-6'>
+							<div className='min-w-0 rounded-xl border bg-card p-3 sm:p-6'>
 								<div className='sticky top-6'>
 									<div className='mb-3'>
 										<h3 className='font-semibold'>Prévia</h3>
@@ -378,10 +404,10 @@ export default function ClinicalDocumentBuilder({
 					</div>
 				</TabsContent>
 
-				<TabsContent value='referral' className='mt-6'>
-					<div className='rounded-xl border bg-card p-4'>
+				<TabsContent value='referral' className='mt-4 min-w-0 sm:mt-6'>
+					<div className='min-w-0 rounded-xl border bg-card p-2 sm:p-4'>
 						<div className='grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(500px,0.9fr)]'>
-							<div className='min-w-0 rounded-xl border bg-card p-6'>
+							<div className='min-w-0 rounded-xl border bg-card p-3 sm:p-6'>
 								<div className='mb-6'>
 									<h2 className='text-lg font-semibold'>Encaminhamento</h2>
 
@@ -397,7 +423,7 @@ export default function ClinicalDocumentBuilder({
 									onContentChange={setReferralContent}
 								/>
 
-								<div className='mt-6 flex justify-end gap-2'>
+								<div className='mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end'>
 									<Button
 										type='button'
 										variant='outline'
@@ -430,7 +456,7 @@ export default function ClinicalDocumentBuilder({
 								</div>
 							</div>
 
-							<div className='min-w-0 rounded-xl border bg-card p-6'>
+							<div className='min-w-0 rounded-xl border bg-card p-3 sm:p-6'>
 								<div className='sticky top-6'>
 									<div className='mb-3'>
 										<h3 className='font-semibold'>Prévia</h3>
@@ -457,10 +483,10 @@ export default function ClinicalDocumentBuilder({
 					</div>
 				</TabsContent>
 
-				<TabsContent value='exam-request' className='mt-6'>
-					<div className='rounded-xl border bg-card p-4'>
+				<TabsContent value='exam-request' className='mt-4 min-w-0 sm:mt-6'>
+					<div className='min-w-0 rounded-xl border bg-card p-2 sm:p-4'>
 						<div className='grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(500px,0.9fr)]'>
-							<div className='min-w-0 rounded-xl border bg-card p-6'>
+							<div className='min-w-0 rounded-xl border bg-card p-3 sm:p-6'>
 								<div className='mb-6'>
 									<h2 className='text-lg font-semibold'>
 										Solicitação de Exame
@@ -478,7 +504,7 @@ export default function ClinicalDocumentBuilder({
 									onContentChange={setExamRequestContent}
 								/>
 
-								<div className='mt-6 flex justify-end gap-2'>
+								<div className='mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end'>
 									<Button
 										type='button'
 										variant='outline'
@@ -514,7 +540,7 @@ export default function ClinicalDocumentBuilder({
 								</div>
 							</div>
 
-							<div className='min-w-0 rounded-xl border bg-card p-6'>
+							<div className='min-w-0 rounded-xl border bg-card p-3 sm:p-6'>
 								<div className='sticky top-6'>
 									<div className='mb-3'>
 										<h3 className='font-semibold'>Prévia</h3>
