@@ -54,9 +54,9 @@ export default function ClinicalDocumentPrintClient({
 			@media print {
 				html,
 				body {
-					width: 210mm !important;
-					height: 297mm !important;
-					max-height: 297mm !important;
+					width: 209mm !important;
+					height: 296mm !important;
+					max-height: 296mm !important;
 					margin: 0 !important;
 					padding: 0 !important;
 					overflow: hidden !important;
@@ -65,12 +65,14 @@ export default function ClinicalDocumentPrintClient({
 
 				.clinical-document-print-area {
 					position: fixed !important;
-					inset: 0 auto auto 0 !important;
-					width: 210mm !important;
-					height: 297mm !important;
+					top: 0 !important;
+					left: 50% !important;
+					width: 209mm !important;
+					height: 295.6mm !important;
 					max-width: none !important;
 					margin: 0 !important;
 					padding: 0 !important;
+					transform: translateX(-50%) !important;
 					overflow: hidden !important;
 					box-shadow: none !important;
 					background: white !important;
@@ -108,9 +110,9 @@ export default function ClinicalDocumentPrintClient({
 				@media print {
 					html,
 					body {
-						width: 210mm !important;
-						height: 297mm !important;
-						max-height: 297mm !important;
+						width: 209mm !important;
+						height: 296mm !important;
+						max-height: 296mm !important;
 						margin: 0 !important;
 						padding: 0 !important;
 						overflow: hidden !important;
@@ -127,7 +129,9 @@ export default function ClinicalDocumentPrintClient({
 
 					body:has(.document-print-page) .clinical-document-print-area {
 						position: fixed !important;
-						inset: 0 auto auto 0 !important;
+						top: 0 !important;
+						left: 50% !important;
+						transform: translateX(-50%) !important;
 						break-after: avoid !important;
 						break-inside: avoid !important;
 						page-break-after: avoid !important;

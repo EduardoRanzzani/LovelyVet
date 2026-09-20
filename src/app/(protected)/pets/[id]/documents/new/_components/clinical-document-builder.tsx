@@ -106,16 +106,28 @@ export default function ClinicalDocumentBuilder({
 		@media print {
 			html,
 			body {
+				width: 209mm !important;
+				height: 296mm !important;
+				max-height: 296mm !important;
 				margin: 0 !important;
 				padding: 0 !important;
+				overflow: hidden !important;
 			}
 
 			.prescription-print-area {
-				width: 210mm !important;
-				height: 297mm !important;
+				position: fixed !important;
+				top: 0 !important;
+				left: 50% !important;
+				width: 209mm !important;
+				height: 295.6mm !important;
 				max-width: none !important;
 				margin: 0 !important;
 				box-shadow: none !important;
+				transform: translateX(-50%) !important;
+				break-after: avoid !important;
+				break-inside: avoid !important;
+				page-break-after: avoid !important;
+				page-break-inside: avoid !important;
 
 				-webkit-print-color-adjust: exact !important;
 				print-color-adjust: exact !important;
@@ -214,16 +226,21 @@ export default function ClinicalDocumentBuilder({
 	@media print {
 		html,
 		body {
-			width: 210mm !important;
-			height: 297mm !important;
+			width: 209mm !important;
+			height: 296mm !important;
+			max-height: 296mm !important;
 			margin: 0 !important;
 			padding: 0 !important;
+			overflow: hidden !important;
 			background: white !important;
 		}
 
 		.clinical-document-print-area {
-			width: 210mm !important;
-			height: 297mm !important;
+			position: fixed !important;
+			top: 0 !important;
+			left: 50% !important;
+			width: 209mm !important;
+			height: 295.6mm !important;
 			max-width: none !important;
 
 			margin: 0 !important;
@@ -231,6 +248,11 @@ export default function ClinicalDocumentBuilder({
 
 			overflow: hidden !important;
 			box-shadow: none !important;
+			transform: translateX(-50%) !important;
+			break-after: avoid !important;
+			break-inside: avoid !important;
+			page-break-after: avoid !important;
+			page-break-inside: avoid !important;
 
 			background: white !important;
 

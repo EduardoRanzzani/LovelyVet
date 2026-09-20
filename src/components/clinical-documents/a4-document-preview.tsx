@@ -46,8 +46,9 @@ export default function A4DocumentPreview({
 					}
 
 					[data-a4-preview-page] {
-						width: 210mm !important;
-						height: 297mm !important;
+						width: 209mm !important;
+						height: 295.6mm !important;
+						margin: 0 auto !important;
 						transform: none !important;
 					}
 				}
