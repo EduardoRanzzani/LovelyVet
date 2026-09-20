@@ -240,38 +240,33 @@ export default function PrescriptionBuilder({
 							value={field.id}
 							className='rounded-xl border bg-card px-3 last:border-b sm:px-5'
 						>
-							<div className='flex min-w-0 items-center gap-2'>
-								<AccordionTrigger className='min-w-0 py-3 hover:no-underline sm:py-4'>
+							<AccordionTrigger className='min-w-0 py-3 hover:no-underline sm:py-4'>
+								<div className='flex min-w-0 items-center gap-2 justify-between w-full'>
 									<div className='flex min-w-0 flex-1 flex-col text-left'>
 										<span className='truncate font-semibold'>
 											Medicamento {index + 1}
-											{items?.[index]?.name
-												? ` · ${items[index].name}`
-												: ''}
+											{items?.[index]?.name ? ` · ${items[index].name}` : ''}
 										</span>
 
 										<span className='truncate text-xs font-normal text-muted-foreground'>
-											{[
-												items?.[index]?.pharmacy,
-												items?.[index]?.quantity,
-											]
+											{[items?.[index]?.pharmacy, items?.[index]?.quantity]
 												.filter(Boolean)
 												.join(' · ') || 'Toque para preencher os dados'}
 										</span>
 									</div>
-								</AccordionTrigger>
 
-								<Button
-									type='button'
-									size='icon'
-									variant='ghost'
-									onClick={() => handleRemove(index, field.id)}
-									aria-label={`Excluir medicamento ${index + 1}`}
-									className='shrink-0'
-								>
-									<Trash2Icon className='size-4 text-destructive' />
-								</Button>
-							</div>
+									<Button
+										type='button'
+										size='icon'
+										variant='outline'
+										onClick={() => handleRemove(index, field.id)}
+										aria-label={`Excluir medicamento ${index + 1}`}
+										className='shrink-0'
+									>
+										<Trash2Icon className='size-4 text-destructive' />
+									</Button>
+								</div>
+							</AccordionTrigger>
 
 							<AccordionContent className='border-t pt-4'>
 								<div className='grid gap-4 md:grid-cols-3'>
@@ -302,7 +297,6 @@ export default function PrescriptionBuilder({
 										/>
 									</div>
 								</div>
-
 
 								<div className='mt-4'>
 									<TextEditorForm
