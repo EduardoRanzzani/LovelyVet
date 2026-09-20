@@ -10,7 +10,8 @@ import {
 	PageTitle,
 } from '@/components/shared/page-container';
 import { db } from '@/db';
-import { customersTable, usersTable } from '@/db/schema';
+import { customersTable } from '@/db/schema';
+import { findUserByClerkUserId } from '@/lib/security/user-identity';
 import { auth } from '@clerk/nextjs/server';
 import { format } from 'date-fns';
 import { eq } from 'drizzle-orm';
@@ -26,11 +27,10 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
 
 	const { userId, isAuthenticated } = await auth();
 
-	if (!isAuthenticated) return <div>Redirecinando para login...</div>;
+	if (!isAuthenticated || !userId)
+		return <div>Redirecionando para login...</div>;
 
-	const existingUser = await db.query.usersTable.findFirst({
-		where: eq(usersTable.clerkUserId, userId),
-	});
+	const existingUser = await findUserByClerkUserId(userId);
 
 	if (!existingUser) {
 		return (

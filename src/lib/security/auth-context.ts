@@ -1,8 +1,6 @@
-import { db } from '@/db';
-import { usersTable } from '@/db/schema';
 import { auth } from '@clerk/nextjs/server';
-import { eq } from 'drizzle-orm';
 import type { UserRole } from './roles';
+import { findUserByClerkUserId } from './user-identity';
 
 export type AuthContext = {
 	clerkUserId: string;
@@ -19,13 +17,7 @@ export const requireAuthContext = async (): Promise<AuthContext> => {
 		throw new Error('Usuário não autenticado');
 	}
 
-	const user = await db.query.usersTable.findFirst({
-		where: eq(usersTable.clerkUserId, clerkUserId),
-		with: {
-			customer: true,
-			doctor: true,
-		},
-	});
+	const user = await findUserByClerkUserId(clerkUserId);
 
 	if (!user) {
 		throw new Error('Usuário não cadastrado no sistema');
