@@ -7,10 +7,11 @@ import type {
 import A4DocumentPreview from '@/components/clinical-documents/a4-document-preview';
 import RichTextClinicalDocument from '@/components/clinical-documents/rich-text-clinical-document';
 import { Button } from '@/components/ui/button';
-import { ArrowLeftIcon, PrinterIcon } from 'lucide-react';
+import { downloadElementAsPdf } from '@/lib/pdf/download-element-as-pdf';
+import { ArrowLeftIcon, DownloadIcon, LoaderCircleIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useRef } from 'react';
-import { useReactToPrint } from 'react-to-print';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 interface ClinicalDocumentPrintClientProps {
 	petId: string;
@@ -36,108 +37,42 @@ export default function ClinicalDocumentPrintClient({
 		timeZone: 'America/Campo_Grande',
 	});
 
-	const printRef = useRef<HTMLDivElement>(null);
+	const documentRef = useRef<HTMLDivElement>(null);
+	const hasAutoDownloadedRef = useRef(false);
+	const [isExporting, setIsExporting] = useState(false);
 
-	const hasAutoPrintedRef = useRef(false);
+	const handleDownload = useCallback(async () => {
+		if (!documentRef.current || isExporting) return;
 
-	const handlePrint = useReactToPrint({
-		contentRef: printRef,
-		preserveAfterPrint: true,
+		setIsExporting(true);
 
-		documentTitle: `${title} - ${documentData.patient.name}`,
-
-		pageStyle: `
-			@page {
-				size: A4 portrait;
-				margin: 0;
-			}
-
-			@media print {
-				html,
-				body {
-					width: 210mm !important;
-					height: auto !important;
-					min-height: 0 !important;
-					margin: 0 !important;
-					padding: 0 !important;
-					overflow: visible !important;
-					background: white !important;
-				}
-
-				.clinical-document-print-area {
-					position: relative !important;
-					width: 210mm !important;
-					height: 296mm !important;
-					max-width: none !important;
-					margin: 0 !important;
-					padding: 0 !important;
-					transform: none !important;
-					overflow: hidden !important;
-					box-shadow: none !important;
-					background: white !important;
-					break-after: avoid !important;
-					break-inside: avoid !important;
-					page-break-after: avoid !important;
-					page-break-inside: avoid !important;
-
-					-webkit-print-color-adjust: exact !important;
-					print-color-adjust: exact !important;
-				}
-			}
-		`,
-	});
+		try {
+			await downloadElementAsPdf({
+				element: documentRef.current,
+				filename: `${title} - ${documentData.patient.name}.pdf`,
+			});
+		} catch (error) {
+			console.error(error);
+			toast.error('Não foi possível gerar o PDF.');
+		} finally {
+			setIsExporting(false);
+		}
+	}, [documentData.patient.name, isExporting, title]);
 
 	useEffect(() => {
 		const timeout = window.setTimeout(() => {
-			if (hasAutoPrintedRef.current) {
-				return;
-			}
+			if (hasAutoDownloadedRef.current) return;
 
-			hasAutoPrintedRef.current = true;
-
-			handlePrint();
+			hasAutoDownloadedRef.current = true;
+			void handleDownload();
 		}, 300);
 
-		return () => {
-			window.clearTimeout(timeout);
-		};
-	}, [handlePrint]);
+		return () => window.clearTimeout(timeout);
+	}, [handleDownload]);
 
 	return (
-		<div className='document-print-page space-y-4'>
-			<style>{`
-				@media print {
-					html,
-					body {
-						width: 210mm !important;
-						height: auto !important;
-						min-height: 0 !important;
-						margin: 0 !important;
-						padding: 0 !important;
-						overflow: visible !important;
-					}
-
-					body:has(.document-print-page) * {
-						visibility: hidden !important;
-					}
-
-					body:has(.document-print-page) .clinical-document-print-area,
-					body:has(.document-print-page) .clinical-document-print-area * {
-						visibility: visible !important;
-					}
-
-					body:has(.document-print-page) .clinical-document-print-area {
-						position: relative !important;
-						transform: none !important;
-						break-after: avoid !important;
-						break-inside: avoid !important;
-						page-break-after: avoid !important;
-						page-break-inside: avoid !important;
-					}
-				}
-			`}</style>
-
-			<div className='flex items-center justify-between gap-4 print:hidden'>
+		<div className='space-y-4'>
+			<div className='flex items-center justify-between gap-4'>
 				<Button variant='outline' asChild>
 					<Link href={`/pets/${petId}`}>
 						<ArrowLeftIcon className='size-4' />
@@ -145,20 +80,22 @@ export default function ClinicalDocumentPrintClient({
 					</Link>
 				</Button>
 
-				<Button type='button' onClick={handlePrint}>
-					<PrinterIcon className='size-4' />
-					Imprimir
+				<Button type='button' onClick={handleDownload} disabled={isExporting}>
+					{isExporting ? (
+						<LoaderCircleIcon className='size-4 animate-spin' />
+					) : (
+						<DownloadIcon className='size-4' />
+					)}
+					{isExporting ? 'Gerando PDF...' : 'Baixar PDF'}
 				</Button>
 			</div>
 
 			<A4DocumentPreview>
 				<RichTextClinicalDocument
-					printRef={printRef}
+					printRef={documentRef}
 					patient={{
 						...documentData.patient,
-
 						tutorName: documentData.tutor.name,
-
 						date,
 					}}
 					title={title}

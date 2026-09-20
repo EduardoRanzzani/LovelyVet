@@ -27,12 +27,12 @@ import type { UserRole } from '@/lib/security/roles';
 import { format, formatDate } from 'date-fns';
 import {
 	CalendarIcon,
+	DownloadIcon,
 	DropletIcon,
 	FileIcon,
 	FilmIcon,
 	GalleryHorizontalIcon,
 	MessageCircleIcon,
-	PrinterIcon,
 	ScaleIcon,
 	ShoppingCartIcon,
 	SquarePenIcon,
@@ -152,8 +152,8 @@ const PetDetailsClient = ({
 
 						<Button variant='outline' size='sm' asChild>
 							<Link href={`/prescriptions/print/${p.id}`}>
-								<PrinterIcon className='size-4' />
-								Imprimir
+								<DownloadIcon className='size-4' />
+								Exportar PDF
 							</Link>
 						</Button>
 					</div>
@@ -183,8 +183,8 @@ const PetDetailsClient = ({
 						<div className='flex flex-wrap gap-2'>
 							<Button variant='outline' size='sm' asChild>
 								<Link href={`/clinical-documents/print/${document.id}`}>
-									<PrinterIcon className='size-4' />
-									Imprimir
+									<DownloadIcon className='size-4' />
+									Exportar PDF
 								</Link>
 							</Button>
 						</div>

@@ -1,4 +1,5 @@
 'use client';
+'use no memo';
 
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -16,12 +17,12 @@ import {
 	SelectValue,
 } from '@/components/ui/select';
 import { useRef, useState } from 'react';
-import { useReactToPrint } from 'react-to-print';
 import { REGINA_DOCTOR_ID } from '@/api/config/consts';
 import {
+	DownloadIcon,
 	FileSearchIcon,
 	FileTextIcon,
-	PrinterIcon,
+	LoaderCircleIcon,
 	SaveIcon,
 	StethoscopeIcon,
 } from 'lucide-react';
@@ -36,6 +37,7 @@ import {
 import RichTextClinicalDocument from '@/components/clinical-documents/rich-text-clinical-document';
 import { saveClinicalDocument } from '@/api/actions/clinical-documents.actions';
 import A4DocumentPreview from '@/components/clinical-documents/a4-document-preview';
+import { downloadElementAsPdf } from '@/lib/pdf/download-element-as-pdf';
 
 interface ClinicalDocumentBuilderProps {
 	petId: string;
@@ -65,6 +67,8 @@ export default function ClinicalDocumentBuilder({
 	const [examRequestContent, setExamRequestContent] = useState('');
 	const [documentType, setDocumentType] =
 		useState<ClinicalDocumentType>('prescription');
+	const [exportingType, setExportingType] =
+		useState<ClinicalDocumentType | null>(null);
 	const [prescriptionItems, setPrescriptionItems] = useState<
 		PrescriptionDraftItem[]
 	>(initialPrescription?.items ?? []);
@@ -77,7 +81,7 @@ export default function ClinicalDocumentBuilder({
 	const selectedTutor = tutors.find((tutor) => tutor.id === selectedTutorId);
 	const selectedTutorName = selectedTutor?.name ?? '-';
 
-	const canPrintPrescription =
+	const canExportPrescription =
 		prescriptionItems.length > 0 &&
 		prescriptionItems.every(
 			(item) =>
@@ -94,46 +98,24 @@ export default function ClinicalDocumentBuilder({
 
 	const prescriptionPrintRef = useRef<HTMLDivElement>(null);
 
-	const handlePrintPrescription = useReactToPrint({
-		contentRef: prescriptionPrintRef,
-		preserveAfterPrint: true,
-		documentTitle: `Receita - ${patient.name}`,
-		pageStyle: `
-		@page {
-			size: A4 portrait;
-			margin: 0;
+	const handleExportPdf = async (
+		type: ClinicalDocumentType,
+		element: HTMLDivElement | null,
+		filename: string,
+	) => {
+		if (!element || exportingType) return;
+
+		setExportingType(type);
+
+		try {
+			await downloadElementAsPdf({ element, filename });
+		} catch (error) {
+			console.error(error);
+			toast.error('Não foi possível gerar o PDF.');
+		} finally {
+			setExportingType(null);
 		}
-
-		@media print {
-			html,
-			body {
-				width: 210mm !important;
-				height: auto !important;
-				min-height: 0 !important;
-				margin: 0 !important;
-				padding: 0 !important;
-				overflow: visible !important;
-			}
-
-			.prescription-print-area {
-				position: relative !important;
-				width: 210mm !important;
-				height: 296mm !important;
-				max-width: none !important;
-				margin: 0 !important;
-				box-shadow: none !important;
-				transform: none !important;
-				break-after: avoid !important;
-				break-inside: avoid !important;
-				page-break-after: avoid !important;
-				page-break-inside: avoid !important;
-
-				-webkit-print-color-adjust: exact !important;
-				print-color-adjust: exact !important;
-			}
-		}
-	`,
-	});
+	};
 
 	const savePrescriptionAction = useAction(savePrescriptionDocument, {
 		onSuccess: () => {
@@ -215,63 +197,6 @@ export default function ClinicalDocumentBuilder({
 			content,
 		});
 	};
-
-	const clinicalDocumentPrintPageStyle = `
-	@page {
-		size: A4 portrait;
-		margin: 0;
-	}
-
-	@media print {
-		html,
-		body {
-			width: 210mm !important;
-			height: auto !important;
-			min-height: 0 !important;
-			margin: 0 !important;
-			padding: 0 !important;
-			overflow: visible !important;
-			background: white !important;
-		}
-
-		.clinical-document-print-area {
-			position: relative !important;
-			width: 210mm !important;
-			height: 296mm !important;
-			max-width: none !important;
-
-			margin: 0 !important;
-			padding: 0 !important;
-
-			overflow: hidden !important;
-			box-shadow: none !important;
-			transform: none !important;
-			break-after: avoid !important;
-			break-inside: avoid !important;
-			page-break-after: avoid !important;
-			page-break-inside: avoid !important;
-
-			background: white !important;
-
-			-webkit-print-color-adjust: exact !important;
-			print-color-adjust: exact !important;
-		}
-	}
-`;
-
-	const handlePrintReferral = useReactToPrint({
-		contentRef: referralPrintRef,
-		preserveAfterPrint: true,
-		documentTitle: `Encaminhamento - ${patient.name}`,
-		pageStyle: clinicalDocumentPrintPageStyle,
-	});
-
-	const handlePrintExamRequest = useReactToPrint({
-		contentRef: examRequestPrintRef,
-		preserveAfterPrint: true,
-		documentTitle: `Solicitação de Exame - ${patient.name}`,
-		pageStyle: clinicalDocumentPrintPageStyle,
-	});
 
 	return (
 		<div className='mt-6'>
@@ -368,12 +293,24 @@ export default function ClinicalDocumentBuilder({
 							<Button
 								type='button'
 								variant='outline'
-								onClick={handlePrintPrescription}
-								disabled={!canPrintPrescription}
+								onClick={() =>
+									handleExportPdf(
+										'prescription',
+										prescriptionPrintRef.current,
+										`Receita - ${patient.name}.pdf`,
+									)
+								}
+								disabled={!canExportPrescription || exportingType !== null}
 								className='min-w-0 sm:w-40'
 							>
-								<PrinterIcon className='size-4' />
-								Imprimir
+								{exportingType === 'prescription' ? (
+									<LoaderCircleIcon className='size-4 animate-spin' />
+								) : (
+									<DownloadIcon className='size-4' />
+								)}
+								{exportingType === 'prescription'
+									? 'Gerando...'
+									: 'Baixar PDF'}
 							</Button>
 						</div>
 					)}
@@ -449,12 +386,27 @@ export default function ClinicalDocumentBuilder({
 									<Button
 										type='button'
 										variant='outline'
-										onClick={handlePrintReferral}
-										disabled={!hasRichTextContent(referralContent)}
+										onClick={() =>
+											handleExportPdf(
+												'referral',
+												referralPrintRef.current,
+												`Encaminhamento - ${patient.name}.pdf`,
+											)
+										}
+										disabled={
+											!hasRichTextContent(referralContent) ||
+											exportingType !== null
+										}
 										className={'w-full lg:w-60'}
 									>
-										<PrinterIcon className='size-4' />
-										Imprimir
+										{exportingType === 'referral' ? (
+											<LoaderCircleIcon className='size-4 animate-spin' />
+										) : (
+											<DownloadIcon className='size-4' />
+										)}
+										{exportingType === 'referral'
+											? 'Gerando PDF...'
+											: 'Baixar PDF'}
 									</Button>
 
 									<Button
@@ -530,12 +482,27 @@ export default function ClinicalDocumentBuilder({
 									<Button
 										type='button'
 										variant='outline'
-										onClick={handlePrintExamRequest}
-										disabled={!hasRichTextContent(examRequestContent)}
+										onClick={() =>
+											handleExportPdf(
+												'exam-request',
+												examRequestPrintRef.current,
+												`Solicitação de Exame - ${patient.name}.pdf`,
+											)
+										}
+										disabled={
+											!hasRichTextContent(examRequestContent) ||
+											exportingType !== null
+										}
 										className={'w-full lg:w-60'}
 									>
-										<PrinterIcon className='size-4' />
-										Imprimir
+										{exportingType === 'exam-request' ? (
+											<LoaderCircleIcon className='size-4 animate-spin' />
+										) : (
+											<DownloadIcon className='size-4' />
+										)}
+										{exportingType === 'exam-request'
+											? 'Gerando PDF...'
+											: 'Baixar PDF'}
 									</Button>
 
 									<Button
