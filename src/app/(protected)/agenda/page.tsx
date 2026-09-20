@@ -32,15 +32,21 @@ const AgendaPage = async ({ searchParams }: AgendaPageProps) => {
 
 	const doctors = await getDoctors();
 
+	const isAllDoctors = context.role !== 'doctor' && params.doctor === 'all';
+
 	const requestedDoctorId =
-		params.doctor && doctors.some((doctor) => doctor.id === params.doctor)
+		params.doctor &&
+		params.doctor !== 'all' &&
+		doctors.some((doctor) => doctor.id === params.doctor)
 			? params.doctor
 			: undefined;
 
 	const selectedDoctorId =
 		context.role === 'doctor'
 			? (context.doctorId ?? undefined)
-			: (requestedDoctorId ?? REGINA_DOCTOR_ID);
+			: isAllDoctors
+				? undefined
+				: (requestedDoctorId ?? REGINA_DOCTOR_ID);
 
 	const parsedYear = params.year ? Number(params.year) : undefined;
 

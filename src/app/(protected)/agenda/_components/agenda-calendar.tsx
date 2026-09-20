@@ -116,11 +116,7 @@ const AgendaCalendarClient = ({
 
 	const handleDoctorChange = (doctorId: string) => {
 		const params = new URLSearchParams(searchParams);
-		if (doctorId === 'all') {
-			params.delete('doctor');
-		} else {
-			params.set('doctor', doctorId);
-		}
+		params.set('doctor', doctorId);
 		router.push(`${pathname}?${params.toString()}`);
 	};
 

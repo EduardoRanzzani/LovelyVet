@@ -106,6 +106,12 @@ export const upsertShift = actionClient
 			isPaid,
 		} = parsedInput;
 
+		if (context.role === 'doctor' && doctorId !== context.doctorId) {
+			throw new Error(
+				'Você não possui permissão para alterar os plantões deste veterinário.',
+			);
+		}
+
 		/*
 		 * A duração chega do formulário como string.
 		 *
@@ -133,6 +139,14 @@ export const upsertShift = actionClient
 
 			if (id && !existingShift) {
 				throw new Error('Plantão não encontrado.');
+			}
+
+			if (
+				existingShift &&
+				context.role === 'doctor' &&
+				existingShift.doctorId !== context.doctorId
+			) {
+				throw new Error('Você não possui permissão para alterar este plantão.');
 			}
 
 			/*
@@ -197,14 +211,22 @@ export const upsertShift = actionClient
 			 * Isso impede duas requisições simultâneas
 			 * de ocuparem o mesmo intervalo.
 			 */
-			await tx.execute(sql`
+			const doctorIdsToLock = Array.from(
+				new Set(
+					[doctorId, existingShift?.doctorId].filter((value): value is string =>
+						Boolean(value),
+					),
+				),
+			).sort();
+
+			for (const doctorIdToLock of doctorIdsToLock) {
+				await tx.execute(sql`
 					SELECT pg_advisory_xact_lock(
-						hashtext(
-							'lovelyvet:doctor_schedule'
-						),
-						hashtext(${doctorId})
+						hashtext('lovelyvet:doctor_schedule'),
+						hashtext(${doctorIdToLock})
 					)
 				`);
+			}
 
 			/*
 			 * ------------------------------------------------
@@ -340,6 +362,7 @@ export const upsertShift = actionClient
 		 */
 		revalidatePath('/shifts');
 		revalidatePath('/appointments');
+		revalidatePath('/agenda');
 
 		return shiftResult;
 	});
