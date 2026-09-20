@@ -4,7 +4,6 @@ import type { CreateCustomerWithUserSchema } from '@/api/schema/customers.schema
 import type { CreateDoctorWithUserSchema } from '@/api/schema/doctors.schema';
 import { CLERK_ERROR_MESSAGES } from '@/api/config/consts';
 import { generateUsername } from '@/api/util';
-import type { UserRole } from '@/lib/security/roles';
 import { createClerkClient } from '@clerk/nextjs/server';
 import { randomBytes } from 'crypto';
 
@@ -44,7 +43,6 @@ const generateSecurePassword = (): string => {
 
 export const createNewClerkUser = async (
 	data: CreateCustomerWithUserSchema | CreateDoctorWithUserSchema,
-	role: UserRole = 'customer',
 ) => {
 	try {
 		const nameParts = data.name.trim().split(/\s+/);
@@ -61,9 +59,6 @@ export const createNewClerkUser = async (
 			lastName,
 			username,
 			password: generateSecurePassword(),
-			publicMetadata: {
-				role,
-			},
 		});
 	} catch (error) {
 		if (isClerkAPIError(error)) {
@@ -86,26 +81,5 @@ export const createNewClerkUser = async (
 		}
 
 		throw new Error('Erro inesperado ao criar usuário');
-	}
-};
-
-export const updateClerkUserRole = async (
-	clerkUserId: string,
-	role: UserRole,
-): Promise<void> => {
-	try {
-		await clerkClient.users.updateUserMetadata(clerkUserId, {
-			publicMetadata: {
-				role,
-			},
-		});
-	} catch (error) {
-		console.error('Falha ao atualizar role no Clerk');
-
-		if (error instanceof Error) {
-			throw new Error(error.message);
-		}
-
-		throw new Error('Erro inesperado ao atualizar usuário');
 	}
 };

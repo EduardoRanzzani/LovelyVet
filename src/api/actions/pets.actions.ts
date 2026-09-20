@@ -418,7 +418,14 @@ export const getPetHistory = async (petId: string) => {
 			},
 		},
 	});
-	return data;
+	if (!data) {
+		return null;
+	}
+
+	return filterPetForViewer(
+		context,
+		data as unknown as PetsWithRelations,
+	);
 };
 
 export const getPetsForSelection = async (): Promise<PetOption[]> => {

@@ -2,10 +2,7 @@
 
 import { db } from '@/db';
 import { doctorsTable, usersTable } from '@/db/schema';
-import {
-	createNewClerkUser,
-	updateClerkUserRole,
-} from '@/lib/integrations/clerk';
+import { createNewClerkUser } from '@/lib/integrations/clerk';
 import { actionClient } from '@/lib/next-safe-action';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireAdmin, requireStaff } from '@/lib/security/authorization';
@@ -117,9 +114,8 @@ export const upsertDoctor = actionClient
 				throw new Error('Usuário existente não possui vínculo com o Clerk');
 			}
 			clerkUserId = existingUser.clerkUserId;
-			await updateClerkUserRole(clerkUserId, 'doctor');
 		} else {
-			const newClerkUser = await createNewClerkUser(parsedInput, 'doctor');
+			const newClerkUser = await createNewClerkUser(parsedInput);
 			clerkUserId = newClerkUser.id;
 		}
 
