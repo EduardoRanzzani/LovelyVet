@@ -40,7 +40,6 @@ export async function downloadElementAsPdf({
 	const image = await toJpeg(element, {
 		backgroundColor: '#ffffff',
 		cacheBust: true,
-		includeQueryParams: true,
 		height: A4_HEIGHT_PX,
 		pixelRatio: 3,
 		quality: 0.96,

@@ -39,6 +39,7 @@ export default function PrescriptionDocument({
 				{/* Marca d'água */}
 				<div className='pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.035]'>
 					<Image
+						unoptimized
 						src='/logo.png'
 						alt=''
 						width={520}
@@ -50,6 +51,7 @@ export default function PrescriptionDocument({
 				{/* Patas topo */}
 				<div className='pointer-events-none absolute left-[-4] top-[-2] w-[30%]'>
 					<Image
+						unoptimized
 						src='/paw-decoration.png'
 						alt=''
 						width={300}
@@ -61,6 +63,7 @@ export default function PrescriptionDocument({
 				{/* Cabeçalho */}
 				<header className='relative z-10 mb-[5%] text-center'>
 					<Image
+						unoptimized
 						src='/logo.png'
 						alt='LovelyVet'
 						width={90}
@@ -186,6 +189,7 @@ export default function PrescriptionDocument({
 				{/* Patas rodapé */}
 				<div className='pointer-events-none absolute bottom-[-2] right-[-4] w-[30%]'>
 					<Image
+						unoptimized
 						src='/paw-decoration.png'
 						alt=''
 						width={300}
