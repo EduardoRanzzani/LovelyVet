@@ -448,10 +448,26 @@ export const upsertAppointment = actionClient
 					throw new Error('Um ou mais serviços selecionados são inválidos');
 				}
 
-				const totalPriceInCents = servicesData.reduce(
+				const servicesTotalInCents = servicesData.reduce(
 					(total, service) => total + service.priceInCents,
 					0,
 				);
+
+				/*
+				 * O formulário trabalha com reais, embora o campo ainda se chame
+				 * totalPriceInCents por compatibilidade com o código existente.
+				 *
+				 * Customer nunca controla o preço pelo payload.
+				 * Staff pode aplicar desconto, acréscimo ou valor negociado.
+				 */
+				const totalPriceInCents =
+					context.role === 'customer'
+						? servicesTotalInCents
+						: Math.round(data.totalPriceInCents * 100);
+
+				if (!Number.isSafeInteger(totalPriceInCents) || totalPriceInCents < 0) {
+					throw new Error('O valor total do agendamento é inválido.');
+				}
 
 				/*
 				 * O término do atendimento é calculado

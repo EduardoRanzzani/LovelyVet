@@ -41,7 +41,10 @@ export const createAppointmentSchema = z.object({
 			'no_show',
 		])
 		.nonoptional({ message: 'O status é obrigatório' }),
-	totalPriceInCents: z.number().min(0, 'O preço não pode ser negativo'),
+	totalPriceInCents: z
+		.number()
+		.finite('O preço informado é inválido')
+		.min(0, 'O preço não pode ser negativo'),
 	notes: z.string().optional().nullable(),
 	services: z.array(z.uuid()).nonempty({ message: 'Selecione o serviço' }),
 });
