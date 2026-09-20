@@ -7,10 +7,13 @@ import {
 	PageTitle,
 } from '@/components/shared/page-container';
 import LoadingDialog from '@/components/ui/loading';
+import { getClerkEnvironment } from '@/lib/integrations/clerk-environment';
 import { Suspense } from 'react';
 import AdminFormClient from './_components/admin-form';
 
 const AdminPage = async () => {
+	const environment = getClerkEnvironment();
+
 	return (
 		<PageContainer>
 			<PageHeader>
@@ -29,7 +32,7 @@ const AdminPage = async () => {
 					}
 				></Suspense>
 
-				<AdminFormClient />
+				<AdminFormClient environment={environment} />
 			</PageContent>
 		</PageContainer>
 	);
