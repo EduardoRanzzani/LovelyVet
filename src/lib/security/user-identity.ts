@@ -1,5 +1,5 @@
 import { db } from '@/db';
-import { clerkIdentitiesTable, usersTable } from '@/db/schema';
+import { clerkIdentitiesTable } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
 export const findUserByClerkUserId = async (clerkUserId: string) => {
@@ -15,15 +15,5 @@ export const findUserByClerkUserId = async (clerkUserId: string) => {
 		},
 	});
 
-	if (identity?.user) {
-		return identity.user;
-	}
-
-	return db.query.usersTable.findFirst({
-		where: eq(usersTable.clerkUserId, clerkUserId),
-		with: {
-			customer: true,
-			doctor: true,
-		},
-	});
+	return identity?.user;
 };

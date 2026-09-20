@@ -62,7 +62,6 @@ export const usersTable = pgTable('users', {
 	name: text('name').notNull(),
 	email: text('email').notNull().unique(),
 	image: text('image'),
-	clerkUserId: text('clerk_user_id').unique(),
 	role: userRoleEnum('role').default('customer').notNull(),
 	isRegistrationComplete: boolean('is_registration_complete')
 		.default(false)
