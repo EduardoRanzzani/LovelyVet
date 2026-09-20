@@ -85,8 +85,26 @@ export default function PrescriptionPrintClient({
 	}, [handlePrint]);
 
 	return (
-		<div className='space-y-4'>
-			<div className='flex items-center justify-between gap-4'>
+		<div className='document-print-page space-y-4'>
+			<style>{`
+				@media print {
+					body:has(.document-print-page) * {
+						visibility: hidden !important;
+					}
+
+					body:has(.document-print-page) .prescription-print-area,
+					body:has(.document-print-page) .prescription-print-area * {
+						visibility: visible !important;
+					}
+
+					body:has(.document-print-page) .prescription-print-area {
+						position: absolute !important;
+						inset: 0 auto auto 0 !important;
+					}
+				}
+			`}</style>
+
+			<div className='flex items-center justify-between gap-4 print:hidden'>
 				<Button variant='outline' asChild>
 					<Link href={`/pets/${petId}`}>
 						<ArrowLeftIcon className='size-4' />

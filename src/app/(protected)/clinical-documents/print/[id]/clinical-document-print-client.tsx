@@ -60,7 +60,7 @@ export default function ClinicalDocumentPrintClient({
 					background: white !important;
 				}
 
-				.prescription-print-area {
+				.clinical-document-print-area {
 					width: 210mm !important;
 					height: 297mm !important;
 					max-width: none !important;
@@ -94,8 +94,26 @@ export default function ClinicalDocumentPrintClient({
 	}, [handlePrint]);
 
 	return (
-		<div className='space-y-4'>
-			<div className='flex items-center justify-between gap-4'>
+		<div className='document-print-page space-y-4'>
+			<style>{`
+				@media print {
+					body:has(.document-print-page) * {
+						visibility: hidden !important;
+					}
+
+					body:has(.document-print-page) .clinical-document-print-area,
+					body:has(.document-print-page) .clinical-document-print-area * {
+						visibility: visible !important;
+					}
+
+					body:has(.document-print-page) .clinical-document-print-area {
+						position: absolute !important;
+						inset: 0 auto auto 0 !important;
+					}
+				}
+			`}</style>
+
+			<div className='flex items-center justify-between gap-4 print:hidden'>
 				<Button variant='outline' asChild>
 					<Link href={`/pets/${petId}`}>
 						<ArrowLeftIcon className='size-4' />

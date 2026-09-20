@@ -10,10 +10,8 @@ import {
 import { Species } from '@/api/schema/species.schema';
 import { TimelineItem, toTimelinePerson } from '@/api/schema/timeline.schema';
 import { formatAge } from '@/api/util';
-import ClinicalDocumentPrintButton from '@/components/clinical-documents/clinical-document-print-button';
 import { GoogleMapsIcon } from '@/components/icons/icon-googlemaps';
 import EditButton from '@/components/list/edit-button';
-import PrescriptionPrintButton from '@/components/prescriptions/prescription-print-button';
 import { Button } from '@/components/ui/button';
 import LoadingDialog from '@/components/ui/loading';
 import {
@@ -152,19 +150,12 @@ const PetDetailsClient = ({
 							</Button>
 						)}
 
-						{p.documentData ? (
-							<PrescriptionPrintButton
-								documentData={p.documentData}
-								issuedAt={p.issuedAt}
-							/>
-						) : (
-							<Button variant='outline' size='sm' asChild>
-								<Link href={`/prescriptions/print/${p.id}`}>
-									<PrinterIcon className='size-4' />
-									Imprimir
-								</Link>
-							</Button>
-						)}
+						<Button variant='outline' size='sm' asChild>
+							<Link href={`/prescriptions/print/${p.id}`}>
+								<PrinterIcon className='size-4' />
+								Imprimir
+							</Link>
+						</Button>
 					</div>
 				</div>
 			),
@@ -190,12 +181,12 @@ const PetDetailsClient = ({
 						/>
 
 						<div className='flex flex-wrap gap-2'>
-							<ClinicalDocumentPrintButton
-								type={document.type}
-								content={document.content}
-								documentData={document.documentData}
-								issuedAt={document.issuedAt}
-							/>
+							<Button variant='outline' size='sm' asChild>
+								<Link href={`/clinical-documents/print/${document.id}`}>
+									<PrinterIcon className='size-4' />
+									Imprimir
+								</Link>
+							</Button>
 						</div>
 					</div>
 				),
