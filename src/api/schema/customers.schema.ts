@@ -25,7 +25,6 @@ export type OnboardingCustomerSchema = z.infer<typeof onboardingCustomerSchema>;
 
 export const createCustomerWithUserSchema = z.object({
 	id: z.uuid().optional().nullable(),
-	userId: z.string().optional().nullable(),
 	name: z.string().nonempty({ message: 'O campo nome é obrigatório' }),
 	email: z
 		.string()

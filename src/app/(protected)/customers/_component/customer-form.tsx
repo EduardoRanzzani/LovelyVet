@@ -40,7 +40,6 @@ const CustomerFormClient = ({
 		resolver: zodResolver(createCustomerWithUserSchema),
 		shouldUnregister: true,
 		defaultValues: {
-			userId: customer?.user?.clerkUserId || '',
 			name: customer?.user?.name || '',
 			email: customer?.user?.email || '',
 			phone: customer?.phone || '',
@@ -74,7 +73,6 @@ const CustomerFormClient = ({
 		upsertCustomerAction.execute({
 			...data,
 			id: customer?.id,
-			userId: customer?.user?.clerkUserId || '',
 		});
 	};
 
@@ -109,12 +107,6 @@ const CustomerFormClient = ({
 			<Form {...form}>
 				<form onSubmit={form.handleSubmit(formSubmit)}>
 					<div className='flex max-h-[calc(100dvh-12rem)] min-w-0 flex-col gap-2 overflow-y-auto px-1'>
-						<input
-							type='text'
-							{...form.register('userId')}
-							className='hidden'
-						/>
-
 						<InputForm
 							label='Nome:'
 							register={form.register}

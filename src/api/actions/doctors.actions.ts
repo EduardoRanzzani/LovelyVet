@@ -1,8 +1,9 @@
 'use server';
 
 import { db } from '@/db';
-import { doctorsTable, usersTable } from '@/db/schema';
+import { clerkIdentitiesTable, doctorsTable, usersTable } from '@/db/schema';
 import { createNewClerkUser } from '@/lib/integrations/clerk';
+import { getClerkEnvironment } from '@/lib/integrations/clerk-environment';
 import { actionClient } from '@/lib/next-safe-action';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireAdmin, requireStaff } from '@/lib/security/authorization';
@@ -102,50 +103,105 @@ export const upsertDoctor = actionClient
 	.action(async ({ parsedInput }) => {
 		const context = await requireAuthContext();
 		requireAdmin(context);
+		const clerkEnvironment = getClerkEnvironment();
 
-		let clerkUserId: string;
+		const existingDoctor = parsedInput.id
+			? await db.query.doctorsTable.findFirst({
+					where: eq(doctorsTable.id, parsedInput.id),
+					with: { user: true },
+				})
+			: null;
 
-		const existingUser = await db.query.usersTable.findFirst({
-			where: eq(usersTable.email, parsedInput.email),
-		});
-
-		if (existingUser) {
-			if (!existingUser.clerkUserId) {
-				throw new Error('Usuário existente não possui vínculo com o Clerk');
-			}
-			clerkUserId = existingUser.clerkUserId;
-		} else {
-			const newClerkUser = await createNewClerkUser(parsedInput);
-			clerkUserId = newClerkUser.id;
+		if (parsedInput.id && !existingDoctor) {
+			throw new Error('Veterinário não encontrado');
 		}
 
-		const [newUser] = await db
-			.insert(usersTable)
-			.values({
-				name: parsedInput.name,
-				email: parsedInput.email,
-				image: parsedInput.image,
-				clerkUserId: clerkUserId,
-				role: 'doctor',
-			})
-			.onConflictDoUpdate({
-				target: usersTable.clerkUserId,
-				set: {
-					name: parsedInput.name,
-					email: parsedInput.email,
-					image: parsedInput.image,
-					role: 'doctor',
-					updatedAt: new Date(),
-				},
-			})
-			.returning();
+		const cpfOwner = await db.query.doctorsTable.findFirst({
+			where: eq(doctorsTable.cpf, parsedInput.cpf),
+		});
 
-		if (!newUser) throw new Error('Falha ao criar usuário base no sistema');
+		if (cpfOwner && cpfOwner.id !== existingDoctor?.id) {
+			throw new Error('CPF já cadastrado para outro veterinário');
+		}
 
-		await db
-			.insert(doctorsTable)
-			.values({
-				userId: newUser.id,
+		const existingUser =
+			existingDoctor?.user ??
+			(await db.query.usersTable.findFirst({
+				where: eq(usersTable.email, parsedInput.email),
+			}));
+
+		if (!existingDoctor && existingUser) {
+			const linkedDoctor = await db.query.doctorsTable.findFirst({
+				where: eq(doctorsTable.userId, existingUser.id),
+			});
+
+			if (linkedDoctor) {
+				throw new Error('Usuário já possui um cadastro de veterinário');
+			}
+		}
+
+		const newClerkUser = existingUser
+			? null
+			: await createNewClerkUser(parsedInput);
+
+		await db.transaction(async (transaction) => {
+			const userRows = existingUser
+				? await transaction
+						.update(usersTable)
+						.set({
+							name: parsedInput.name,
+							email: parsedInput.email,
+							image: parsedInput.image,
+							role: 'doctor',
+							updatedAt: new Date(),
+						})
+						.where(eq(usersTable.id, existingUser.id))
+						.returning()
+				: await transaction
+						.insert(usersTable)
+						.values({
+							name: parsedInput.name,
+							email: parsedInput.email,
+							image: parsedInput.image,
+							role: 'doctor',
+						})
+						.onConflictDoUpdate({
+							target: usersTable.email,
+							set: {
+								name: parsedInput.name,
+								image: parsedInput.image,
+								role: 'doctor',
+								updatedAt: new Date(),
+							},
+						})
+						.returning();
+
+			const [user] = userRows;
+
+			if (!user) throw new Error('Falha ao criar usuário base no sistema');
+
+			if (newClerkUser) {
+				await transaction
+					.insert(clerkIdentitiesTable)
+					.values({
+						userId: user.id,
+						environment: clerkEnvironment,
+						clerkUserId: newClerkUser.id,
+					})
+					.onConflictDoUpdate({
+						target: [
+							clerkIdentitiesTable.userId,
+							clerkIdentitiesTable.environment,
+						],
+						set: {
+							clerkUserId: newClerkUser.id,
+							updatedAt: new Date(),
+						},
+					});
+			}
+
+			const doctorData = {
+				userId: user.id,
 				phone: parsedInput.phone,
 				cpf: parsedInput.cpf,
 				gender: parsedInput.gender,
@@ -156,23 +212,17 @@ export const upsertDoctor = actionClient
 				availableToWeekDay: Number(parsedInput.availableToWeekDay),
 				availableFromTime: parsedInput.availableFromTime,
 				availableToTime: parsedInput.availableToTime,
-			})
-			.onConflictDoUpdate({
-				target: doctorsTable.cpf,
-				set: {
-					phone: parsedInput.phone,
-					gender: parsedInput.gender,
-					licenseNumber: parsedInput.licenseNumber,
-					licenseState: parsedInput.licenseState,
-					specialty: parsedInput.specialty,
-					availableFromWeekDay: Number(parsedInput.availableFromWeekDay),
-					availableToWeekDay: Number(parsedInput.availableToWeekDay),
-					availableFromTime: parsedInput.availableFromTime,
-					availableToTime: parsedInput.availableToTime,
-					updatedAt: new Date(),
-				},
-			})
-			.returning();
+			};
+
+			if (existingDoctor) {
+				await transaction
+					.update(doctorsTable)
+					.set({ ...doctorData, updatedAt: new Date() })
+					.where(eq(doctorsTable.id, existingDoctor.id));
+			} else {
+				await transaction.insert(doctorsTable).values(doctorData);
+			}
+		});
 
 		revalidatePath('/doctors');
 	});

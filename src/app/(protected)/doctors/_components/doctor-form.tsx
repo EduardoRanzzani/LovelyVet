@@ -39,7 +39,6 @@ const DoctorFormClient = ({ doctor, onSuccess }: DoctorFormClientProps) => {
 		resolver: zodResolver(createDoctorWithUserSchema),
 		shouldUnregister: true,
 		defaultValues: {
-			userId: doctor?.user?.clerkUserId || '',
 			name: doctor?.user?.name || '',
 			email: doctor?.user?.email || '',
 			image: doctor?.user?.image || '',
@@ -72,7 +71,6 @@ const DoctorFormClient = ({ doctor, onSuccess }: DoctorFormClientProps) => {
 		upsertDoctorAction.execute({
 			...data,
 			id: doctor?.id,
-			userId: doctor?.user?.clerkUserId || '',
 		});
 	};
 
@@ -125,12 +123,6 @@ const DoctorFormClient = ({ doctor, onSuccess }: DoctorFormClientProps) => {
 			<Form {...form}>
 				<form id='registerForm' onSubmit={form.handleSubmit(formSubmit)}>
 					<div className='flex max-h-[calc(100dvh-12rem)] min-w-0 flex-col gap-2 overflow-y-auto px-1'>
-						<input
-							type='text'
-							{...form.register('userId')}
-							className='hidden'
-						/>
-
 						<InputForm
 							label='Nome: '
 							register={form.register}

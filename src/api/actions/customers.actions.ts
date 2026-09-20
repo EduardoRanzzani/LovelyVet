@@ -1,7 +1,13 @@
 'use server';
 
 import { db } from '@/db';
-import { customersTable, usersTable } from '@/db/schema';
+import {
+	clerkIdentitiesTable,
+	customersTable,
+	usersTable,
+} from '@/db/schema';
+import { createNewClerkUser } from '@/lib/integrations/clerk';
+import { getClerkEnvironment } from '@/lib/integrations/clerk-environment';
 import { actionClient } from '@/lib/next-safe-action';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireRole, requireStaff } from '@/lib/security/authorization';
@@ -15,7 +21,6 @@ import {
 	CustomersWithRelations,
 	onboardingCustomerSchema,
 } from '../schema/customers.schema';
-import { createNewClerkUser } from '@/lib/integrations/clerk';
 
 export const onboardingCustomer = actionClient
 	.schema(onboardingCustomerSchema)
@@ -184,46 +189,105 @@ export const upsertCustomer = actionClient
 	.action(async ({ parsedInput }) => {
 		const context = await requireAuthContext();
 		requireStaff(context);
+		const clerkEnvironment = getClerkEnvironment();
 
-		let clerkUserId;
+		const existingCustomer = parsedInput.id
+			? await db.query.customersTable.findFirst({
+					where: eq(customersTable.id, parsedInput.id),
+					with: { user: true },
+				})
+			: null;
 
-		const existingUser = await db.query.usersTable.findFirst({
-			where: eq(usersTable.email, parsedInput.email),
-		});
-
-		if (existingUser) {
-			clerkUserId = existingUser.clerkUserId;
-		} else {
-			const newClerkUser = await createNewClerkUser(parsedInput);
-			clerkUserId = newClerkUser.id;
+		if (parsedInput.id && !existingCustomer) {
+			throw new Error('Cliente não encontrado');
 		}
 
-		const [newUser] = await db
-			.insert(usersTable)
-			.values({
-				name: parsedInput.name,
-				email: parsedInput.email,
-				image: parsedInput.image,
-				clerkUserId: clerkUserId,
-				role: 'customer',
-			})
-			.onConflictDoUpdate({
-				target: usersTable.clerkUserId,
-				set: {
-					name: parsedInput.name,
-					email: parsedInput.email,
-					image: parsedInput.image,
-					updatedAt: new Date(),
-				},
-			})
-			.returning();
+		const cpfOwner = await db.query.customersTable.findFirst({
+			where: eq(customersTable.cpf, parsedInput.cpf),
+		});
 
-		if (!newUser) throw new Error('Falha ao criar usuário base no sistema');
+		if (cpfOwner && cpfOwner.id !== existingCustomer?.id) {
+			throw new Error('CPF já cadastrado para outro cliente');
+		}
 
-		await db
-			.insert(customersTable)
-			.values({
-				userId: newUser.id,
+		const existingUser =
+			existingCustomer?.user ??
+			(await db.query.usersTable.findFirst({
+				where: eq(usersTable.email, parsedInput.email),
+			}));
+
+		if (!existingCustomer && existingUser) {
+			const linkedCustomer = await db.query.customersTable.findFirst({
+				where: eq(customersTable.userId, existingUser.id),
+			});
+
+			if (linkedCustomer) {
+				throw new Error('Usuário já possui um cadastro de cliente');
+			}
+		}
+
+		const newClerkUser = existingUser
+			? null
+			: await createNewClerkUser(parsedInput);
+
+		await db.transaction(async (transaction) => {
+			const userRows = existingUser
+				? await transaction
+						.update(usersTable)
+						.set({
+							name: parsedInput.name,
+							email: parsedInput.email,
+							image: parsedInput.image,
+							updatedAt: new Date(),
+						})
+						.where(eq(usersTable.id, existingUser.id))
+						.returning()
+				: await transaction
+						.insert(usersTable)
+						.values({
+							name: parsedInput.name,
+							email: parsedInput.email,
+							image: parsedInput.image,
+							role: 'customer',
+						})
+						.onConflictDoUpdate({
+							target: usersTable.email,
+							set: {
+								name: parsedInput.name,
+								image: parsedInput.image,
+								updatedAt: new Date(),
+							},
+						})
+						.returning();
+
+			const [user] = userRows;
+
+			if (!user) {
+				throw new Error('Falha ao criar usuário base no sistema');
+			}
+
+			if (newClerkUser) {
+				await transaction
+					.insert(clerkIdentitiesTable)
+					.values({
+						userId: user.id,
+						environment: clerkEnvironment,
+						clerkUserId: newClerkUser.id,
+					})
+					.onConflictDoUpdate({
+						target: [
+							clerkIdentitiesTable.userId,
+							clerkIdentitiesTable.environment,
+						],
+							set: {
+								clerkUserId: newClerkUser.id,
+								updatedAt: new Date(),
+							},
+						});
+			}
+
+			const customerData = {
+				userId: user.id,
 				phone: parsedInput.phone,
 				cpf: parsedInput.cpf,
 				gender: parsedInput.gender,
@@ -233,24 +297,17 @@ export const upsertCustomer = actionClient
 				neighborhood: parsedInput.neighborhood,
 				city: parsedInput.city,
 				state: parsedInput.state,
-			})
-			.onConflictDoUpdate({
-				target: customersTable.cpf,
-				set: {
-					userId: newUser.id,
-					phone: parsedInput.phone,
-					cpf: parsedInput.cpf,
-					gender: parsedInput.gender,
-					postalCode: parsedInput.postalCode,
-					address: parsedInput.address,
-					addressNumber: parsedInput.addressNumber || 'S/N',
-					neighborhood: parsedInput.neighborhood,
-					city: parsedInput.city,
-					state: parsedInput.state,
-					updatedAt: new Date(),
-				},
-			})
-			.returning();
+			};
+
+			if (existingCustomer) {
+				await transaction
+					.update(customersTable)
+					.set({ ...customerData, updatedAt: new Date() })
+					.where(eq(customersTable.id, existingCustomer.id));
+			} else {
+				await transaction.insert(customersTable).values(customerData);
+			}
+		});
 
 		revalidatePath('/customers');
 	});

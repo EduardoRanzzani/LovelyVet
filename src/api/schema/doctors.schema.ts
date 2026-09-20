@@ -15,7 +15,6 @@ export type DoctorOption = {
 export const createDoctorWithUserSchema = z
 	.object({
 		id: z.uuid().optional().nullable(),
-		userId: z.string().optional().nullable(),
 		name: z.string().nonempty({ message: 'O campo Nome é obrigatório' }),
 		email: z.string().nonempty({ message: 'O campo Email é obrigatório' }),
 		image: z.string().optional(),
