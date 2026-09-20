@@ -24,6 +24,10 @@ export const clinicalDocumentTypeEnum = pgEnum('clinical_document_type', [
 	'exam_request',
 ]);
 export const userRoleEnum = pgEnum('user_role', USER_ROLES);
+export const clerkEnvironmentEnum = pgEnum('clerk_environment', [
+	'development',
+	'production',
+]);
 export const sexEnum = pgEnum('sex', ['male', 'female']);
 export const petStatusEnum = pgEnum('pet_status', ['alive', 'dead', 'missing']);
 export const appointmentStatusEnum = pgEnum('appointment_status', [
@@ -69,6 +73,30 @@ export const usersTable = pgTable('users', {
 		.$onUpdate(() => new Date())
 		.notNull(),
 });
+
+export const clerkIdentitiesTable = pgTable(
+	'clerk_identities',
+	{
+		id: uuid('id').defaultRandom().primaryKey(),
+		userId: uuid('user_id')
+			.notNull()
+			.references(() => usersTable.id, { onDelete: 'cascade' }),
+		environment: clerkEnvironmentEnum('environment').notNull(),
+		clerkUserId: text('clerk_user_id').notNull().unique(),
+		createdAt: timestamp('created_at').defaultNow().notNull(),
+		updatedAt: timestamp('updated_at')
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex('clerk_identities_user_environment_unique').on(
+			table.userId,
+			table.environment,
+		),
+		index('clerk_identities_user_id_idx').on(table.userId),
+	],
+);
 
 // Veterinários
 export const doctorsTable = pgTable('doctors', {
@@ -528,7 +556,8 @@ export const clinicsTable = pgTable('clinics', {
 
 // --- RELATIONS ---
 
-export const usersRelations = relations(usersTable, ({ one }) => ({
+export const usersRelations = relations(usersTable, ({ one, many }) => ({
+	identities: many(clerkIdentitiesTable),
 	doctor: one(doctorsTable, {
 		fields: [usersTable.id],
 		references: [doctorsTable.userId],
@@ -538,6 +567,16 @@ export const usersRelations = relations(usersTable, ({ one }) => ({
 		references: [customersTable.userId],
 	}),
 }));
+
+export const clerkIdentitiesRelations = relations(
+	clerkIdentitiesTable,
+	({ one }) => ({
+		user: one(usersTable, {
+			fields: [clerkIdentitiesTable.userId],
+			references: [usersTable.id],
+		}),
+	}),
+);
 
 export const doctorsRelations = relations(doctorsTable, ({ one, many }) => ({
 	user: one(usersTable, {
