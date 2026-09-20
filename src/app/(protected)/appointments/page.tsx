@@ -13,6 +13,7 @@ import {
 } from '@/components/shared/page-container';
 import { ListSkeleton } from '@/components/list/list-skeleton';
 import LoadingDialog from '@/components/ui/loading';
+import { requirePageAccess } from '@/lib/security/authorization';
 import { Suspense } from 'react';
 import AppointmentsListClient from './_components/appointments-list';
 
@@ -21,6 +22,8 @@ interface AppointmentsPageProps {
 }
 
 const AppointmentsPage = async ({ searchParams }: AppointmentsPageProps) => {
+	const context = await requirePageAccess('/appointments');
+
 	const params = await searchParams;
 	const page = Number(params.page) || 1;
 	const filter = params.filter || '';
@@ -56,6 +59,7 @@ const AppointmentsPage = async ({ searchParams }: AppointmentsPageProps) => {
 						services={services}
 						pets={pets}
 						doctors={doctors}
+						viewerRole={context.role}
 					/>
 				</Suspense>
 			</PageContent>

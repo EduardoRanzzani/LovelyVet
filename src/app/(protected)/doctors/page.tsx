@@ -10,6 +10,7 @@ import {
 } from '@/components/shared/page-container';
 import { ListSkeleton } from '@/components/list/list-skeleton';
 import LoadingDialog from '@/components/ui/loading';
+import { requirePageAccess } from '@/lib/security/authorization';
 import { Suspense } from 'react';
 import DoctorsListClient from './_components/doctors-list';
 
@@ -18,6 +19,8 @@ interface DoctorsPageProps {
 }
 
 const DoctorsPage = async ({ searchParams }: DoctorsPageProps) => {
+	await requirePageAccess('/doctors');
+
 	const params = await searchParams;
 	const page = Number(params.page) || 1;
 	const filter = params.filter || '';

@@ -1,11 +1,14 @@
 import AppSidebar from '@/components/sidebar/app-sidebar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
-import { ReactNode } from 'react';
+import { requireAuthContext } from '@/lib/security/auth-context';
+import type { ReactNode } from 'react';
 
-const ProtectedLayout = ({ children }: { children: ReactNode }) => {
+const ProtectedLayout = async ({ children }: { children: ReactNode }) => {
+	const context = await requireAuthContext();
+
 	return (
 		<SidebarProvider>
-			<AppSidebar />
+			<AppSidebar role={context.role} />
 			<SidebarInset className='min-w-0'>
 				{/* <main className='w-full'></main> */}
 				{children}

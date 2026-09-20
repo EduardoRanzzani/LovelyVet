@@ -63,6 +63,7 @@ const PetDetailsPage = async ({ params }: PetDetailsPageProps) => {
 						speciesPromise={speciesPromise}
 						breedsPromise={breedsPromise}
 						customersPromise={customersPromise}
+						viewerRole={context.role}
 					/>
 				</Suspense>
 			</PageContent>

@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useUser } from '@clerk/nextjs';
+import type { UserRole } from '@/lib/security/roles';
 import { format, formatDate } from 'date-fns';
 import {
 	CalendarIcon,
@@ -46,7 +46,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { use, useState } from 'react';
 import { toast } from 'sonner';
-import { PetDetailsSkeleton } from './pet-details-skeleton';
 import PetFormClient from './pet-form';
 import TabHistory from './tabs/tab-history';
 import TabTimeline from './tabs/tab-timeline';
@@ -57,6 +56,7 @@ interface PetDetailsClientProps {
 	speciesPromise: Promise<Species[]>;
 	breedsPromise: Promise<BreedsWithRelations[]>;
 	customersPromise: Promise<CustomersWithRelations[]>;
+	viewerRole: UserRole;
 }
 
 const PetDetailsClient = ({
@@ -65,10 +65,12 @@ const PetDetailsClient = ({
 	speciesPromise,
 	breedsPromise,
 	customersPromise,
+	viewerRole,
 }: PetDetailsClientProps) => {
-	const { user, isLoaded } = useUser();
-	const isCustomer = user?.publicMetadata?.role === 'customer';
-	const [activeTab, setActiveTab] = useState<string>();
+	const isCustomer = viewerRole === 'customer';
+	const [activeTab, setActiveTab] = useState(
+		isCustomer ? 'timeline' : 'history',
+	);
 
 	const { execute, isExecuting } = useAction(deleteTimelineItem, {
 		onSuccess: () => {
@@ -80,15 +82,6 @@ const PetDetailsClient = ({
 			);
 		},
 	});
-
-	if (!isLoaded) {
-		return <PetDetailsSkeleton />;
-	}
-
-	if (!activeTab) {
-		setActiveTab(isCustomer ? 'timeline' : 'history');
-		return <PetDetailsSkeleton />;
-	}
 
 	const species = use(speciesPromise);
 	const breeds = use(breedsPromise);

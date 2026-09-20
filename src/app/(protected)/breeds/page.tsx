@@ -11,6 +11,7 @@ import {
 } from '@/components/shared/page-container';
 import { ListSkeleton } from '@/components/list/list-skeleton';
 import LoadingDialog from '@/components/ui/loading';
+import { requirePageAccess } from '@/lib/security/authorization';
 import { Suspense } from 'react';
 import BreedsListClient from './_components/breeds-list';
 
@@ -19,6 +20,8 @@ interface BreedsPageProps {
 }
 
 const BreedsPage = async ({ searchParams }: BreedsPageProps) => {
+	await requirePageAccess('/breeds');
+
 	const params = await searchParams;
 	const page = Number(params.page) || 1;
 	const filter = params.filter || '';

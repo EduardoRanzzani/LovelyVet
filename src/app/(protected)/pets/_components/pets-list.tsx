@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/tooltip';
 import { formatWeight } from '@/helpers/weight';
 import { handleNavigation } from '@/lib/utils';
-import { useUser } from '@clerk/nextjs';
+import type { UserRole } from '@/lib/security/roles';
 import {
 	CalendarIcon,
 	EyeIcon,
@@ -48,6 +48,7 @@ interface PetsListClientProps {
 	species: Species[];
 	breeds: BreedsWithRelations[];
 	customers: CustomersWithRelations[];
+	viewerRole: UserRole;
 }
 
 const PetsListClient = ({
@@ -55,9 +56,9 @@ const PetsListClient = ({
 	species,
 	breeds,
 	customers,
+	viewerRole,
 }: PetsListClientProps) => {
-	const { user } = useUser();
-	const canDoActions = user?.publicMetadata?.role !== 'customer';
+	const canDoActions = viewerRole !== 'customer';
 
 	const petsResolved = use(pets);
 	const searchParams = useSearchParams();

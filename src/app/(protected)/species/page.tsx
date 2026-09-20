@@ -12,12 +12,15 @@ import { ListSkeleton } from '@/components/list/list-skeleton';
 import { Suspense } from 'react';
 import SpeciesListClient from './_components/species-list';
 import LoadingDialog from '@/components/ui/loading';
+import { requirePageAccess } from '@/lib/security/authorization';
 
 interface SpeciesPageProps {
 	searchParams: Promise<{ page?: string; filter?: string; keyword?: string }>;
 }
 
 const SpeciesPage = async ({ searchParams }: SpeciesPageProps) => {
+	await requirePageAccess('/species');
+
 	const params = await searchParams;
 	const page = Number(params.page) || 1;
 	const filter = params.filter || '';

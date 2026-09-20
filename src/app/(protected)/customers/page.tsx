@@ -10,6 +10,7 @@ import {
 } from '@/components/shared/page-container';
 import { ListSkeleton } from '@/components/list/list-skeleton';
 import LoadingDialog from '@/components/ui/loading';
+import { requirePageAccess } from '@/lib/security/authorization';
 import { Suspense } from 'react';
 import CustomersListClient from './_component/customers-list';
 
@@ -18,6 +19,8 @@ interface CustomersPageProps {
 }
 
 const CustomersPage = async ({ searchParams }: CustomersPageProps) => {
+	await requirePageAccess('/customers');
+
 	const params = await searchParams;
 	const page = Number(params.page) || 1;
 	const filter = params.filter || '';

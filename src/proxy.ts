@@ -1,7 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
-import { normalizeUserRole, type UserRole } from './lib/security/roles';
-import { isPathWithinRoute } from './lib/security/routes';
 
 const isWebhookRoute = createRouteMatcher(['/api/webhooks/clerk']);
 
@@ -10,52 +8,6 @@ const isPublicRoute = createRouteMatcher([
 	'/sign-up(.*)',
 	'/teste',
 ]);
-
-const rolePermissions: Record<UserRole, string[]> = {
-	admin: [
-		'/dashboard',
-		'/doctors',
-		'/pets',
-		'/customers',
-		'/breeds',
-		'/species',
-		'/services',
-		'/appointments',
-		'/agenda',
-		'/prescriptions',
-		'/clinical-documents/print',
-		'/calculators',
-		'/shifts',
-		'/messages',
-		'/admin',
-		'/clinics',
-		'/prescriptions-items',
-	],
-
-	doctor: [
-		'/dashboard',
-		'/pets',
-		'/customers',
-		'/breeds',
-		'/species',
-		'/services',
-		'/appointments',
-		'/agenda',
-		'/prescriptions',
-		'/clinical-documents/print',
-		'/calculators',
-		'/shifts',
-		'/prescriptions-items',
-	],
-
-	customer: [
-		'/dashboard',
-		'/pets',
-		'/appointments',
-		'/prescriptions/print',
-		'/clinical-documents/print',
-	],
-};
 
 export default clerkMiddleware(async (auth, req) => {
 	/*
@@ -75,13 +27,11 @@ export default clerkMiddleware(async (auth, req) => {
 	/*
 	 * 3. Demais rotas exigem autenticação.
 	 */
-	const { userId, sessionClaims } = await auth();
+	const { userId } = await auth();
 
 	if (!userId) {
 		return (await auth()).redirectToSignIn();
 	}
-
-	const userRole = normalizeUserRole(sessionClaims?.metadata?.role);
 
 	const { nextUrl } = req;
 	const pathname = nextUrl.pathname;
@@ -90,15 +40,7 @@ export default clerkMiddleware(async (auth, req) => {
 		return NextResponse.redirect(new URL('/dashboard', req.url));
 	}
 
-	const allowedRoutes = rolePermissions[userRole];
-
-	const isAllowed = allowedRoutes.some((route) =>
-		isPathWithinRoute(pathname, route),
-	);
-
-	if (!isAllowed) {
-		return NextResponse.redirect(new URL('/dashboard', req.url));
-	}
+	return NextResponse.next();
 });
 
 export const config = {

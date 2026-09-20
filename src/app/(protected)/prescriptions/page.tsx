@@ -11,6 +11,7 @@ import {
 	PageTitle,
 } from '@/components/shared/page-container';
 import LoadingDialog from '@/components/ui/loading';
+import { requirePageAccess } from '@/lib/security/authorization';
 import { Suspense } from 'react';
 import PrescriptionsListClient from './_component/prescriptions-list';
 import { getPets } from '@/api/actions/pets.actions';
@@ -23,6 +24,8 @@ interface PrescriptionsTemplatePageProps {
 const PrescriptionsTemplatePage = async ({
 	searchParams,
 }: PrescriptionsTemplatePageProps) => {
+	await requirePageAccess('/prescriptions');
+
 	const params = await searchParams;
 	const page = Number(params.page) || 1;
 	const filter = params.filter || '';

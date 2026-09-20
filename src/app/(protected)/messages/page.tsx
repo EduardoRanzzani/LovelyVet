@@ -7,11 +7,14 @@ import {
 } from '@/components/shared/page-container';
 import { ListSkeleton } from '@/components/list/list-skeleton';
 import LoadingDialog from '@/components/ui/loading';
+import { requirePageAccess } from '@/lib/security/authorization';
 import { Suspense } from 'react';
 import EmailFormClient from './_components/email-form';
 import WhatsappFormClient from './_components/whatsapp-form';
 
-const EmailsPage = () => {
+const EmailsPage = async () => {
+	await requirePageAccess('/messages');
+
 	return (
 		<PageContainer>
 			<PageHeader>

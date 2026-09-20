@@ -62,6 +62,7 @@ const PetsPage = async ({ searchParams }: PetsPageProps) => {
 						species={species}
 						breeds={breeds}
 						customers={customers}
+						viewerRole={context.role}
 					/>
 				</Suspense>
 			</PageContent>

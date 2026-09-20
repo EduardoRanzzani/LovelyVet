@@ -12,6 +12,8 @@ import {
 	SidebarMenuItem,
 	useSidebar,
 } from '@/components/ui/sidebar';
+import { canAccessPath } from '@/lib/security/permissions';
+import type { UserRole } from '@/lib/security/roles';
 import { useUser } from '@clerk/nextjs';
 import {
 	CalculatorIcon,
@@ -32,17 +34,20 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { version } from '../../../package.json';
+import packageJson from '../../../package.json';
 import { NavUser, NavUserType } from './nav-user';
 
 interface SidebarItem {
 	title: string;
 	url: string;
 	icon: LucideIcon;
-	roles: string[];
 }
 
-const AppSidebar = () => {
+interface AppSidebarProps {
+	role: UserRole;
+}
+
+const AppSidebar = ({ role }: AppSidebarProps) => {
 	const { user } = useUser();
 	const { setOpenMobile } = useSidebar();
 
@@ -52,8 +57,6 @@ const AppSidebar = () => {
 		email: user?.primaryEmailAddress?.emailAddress as string,
 	};
 
-	const userRole = (user?.publicMetadata?.role as string) || 'customer';
-	console.log(userRole);
 	const pathname = usePathname();
 
 	const items: SidebarItem[] = [
@@ -61,49 +64,41 @@ const AppSidebar = () => {
 			title: 'Dashboard',
 			url: '/dashboard',
 			icon: LayoutDashboardIcon,
-			roles: ['admin', 'customer', 'doctor'],
 		},
 		{
 			title: 'Veterinários',
 			url: '/doctors',
 			icon: StethoscopeIcon,
-			roles: ['admin'],
 		},
 		{
 			title: 'Pets',
 			url: '/pets',
 			icon: PawPrintIcon,
-			roles: ['admin', 'doctor', 'customer'],
 		},
 		{
 			title: 'Clientes',
 			url: '/customers',
 			icon: UsersRoundIcon,
-			roles: ['admin', 'doctor'],
 		},
 		{
 			title: 'Agendamentos',
 			url: '/appointments',
 			icon: CalendarIcon,
-			roles: ['admin', 'doctor', 'customer'],
 		},
 		{
 			title: 'Agenda',
 			url: '/agenda',
 			icon: CalendarDaysIcon,
-			roles: ['admin', 'doctor'],
 		},
 		{
 			title: 'Plantões',
 			url: '/shifts',
 			icon: HospitalIcon,
-			roles: ['admin', 'doctor'],
 		},
 		{
 			title: 'Mensagens',
 			url: '/messages',
 			icon: MessageSquareIcon,
-			roles: ['admin'],
 		},
 	];
 
@@ -112,31 +107,26 @@ const AppSidebar = () => {
 			title: 'Identidades Clerk',
 			url: '/admin',
 			icon: ShieldUserIcon,
-			roles: ['admin'],
 		},
 		{
 			title: 'Clínicas',
 			url: '/clinics',
 			icon: HospitalIcon,
-			roles: ['admin'],
 		},
 		{
 			title: 'Calculadoras',
 			url: '/calculators',
 			icon: CalculatorIcon,
-			roles: ['admin', 'doctor'],
 		},
 		{
 			title: 'Itens de Receitas',
 			url: '/prescriptions-items',
 			icon: ListIcon,
-			roles: ['admin', 'doctor'],
 		},
 		{
 			title: 'Receitas',
 			url: '/prescriptions',
 			icon: ScrollTextIcon,
-			roles: ['admin', 'doctor'],
 		},
 	];
 
@@ -145,28 +135,23 @@ const AppSidebar = () => {
 			title: 'Serviços',
 			url: '/services',
 			icon: CogIcon,
-			roles: ['admin', 'doctor'],
 		},
 		{
 			title: 'Espécies',
 			url: '/species',
 			icon: CogIcon,
-			roles: ['admin', 'doctor'],
 		},
 		{
 			title: 'Raças',
 			url: '/breeds',
 			icon: CogIcon,
-			roles: ['admin', 'doctor'],
 		},
 	];
 
-	const visibleHelpers = helpers.filter((item) =>
-		item.roles.includes(userRole),
-	);
+	const visibleHelpers = helpers.filter((item) => canAccessPath(role, item.url));
 
 	const visibleSettings = settings.filter((item) =>
-		item.roles.includes(userRole),
+		canAccessPath(role, item.url),
 	);
 
 	const isLinkActive = (url: string) => {
@@ -187,7 +172,7 @@ const AppSidebar = () => {
 								<span>LovelyVet</span>
 							</span>
 						</Link>
-						<SidebarGroupLabel>v. {version}</SidebarGroupLabel>
+						<SidebarGroupLabel>v. {packageJson.version}</SidebarGroupLabel>
 					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarHeader>
@@ -197,7 +182,7 @@ const AppSidebar = () => {
 					<SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
 					<SidebarMenu>
 						{items
-							.filter((item) => item.roles.includes(userRole))
+							.filter((item) => canAccessPath(role, item.url))
 							.map((item) => (
 								<SidebarMenuItem key={item.title}>
 									<SidebarMenuButton asChild isActive={isLinkActive(item.url)}>

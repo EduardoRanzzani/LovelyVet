@@ -8,10 +8,13 @@ import {
 } from '@/components/shared/page-container';
 import LoadingDialog from '@/components/ui/loading';
 import { getClerkEnvironment } from '@/lib/integrations/clerk-environment';
+import { requirePageAccess } from '@/lib/security/authorization';
 import { Suspense } from 'react';
 import AdminFormClient from './_components/admin-form';
 
 const AdminPage = async () => {
+	await requirePageAccess('/admin');
+
 	const environment = getClerkEnvironment();
 
 	return (

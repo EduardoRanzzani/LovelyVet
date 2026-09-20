@@ -1,4 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
+import { cache } from 'react';
 import type { UserRole } from './roles';
 import { findUserByClerkUserId } from './user-identity';
 
@@ -10,7 +11,7 @@ export type AuthContext = {
 	doctorId: string | null;
 };
 
-export const requireAuthContext = async (): Promise<AuthContext> => {
+const loadAuthContext = async (): Promise<AuthContext> => {
 	const { userId: clerkUserId } = await auth();
 
 	if (!clerkUserId) {
@@ -31,3 +32,5 @@ export const requireAuthContext = async (): Promise<AuthContext> => {
 		doctorId: user.doctor?.id ?? null,
 	};
 };
+
+export const requireAuthContext = cache(loadAuthContext);

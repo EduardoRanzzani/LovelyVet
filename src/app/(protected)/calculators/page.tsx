@@ -7,10 +7,13 @@ import {
 	PageTitle,
 } from '@/components/shared/page-container';
 import LoadingDialog from '@/components/ui/loading';
+import { requirePageAccess } from '@/lib/security/authorization';
 import { Suspense } from 'react';
 import CalculatorPageForm from './_components/calculator-form';
 
 const CalculatorPage = async () => {
+	await requirePageAccess('/calculators');
+
 	return (
 		<PageContainer>
 			<PageHeader>

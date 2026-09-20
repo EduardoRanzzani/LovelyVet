@@ -1,4 +1,7 @@
+import { redirect } from 'next/navigation';
 import type { AuthContext } from './auth-context';
+import { requireAuthContext } from './auth-context';
+import { canAccessPath } from './permissions';
 import type { UserRole } from './roles';
 
 export const hasRole = (
@@ -23,4 +26,16 @@ export const requireAdmin = (context: AuthContext): void => {
 
 export const requireStaff = (context: AuthContext): void => {
 	requireRole(context, 'admin', 'doctor');
+};
+
+export const requirePageAccess = async (
+	pathname: string,
+): Promise<AuthContext> => {
+	const context = await requireAuthContext();
+
+	if (!canAccessPath(context.role, pathname)) {
+		redirect('/dashboard');
+	}
+
+	return context;
 };

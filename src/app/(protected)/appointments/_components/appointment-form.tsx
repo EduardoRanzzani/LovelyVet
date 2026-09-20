@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/dialog';
 import { Form } from '@/components/ui/form';
 import LoadingDialog from '@/components/ui/loading';
-import { useUser } from '@clerk/nextjs';
+import type { UserRole } from '@/lib/security/roles';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { BanIcon, Loader2Icon, SaveIcon } from 'lucide-react';
 import { useAction } from 'next-safe-action/hooks';
@@ -42,6 +42,7 @@ interface AppointmentFormClientProps {
 	pets: PetOption[];
 	doctors: DoctorOption[];
 	services: ServicesWithRelations[];
+	viewerRole: UserRole;
 	onSuccess?: () => void;
 }
 
@@ -53,10 +54,10 @@ const AppointmentFormClient = ({
 	pets,
 	doctors,
 	services,
+	viewerRole,
 	onSuccess,
 }: AppointmentFormClientProps) => {
-	const { user } = useUser();
-	const isCustomer = user?.publicMetadata?.role === 'customer';
+	const isCustomer = viewerRole === 'customer';
 
 	const [availability, setAvailability] = useState<{
 		doctorId: string;

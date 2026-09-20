@@ -10,6 +10,7 @@ import {
 } from '@/components/shared/page-container';
 import CustomCalendarSkeleton from '@/components/ui/custom-calendar-skeleton';
 import LoadingDialog from '@/components/ui/loading';
+import { requirePageAccess } from '@/lib/security/authorization';
 import { Suspense } from 'react';
 import ShiftsCalendarClient from './_components/shifts-calendar';
 import { getClinicsForShiftSelection } from '@/api/actions/clinics.actions';
@@ -19,6 +20,8 @@ interface ShiftsPageProps {
 }
 
 const ShiftsPage = async ({ searchParams }: ShiftsPageProps) => {
+	await requirePageAccess('/shifts');
+
 	const params = await searchParams;
 
 	// Captura o mês da URL ou define o mês atual como fallback

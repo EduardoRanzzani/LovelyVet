@@ -10,8 +10,7 @@ import {
 } from '@/components/shared/page-container';
 import CustomCalendarSkeleton from '@/components/ui/custom-calendar-skeleton';
 import LoadingDialog from '@/components/ui/loading';
-import { requireAuthContext } from '@/lib/security/auth-context';
-import { requireStaff } from '@/lib/security/authorization';
+import { requirePageAccess } from '@/lib/security/authorization';
 import { Suspense } from 'react';
 import AgendaCalendarClient from './_components/agenda-calendar';
 import { REGINA_DOCTOR_ID } from '@/api/config/consts';
@@ -27,8 +26,7 @@ interface AgendaPageProps {
 const AgendaPage = async ({ searchParams }: AgendaPageProps) => {
 	const params = await searchParams;
 
-	const context = await requireAuthContext();
-	requireStaff(context);
+	const context = await requirePageAccess('/agenda');
 
 	const doctors = await getDoctors();
 

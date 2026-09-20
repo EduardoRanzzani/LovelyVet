@@ -22,7 +22,7 @@ import { Separator } from '@/components/ui/separator';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { formatCurrencyFromCents } from '@/helpers/currency';
 import { handleNavigation } from '@/lib/utils';
-import { useUser } from '@clerk/nextjs';
+import type { UserRole } from '@/lib/security/roles';
 import {
 	ArrowRightIcon,
 	BanIcon,
@@ -45,6 +45,7 @@ interface AppointmentsListClientProps {
 	pets: PetOption[];
 	doctors: DoctorOption[];
 	services: ServicesWithRelations[];
+	viewerRole: UserRole;
 }
 
 const AppointmentsListClient = ({
@@ -52,11 +53,11 @@ const AppointmentsListClient = ({
 	pets,
 	doctors,
 	services,
+	viewerRole,
 }: AppointmentsListClientProps) => {
 	const appointmentsResolved = use(appointments);
 	const searchParams = useSearchParams();
-	const { user } = useUser();
-	const profile = user?.publicMetadata.role;
+	const profile = viewerRole;
 
 	const handlePageChange = (page: number) => {
 		const params = new URLSearchParams(searchParams.toString());
@@ -209,6 +210,7 @@ const AppointmentsListClient = ({
 								pets={pets}
 								doctors={doctors}
 								services={services}
+								viewerRole={viewerRole}
 								onSuccess={close}
 							/>
 						)}
@@ -262,6 +264,7 @@ const AppointmentsListClient = ({
 									pets={pets}
 									doctors={doctors}
 									services={services}
+									viewerRole={viewerRole}
 									onSuccess={close}
 								/>
 							)}
@@ -365,6 +368,7 @@ const AppointmentsListClient = ({
 							pets={pets}
 							doctors={doctors}
 							services={services}
+							viewerRole={viewerRole}
 							onSuccess={close}
 						/>
 					)}
