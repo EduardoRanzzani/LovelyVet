@@ -3,6 +3,12 @@
 import { getPrescriptionsItems } from '@/api/actions/prescriptions-items.actions';
 import type { PrescriptionItemsWithRelations } from '@/api/schema/prescriptions-items.schema';
 import TextEditorForm from '@/components/form/text-editor-form';
+import {
+	Accordion,
+	AccordionContent,
+	AccordionItem,
+	AccordionTrigger,
+} from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +20,7 @@ import {
 	SelectValue,
 } from '@/components/ui/select';
 import { PlusIcon, Trash2Icon } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 
@@ -59,6 +65,10 @@ export default function PrescriptionBuilder({
 		control: form.control,
 		name: 'items',
 	});
+	const knownFieldIds = useRef(new Set(fields.map((field) => field.id)));
+	const [openItemIds, setOpenItemIds] = useState<string[]>(() =>
+		fields.map((field) => field.id),
+	);
 
 	const items = useWatch({
 		control: form.control,
@@ -77,6 +87,19 @@ export default function PrescriptionBuilder({
 	useEffect(() => {
 		onAdministrationRouteChange?.(administrationRoute ?? '');
 	}, [administrationRoute, onAdministrationRouteChange]);
+
+	useEffect(() => {
+		const currentIds = fields.map((field) => field.id);
+		const newIds = currentIds.filter(
+			(fieldId) => !knownFieldIds.current.has(fieldId),
+		);
+
+		if (newIds.length > 0) {
+			setOpenItemIds((current) => [...current, ...newIds]);
+		}
+
+		knownFieldIds.current = new Set(currentIds);
+	}, [fields]);
 
 	useEffect(() => {
 		const loadCatalog = async () => {
@@ -124,6 +147,13 @@ export default function PrescriptionBuilder({
 			quantity: '',
 			orientations: '',
 		});
+	};
+
+	const handleRemove = (index: number, fieldId: string) => {
+		setOpenItemIds((current) =>
+			current.filter((openItemId) => openItemId !== fieldId),
+		);
+		remove(index);
 	};
 
 	return (
@@ -198,68 +228,94 @@ export default function PrescriptionBuilder({
 					</div>
 				</div>
 			) : (
-				<div className='space-y-4'>
+				<Accordion
+					type='multiple'
+					value={openItemIds}
+					onValueChange={setOpenItemIds}
+					className='space-y-3'
+				>
 					{fields.map((field, index) => (
-						<div key={field.id} className='rounded-xl border bg-card p-5'>
-							<div className='mb-5 flex items-center justify-between'>
-								<div>
-									<p className='font-semibold'>Medicamento {index + 1}</p>
+						<AccordionItem
+							key={field.id}
+							value={field.id}
+							className='rounded-xl border bg-card px-3 last:border-b sm:px-5'
+						>
+							<div className='flex min-w-0 items-center gap-2'>
+								<AccordionTrigger className='min-w-0 py-3 hover:no-underline sm:py-4'>
+									<div className='flex min-w-0 flex-1 flex-col text-left'>
+										<span className='truncate font-semibold'>
+											Medicamento {index + 1}
+											{items?.[index]?.name
+												? ` · ${items[index].name}`
+												: ''}
+										</span>
 
-									<p className='text-xs text-muted-foreground'>
-										Edite as informações que serão impressas.
-									</p>
-								</div>
+										<span className='truncate text-xs font-normal text-muted-foreground'>
+											{[
+												items?.[index]?.pharmacy,
+												items?.[index]?.quantity,
+											]
+												.filter(Boolean)
+												.join(' · ') || 'Toque para preencher os dados'}
+										</span>
+									</div>
+								</AccordionTrigger>
 
 								<Button
 									type='button'
 									size='icon'
 									variant='ghost'
-									onClick={() => remove(index)}
+									onClick={() => handleRemove(index, field.id)}
+									aria-label={`Excluir medicamento ${index + 1}`}
+									className='shrink-0'
 								>
 									<Trash2Icon className='size-4 text-destructive' />
 								</Button>
 							</div>
 
-							<div className='grid gap-4 md:grid-cols-3'>
-								<div className='space-y-2 md:col-span-1'>
-									<Label>Medicamento</Label>
+							<AccordionContent className='border-t pt-4'>
+								<div className='grid gap-4 md:grid-cols-3'>
+									<div className='space-y-2 md:col-span-1'>
+										<Label>Medicamento</Label>
 
-									<Input
-										{...form.register(`items.${index}.name`)}
-										placeholder='Nome do medicamento'
-									/>
+										<Input
+											{...form.register(`items.${index}.name`)}
+											placeholder='Nome do medicamento'
+										/>
+									</div>
+
+									<div className='space-y-2'>
+										<Label>Farmácia</Label>
+
+										<Input
+											{...form.register(`items.${index}.pharmacy`)}
+											placeholder='Farm. veterinária'
+										/>
+									</div>
+
+									<div className='space-y-2'>
+										<Label>Quantidade</Label>
+
+										<Input
+											{...form.register(`items.${index}.quantity`)}
+											placeholder='Ex.: 1 cx.'
+										/>
+									</div>
 								</div>
 
-								<div className='space-y-2'>
-									<Label>Farmácia</Label>
 
-									<Input
-										{...form.register(`items.${index}.pharmacy`)}
-										placeholder='Farm. veterinária'
+								<div className='mt-4'>
+									<TextEditorForm
+										name={`items.${index}.orientations`}
+										control={form.control}
+										label='Orientações'
+										placeholder='Administrar...'
 									/>
 								</div>
-
-								<div className='space-y-2'>
-									<Label>Quantidade</Label>
-
-									<Input
-										{...form.register(`items.${index}.quantity`)}
-										placeholder='Ex.: 1 cx.'
-									/>
-								</div>
-							</div>
-
-							<div className='mt-4'>
-								<TextEditorForm
-									name={`items.${index}.orientations`}
-									control={form.control}
-									label='Orientações'
-									placeholder='Administrar...'
-								/>
-							</div>
-						</div>
+							</AccordionContent>
+						</AccordionItem>
 					))}
-				</div>
+				</Accordion>
 			)}
 		</div>
 	);
