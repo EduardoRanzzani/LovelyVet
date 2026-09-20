@@ -1,7 +1,7 @@
 import { db } from '@/db';
-import { usersTable } from '@/db/schema';
+import { clerkIdentitiesTable, usersTable } from '@/db/schema';
+import { getClerkEnvironment } from '@/lib/integrations/clerk-environment';
 import { UserJSON, WebhookEvent } from '@clerk/nextjs/server';
-import { normalizeUserRole } from '@/lib/security/roles';
 import { eq } from 'drizzle-orm';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
@@ -9,148 +9,162 @@ import { Webhook } from 'svix';
 
 const SIGNING_SECRET = process.env.CLERK_WEBHOOK_SECRET;
 
+const getPrimaryEmail = (data: UserJSON): string => {
+	const email =
+		data.email_addresses.find(
+			(address) => address.id === data.primary_email_address_id,
+		)?.email_address ?? data.email_addresses[0]?.email_address;
+
+	if (!email) {
+		throw new Error('Clerk user has no email address');
+	}
+
+	return email;
+};
+
+const getDisplayName = (data: UserJSON, email: string): string => {
+	const name = [data.first_name, data.last_name].filter(Boolean).join(' ').trim();
+
+	return name || email;
+};
+
+const syncClerkUser = async (data: UserJSON) => {
+	const environment = getClerkEnvironment();
+	const email = getPrimaryEmail(data);
+	const name = getDisplayName(data, email);
+
+	return db.transaction(async (transaction) => {
+		const [existingIdentity] = await transaction
+			.select({ userId: clerkIdentitiesTable.userId })
+			.from(clerkIdentitiesTable)
+			.where(eq(clerkIdentitiesTable.clerkUserId, data.id))
+			.limit(1);
+
+		let userId = existingIdentity?.userId;
+
+		if (userId) {
+			await transaction
+				.update(usersTable)
+				.set({
+					name,
+					email,
+					image: data.image_url,
+					updatedAt: new Date(),
+				})
+				.where(eq(usersTable.id, userId));
+		} else {
+			const [user] = await transaction
+				.insert(usersTable)
+				.values({
+					name,
+					email,
+					image: data.image_url,
+					isRegistrationComplete: false,
+				})
+				.onConflictDoUpdate({
+					target: usersTable.email,
+					set: {
+						name,
+						image: data.image_url,
+						updatedAt: new Date(),
+					},
+				})
+				.returning({ id: usersTable.id });
+
+			if (!user) {
+				throw new Error('Could not create or update local user');
+			}
+
+			userId = user.id;
+		}
+
+		await transaction
+			.insert(clerkIdentitiesTable)
+			.values({
+				userId,
+				environment,
+				clerkUserId: data.id,
+			})
+			.onConflictDoUpdate({
+				target: [
+					clerkIdentitiesTable.userId,
+					clerkIdentitiesTable.environment,
+				],
+				set: {
+					clerkUserId: data.id,
+					updatedAt: new Date(),
+				},
+			});
+
+		return { userId, environment };
+	});
+};
+
 export async function POST(req: Request) {
 	try {
 		if (!SIGNING_SECRET) {
-			throw new Error('Error: Clerk webhook secret not found');
+			throw new Error('CLERK_WEBHOOK_SECRET is not configured');
 		}
 
-		const wh = new Webhook(SIGNING_SECRET);
+		const webhook = new Webhook(SIGNING_SECRET);
 		const headerPayload = await headers();
-		const svix_id = headerPayload.get('svix-id');
-		const svix_timestamp = headerPayload.get('svix-timestamp');
-		const svix_signature = headerPayload.get('svix-signature');
+		const svixId = headerPayload.get('svix-id');
+		const svixTimestamp = headerPayload.get('svix-timestamp');
+		const svixSignature = headerPayload.get('svix-signature');
 
-		if (!svix_id || !svix_timestamp || !svix_signature) {
-			return new Response('Error: Missing Svix headers', {
-				status: 400,
-			});
+		if (!svixId || !svixTimestamp || !svixSignature) {
+			return new Response('Missing Svix headers', { status: 400 });
 		}
 
-		const payload = await req.json();
+		const payload: unknown = await req.json();
 		const body = JSON.stringify(payload);
 
-		let evt: WebhookEvent;
+		let event: WebhookEvent;
 
 		try {
-			evt = wh.verify(body, {
-				'svix-id': svix_id,
-				'svix-timestamp': svix_timestamp,
-				'svix-signature': svix_signature,
+			event = webhook.verify(body, {
+				'svix-id': svixId,
+				'svix-timestamp': svixTimestamp,
+				'svix-signature': svixSignature,
 			}) as WebhookEvent;
-		} catch (err) {
-			console.error('Error: Could not verify webhook:', err);
-			return new Response('Error: Verification error', {
-				status: 400,
+		} catch (error) {
+			console.error('Could not verify Clerk webhook', error);
+			return new Response('Webhook verification failed', { status: 400 });
+		}
+
+		if (event.type === 'user.created' || event.type === 'user.updated') {
+			const result = await syncClerkUser(event.data as UserJSON);
+
+			return NextResponse.json(result);
+		}
+
+		if (event.type === 'user.deleted') {
+			const clerkUserId = event.data.id;
+
+			if (!clerkUserId) {
+				return NextResponse.json(
+					{ error: 'No user ID provided' },
+					{ status: 400 },
+				);
+			}
+
+			const [deletedIdentity] = await db
+				.delete(clerkIdentitiesTable)
+				.where(eq(clerkIdentitiesTable.clerkUserId, clerkUserId))
+				.returning({ userId: clerkIdentitiesTable.userId });
+
+			return NextResponse.json({
+				identityRemoved: Boolean(deletedIdentity),
 			});
 		}
 
-		const { id: clerkUserId } = evt.data;
-
-		if (!clerkUserId)
-			return NextResponse.json(
-				{ error: 'No user ID provided' },
-				{ status: 400 },
-			);
-
-		let userResponse = null;
-
-		const eventType = evt.type;
-
-		switch (eventType) {
-			case 'user.created': {
-				const data = evt.data as UserJSON;
-				const email =
-					data.email_addresses.find(
-						(addr) => addr.id === data.primary_email_address_id,
-					)?.email_address ?? data.email_addresses[0]?.email_address;
-
-				const role = normalizeUserRole(data.public_metadata.role);
-
-				userResponse = await db
-					.insert(usersTable)
-					.values({
-						name: `${data.first_name} ${data.last_name}`.trim(),
-						email: email,
-						image: data.image_url,
-						clerkUserId: data.id,
-						isRegistrationComplete: false,
-						role: role,
-					})
-					.onConflictDoUpdate({
-						target: usersTable.email,
-						set: {
-							name: `${data.first_name} ${data.last_name}`.trim(),
-							image: data.image_url,
-							clerkUserId: data.id,
-							isRegistrationComplete: false,
-							role,
-							updatedAt: new Date(),
-						},
-					});
-				break;
-			}
-
-			case 'user.updated': {
-				const data = evt.data as UserJSON;
-				const email =
-					data.email_addresses.find(
-						(addr) => addr.id === data.primary_email_address_id,
-					)?.email_address ?? data.email_addresses[0]?.email_address;
-
-				const role = normalizeUserRole(data.public_metadata.role);
-
-				userResponse = await db
-					.update(usersTable)
-					.set({
-						name: `${data.first_name} ${data.last_name}`.trim(),
-						email: email,
-						image: data.image_url,
-						role,
-						updatedAt: new Date(),
-					})
-					.where(eq(usersTable.clerkUserId, data.id));
-				break;
-			}
-
-			case 'user.deleted': {
-				const { id: clerkUserId } = evt.data;
-
-				if (!clerkUserId) {
-					return NextResponse.json(
-						{ error: 'No user ID provided' },
-						{ status: 400 },
-					);
-				}
-
-				// 1. Verifica se o usuário existe no SEU banco
-				const existingUser = await db.query.usersTable.findFirst({
-					where: eq(usersTable.clerkUserId, clerkUserId),
-				});
-
-				if (!existingUser) {
-					console.log(
-						`Usuário ${clerkUserId} não encontrado no banco local. Pulando deleção.`,
-					);
-					return NextResponse.json({
-						message: 'User not found localy, nothing to delete',
-					});
-				}
-
-				// 2. Se existe, deleta (o cascade cuidará de client/veterinarian/etc)
-				await db
-					.delete(usersTable)
-					.where(eq(usersTable.clerkUserId, clerkUserId));
-
-				console.log(
-					`Usuário ${clerkUserId} e seus dados vinculados foram removidos.`,
-				);
-				break;
-			}
-		}
-
-		return NextResponse.json({ user: userResponse });
+		return NextResponse.json({ ignored: true });
 	} catch (error) {
-		return NextResponse.json({ error }, { status: 500 });
+		console.error('Failed to process Clerk webhook', error);
+
+		return NextResponse.json(
+			{ error: 'Webhook processing failed' },
+			{ status: 500 },
+		);
 	}
 }
