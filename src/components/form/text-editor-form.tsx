@@ -114,10 +114,6 @@ const TiptapEditor = ({
 
 	if (!editor) return null;
 
-	const addVariable = (value: string) => {
-		editor.chain().focus().insertContent(value).run();
-	};
-
 	return (
 		<div className='flex flex-col w-full min-w-0 overflow-hidden rounded-md border border-input shadow-sm'>
 			{/* TOOLBAR PRINCIPAL */}

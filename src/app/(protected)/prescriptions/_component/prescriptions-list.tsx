@@ -3,20 +3,16 @@ import { MAX_PAGE_SIZE, PaginatedData } from '@/api/config/consts';
 import { DoctorsWithRelations } from '@/api/schema/doctors.schema';
 import { PrescriptionsWithRelations } from '@/api/schema/prescriptions.schema';
 import AddButton from '@/components/list/add-button';
-import DeleteAlertButton from '@/components/list/delete-alert-dialog';
 import EditButton from '@/components/list/edit-button';
 import SearchInput from '@/components/list/search-input';
 import TableComponent from '@/components/list/table-component';
 import { Button } from '@/components/ui/button';
-import LoadingDialog from '@/components/ui/loading';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { handleNavigation } from '@/lib/utils';
 import { DownloadIcon } from 'lucide-react';
-import { useAction } from 'next-safe-action/hooks';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { use } from 'react';
-import { toast } from 'sonner';
 import PrescriptionFormClient from './prescription-form';
 import { PrescriptionItemsWithRelations } from '@/api/schema/prescriptions-items.schema';
 import { PetsWithRelations } from '@/api/schema/pets.schema';
@@ -82,7 +78,18 @@ const PrescriptionsListClient = ({
 						</Link>
 					</Button>
 
-					<EditButton tooltip={`Editar`} renderForm={(close) => <></>} />
+					<EditButton
+						tooltip='Editar'
+						renderForm={(close) => (
+							<PrescriptionFormClient
+								prescription={prescription}
+								prescriptionItems={prescriptionItems}
+								doctors={doctors}
+								pets={pets}
+								onSuccess={close}
+							/>
+						)}
+					/>
 
 					{/* <DeleteAlertButton action={() => handleDelete(prescription.id)} /> */}
 				</TableCell>

@@ -10,8 +10,6 @@ import {
 	StethoscopeIcon,
 } from 'lucide-react';
 import DialogNotes from '../dialogs/dialog-notes';
-import DialogPrescription from '../dialogs/dialog-prescription';
-import DialogServices from '../dialogs/dialog-services';
 import DialogVaccine from '../dialogs/dialog-vaccine';
 import DialogWeight from '../dialogs/dialog-weight';
 import PetTimelineClient from './history/pet-history-timeline';
@@ -36,8 +34,6 @@ const TabHistory = ({
 		<TabsContent value='history' className='w-full'>
 			<div className='flex flex-col lg:flex-row gap-4'>
 				<div className='grid grid-cols-1 lg:grid-cols-3 gap-2 lg:w-3/5 bg-card lg:max-h-30'>
-					<DialogServices petId={petId} />
-
 					<DialogWeight petId={petId} />
 
 					<Button className='bg-pathology hover:bg-pathology/80'>

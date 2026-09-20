@@ -29,7 +29,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { BanIcon, Loader2Icon, SaveIcon } from 'lucide-react';
 import { useAction } from 'next-safe-action/hooks';
 import { useEffect, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 
 interface PetFormClientProps {
@@ -66,7 +66,10 @@ const PetFormClient = ({
 	});
 
 	// Observa a espécie selecionada
-	const selectedSpecieId = form.watch('specieId');
+	const selectedSpecieId = useWatch({
+		control: form.control,
+		name: 'specieId',
+	});
 
 	// Deriva a lista de raças (sem useEffect!)
 	const filteredBreeds = useMemo(() => {

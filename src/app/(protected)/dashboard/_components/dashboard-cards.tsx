@@ -89,57 +89,6 @@ const DashboardCards = ({
 		0,
 	);
 
-	// Agrupa plantões não pagos por clínica
-	const nonPaidShiftsByClinic = nonPaidShifts.reduce(
-		(acc, shift) => {
-			// Acesse o nome da clínica através da relação (ajuste conforme seu schema)
-			const clinicName = shift.clinicName || 'Clínica não identificada';
-			const amount = shift.amountInCents ?? 0;
-
-			if (!acc[clinicName]) {
-				acc[clinicName] = { count: 0, total: 0 };
-			}
-
-			acc[clinicName].count += 1;
-			acc[clinicName].total += amount;
-
-			return acc;
-		},
-		{} as Record<string, { count: number; total: number }>,
-	);
-
-	// Agrupa todos os plantões por clínica
-	const shiftsByClinic = shifts.reduce(
-		(acc, shift) => {
-			const clinicName = shift.clinicName || 'Clínica não identificada';
-			const amount = shift.amountInCents ?? 0;
-
-			if (!acc[clinicName]) {
-				acc[clinicName] = { count: 0, total: 0 };
-			}
-
-			acc[clinicName].count += 1;
-			acc[clinicName].total += amount;
-
-			return acc;
-		},
-		{} as Record<string, { count: number; total: number }>,
-	);
-
-	// Converte em array para facilitar o mapeamento no JSX
-	const clinicBreakdown = Object.entries(nonPaidShiftsByClinic).map(
-		([name, data]) => ({
-			name,
-			...data,
-		}),
-	);
-	const shiftsBreakdown = Object.entries(shiftsByClinic).map(
-		([name, data]) => ({
-			name,
-			...data,
-		}),
-	);
-
 	const onMonthChange = (newDate: Date) => {
 		const monthIndex = newDate.getMonth();
 		const monthName = monthNames[monthIndex];

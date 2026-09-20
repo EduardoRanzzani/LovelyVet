@@ -4,12 +4,9 @@ import {
 	AlignLeftIcon,
 	AlignRightIcon,
 	BoldIcon,
-	Heading1Icon,
-	Heading2Icon,
 	ItalicIcon,
 	ListIcon,
 	ListOrderedIcon,
-	TypeIcon,
 } from 'lucide-react';
 import { ToolbarButton } from '../form/text-editor-form';
 

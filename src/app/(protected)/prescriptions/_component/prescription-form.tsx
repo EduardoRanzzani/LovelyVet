@@ -25,7 +25,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { BanIcon, Loader2Icon, SaveIcon } from 'lucide-react';
 import { useAction } from 'next-safe-action/hooks';
-import { useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import z from 'zod';
@@ -68,7 +67,6 @@ const PrescriptionFormClient = ({
 	pets,
 	onSuccess,
 }: PrescriptionFormClientProps) => {
-	const [open, setOpen] = useState<boolean>(false);
 	const form = useForm<CreatePrescriptionFormSchema>({
 		resolver: zodResolver(createPrescriptionFormSchema),
 		shouldUnregister: false,
@@ -102,20 +100,13 @@ const PrescriptionFormClient = ({
 		onSuccess: () => {
 			toast.success('Receita criada com sucesso!');
 			form.reset();
-			setOpen(false);
+			onSuccess();
 		},
 		onError: (err) => {
 			console.error({ err });
 			toast.error('Ocorreu um erro ao criar a receita!');
 		},
 	});
-
-	const handleOpenChange = (newOpen: boolean) => {
-		setOpen(newOpen);
-		if (!newOpen) {
-			form.reset();
-		}
-	};
 
 	return (
 		<DialogContent

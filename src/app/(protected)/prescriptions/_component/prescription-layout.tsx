@@ -1,6 +1,5 @@
 'use client';
 import { PetsWithRelations } from '@/api/schema/pets.schema';
-import { PrescriptionItemsWithRelations } from '@/api/schema/prescriptions-items.schema';
 import { formatAgeShort } from '@/api/util';
 import { GoogleMapsIcon } from '@/components/icons/icon-googlemaps';
 import { WhatsappIcon } from '@/components/icons/icon-whatsapp';

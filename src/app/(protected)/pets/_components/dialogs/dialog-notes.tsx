@@ -3,7 +3,6 @@ import {
 	CreateNoteSchema,
 	createNoteSchema,
 } from '@/api/schema/pet-notes.schema';
-import TextareaForm from '@/components/form/text-area-form';
 import EditorForm from '@/components/form/text-editor-form';
 import { Button } from '@/components/ui/button';
 import {
