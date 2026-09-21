@@ -140,11 +140,7 @@ const PetsListClient = ({
 								/>
 							) : (
 								<AvatarImage
-									src={
-										pet?.breed?.specie.name === 'Canino'
-											? '/dog-placeholder.png'
-											: '/cat-placeholder.svg'
-									}
+									src={pet?.photo || '/pet-placeholder.png'}
 									alt={pet.name}
 								/>
 							)}
@@ -181,11 +177,7 @@ const PetsListClient = ({
 							/>
 						) : (
 							<AvatarImage
-								src={
-									pet?.breed?.specie.name === 'Canino'
-										? '/dog-placeholder.png'
-										: '/cat-placeholder.svg'
-								}
+								src={pet?.photo || '/pet-placeholder.png'}
 								alt={pet.name}
 							/>
 						)}
@@ -290,11 +282,7 @@ const PetsListClient = ({
 								/>
 							) : (
 								<AvatarImage
-									src={
-										pet?.breed?.specie.name === 'Canino'
-											? '/dog-placeholder.png'
-											: '/cat-placeholder.svg'
-									}
+									src={pet?.photo || '/pet-placeholder.png'}
 									alt={pet.name}
 								/>
 							)}

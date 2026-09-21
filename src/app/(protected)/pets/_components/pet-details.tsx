@@ -10,6 +10,7 @@ import {
 import { Species } from '@/api/schema/species.schema';
 import { TimelineItem, toTimelinePerson } from '@/api/schema/timeline.schema';
 import { formatAge } from '@/api/util';
+import DocumentPdfDownloadButton from '@/components/clinical-documents/document-pdf-download-button';
 import { GoogleMapsIcon } from '@/components/icons/icon-googlemaps';
 import EditButton from '@/components/list/edit-button';
 import { Button } from '@/components/ui/button';
@@ -27,7 +28,6 @@ import type { UserRole } from '@/lib/security/roles';
 import { format, formatDate } from 'date-fns';
 import {
 	CalendarIcon,
-	DownloadIcon,
 	DropletIcon,
 	FileIcon,
 	FilmIcon,
@@ -150,12 +150,13 @@ const PetDetailsClient = ({
 							</Button>
 						)}
 
-						<Button variant='outline' size='sm' asChild>
-							<Link href={`/prescriptions/print/${p.id}`}>
-								<DownloadIcon className='size-4' />
-								Exportar PDF
-							</Link>
-						</Button>
+						{p.documentData && (
+							<DocumentPdfDownloadButton
+								kind='prescription'
+								documentData={p.documentData}
+								issuedAt={p.issuedAt}
+							/>
+						)}
 					</div>
 				</div>
 			),
@@ -181,12 +182,13 @@ const PetDetailsClient = ({
 						/>
 
 						<div className='flex flex-wrap gap-2'>
-							<Button variant='outline' size='sm' asChild>
-								<Link href={`/clinical-documents/print/${document.id}`}>
-									<DownloadIcon className='size-4' />
-									Exportar PDF
-								</Link>
-							</Button>
+							<DocumentPdfDownloadButton
+								kind='clinical'
+								type={document.type}
+								content={document.content}
+								documentData={document.documentData}
+								issuedAt={document.issuedAt}
+							/>
 						</div>
 					</div>
 				),
@@ -311,13 +313,7 @@ const PetDetailsClient = ({
 				<div className='flex flex-col items-center justify-start gap-4 p-5 w-full lg:min-w-75 lg:w-1/3 border border-muted rounded-lg bg-card'>
 					<div className='relative w-40 h-40 md:w-50 md:h-50'>
 						<Image
-							src={
-								pet?.photo
-									? pet.photo
-									: pet?.breed?.specie.name === 'Canino'
-										? '/dog-placeholder.png'
-										: '/cat-placeholder.svg'
-							}
+							src={pet?.photo || '/pet-placeholder.png'}
 							alt='Foto do pet'
 							fill
 							draggable={false}

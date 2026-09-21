@@ -33,13 +33,14 @@ export default function PrescriptionDocument({
 	return (
 		<div
 			ref={printRef}
-			className='prescription-print-area relative mx-auto aspect-210/297 w-full max-w-[210mm] overflow-hidden bg-white text-black shadow-lg'
+			className='prescription-print-area relative mx-auto h-[297mm] w-[210mm] shrink-0 overflow-hidden bg-white text-black shadow-lg'
 		>
 			<div className='relative flex h-full flex-col p-4 px-20 pb-12 text-black'>
 				{/* Marca d'água */}
 				<div className='pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.035]'>
 					<Image
 						unoptimized
+						loading='eager'
 						src='/logo.png'
 						alt=''
 						width={520}
@@ -52,6 +53,7 @@ export default function PrescriptionDocument({
 				<div className='pointer-events-none absolute left-[-4] top-[-2] w-[30%]'>
 					<Image
 						unoptimized
+						loading='eager'
 						src='/paw-decoration.png'
 						alt=''
 						width={300}
@@ -64,6 +66,7 @@ export default function PrescriptionDocument({
 				<header className='relative z-10 mb-[5%] text-center'>
 					<Image
 						unoptimized
+						loading='eager'
 						src='/logo.png'
 						alt='LovelyVet'
 						width={90}
@@ -190,6 +193,7 @@ export default function PrescriptionDocument({
 				<div className='pointer-events-none absolute bottom-[-2] right-[-4] w-[30%]'>
 					<Image
 						unoptimized
+						loading='eager'
 						src='/paw-decoration.png'
 						alt=''
 						width={300}
