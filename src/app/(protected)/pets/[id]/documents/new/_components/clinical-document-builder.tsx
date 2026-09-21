@@ -4,8 +4,9 @@
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PrescriptionBuilder, {
-	type PrescriptionDraftItem,
+	type PrescriptionDraftGroup,
 } from './prescription-builder';
+import { normalizePrescriptionGroups } from '@/lib/prescriptions/normalize-prescription-groups';
 import PrescriptionPreview, {
 	type PrescriptionPatientData,
 } from './prescription-preview';
@@ -69,32 +70,42 @@ export default function ClinicalDocumentBuilder({
 		useState<ClinicalDocumentType>('prescription');
 	const [exportingType, setExportingType] =
 		useState<ClinicalDocumentType | null>(null);
-	const [prescriptionItems, setPrescriptionItems] = useState<
-		PrescriptionDraftItem[]
-	>(initialPrescription?.items ?? []);
-	const [administrationRoute, setAdministrationRoute] = useState(
-		initialPrescription?.administrationRoute ?? '',
-	);
 	const [selectedTutorId, setSelectedTutorId] = useState(
 		initialPrescription?.tutor.id ?? tutors[0]?.id ?? '',
 	);
 	const selectedTutor = tutors.find((tutor) => tutor.id === selectedTutorId);
 	const selectedTutorName = selectedTutor?.name ?? '-';
+	const [prescriptionGroups, setPrescriptionGroups] = useState<
+		PrescriptionDraftGroup[]
+	>(() => {
+		if (initialPrescription) {
+			return normalizePrescriptionGroups(initialPrescription);
+		}
 
-	const canExportPrescription =
-		prescriptionItems.length > 0 &&
-		prescriptionItems.every(
-			(item) =>
-				item.name.trim() && item.quantity.trim() && item.orientations.trim(),
+		return [
+			{
+				administrationRoute: '',
+				items: [],
+			},
+		];
+	});
+	const isPrescriptionValid =
+		prescriptionGroups.length > 0 &&
+		prescriptionGroups.every(
+			(group) =>
+				group.administrationRoute.trim() &&
+				group.items.length > 0 &&
+				group.items.every(
+					(item) =>
+						item.name.trim() &&
+						item.quantity.trim() &&
+						item.orientations.trim(),
+				),
 		);
 
-	const canSavePrescription =
-		Boolean(selectedTutorId) &&
-		prescriptionItems.length > 0 &&
-		prescriptionItems.every(
-			(item) =>
-				item.name.trim() && item.quantity.trim() && item.orientations.trim(),
-		);
+	const canExportPrescription = isPrescriptionValid;
+
+	const canSavePrescription = Boolean(selectedTutorId) && isPrescriptionValid;
 
 	const prescriptionPrintRef = useRef<HTMLDivElement>(null);
 
@@ -157,8 +168,7 @@ export default function ClinicalDocumentBuilder({
 			petId,
 			tutorId: selectedTutorId,
 			doctorId: REGINA_DOCTOR_ID,
-			administrationRoute,
-			items: prescriptionItems,
+			groups: prescriptionGroups,
 		};
 
 		if (prescriptionId) {
@@ -328,12 +338,12 @@ export default function ClinicalDocumentBuilder({
 									</div>
 
 									<PrescriptionBuilder
-										initialItems={initialPrescription?.items ?? []}
-										initialAdministrationRoute={
-											initialPrescription?.administrationRoute ?? ''
+										initialGroups={
+											initialPrescription
+												? normalizePrescriptionGroups(initialPrescription)
+												: []
 										}
-										onItemsChange={setPrescriptionItems}
-										onAdministrationRouteChange={setAdministrationRoute}
+										onGroupsChange={setPrescriptionGroups}
 									/>
 								</div>
 							</div>
@@ -352,8 +362,7 @@ export default function ClinicalDocumentBuilder({
 										printRef={prescriptionPrintRef}
 										patient={patient}
 										tutorName={selectedTutorName}
-										items={prescriptionItems}
-										administrationRoute={administrationRoute}
+										groups={prescriptionGroups}
 									/>
 								</div>
 							</div>

@@ -8,6 +8,7 @@ import { downloadElementAsPdf } from '@/lib/pdf/download-element-as-pdf';
 import { ArrowLeftIcon, DownloadIcon, LoaderCircleIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { normalizePrescriptionGroups } from '@/lib/prescriptions/normalize-prescription-groups';
 import { toast } from 'sonner';
 
 interface PrescriptionPrintClientProps {
@@ -89,8 +90,7 @@ export default function PrescriptionPrintClient({
 						tutorName: documentData.tutor.name,
 						date,
 					}}
-					items={documentData.items}
-					administrationRoute={documentData.administrationRoute}
+					groups={normalizePrescriptionGroups(documentData)}
 				/>
 			</A4DocumentPreview>
 		</div>

@@ -12,6 +12,7 @@ import { DownloadIcon, LoaderCircleIcon } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import RichTextClinicalDocument from './rich-text-clinical-document';
+import { normalizePrescriptionGroups } from '@/lib/prescriptions/normalize-prescription-groups';
 
 type PrescriptionPdfProps = {
 	kind: 'prescription';
@@ -111,8 +112,7 @@ export default function DocumentPdfDownloadButton(
 							tutorName: props.documentData.tutor.name,
 							date,
 						}}
-						items={props.documentData.items}
-						administrationRoute={props.documentData.administrationRoute}
+						groups={normalizePrescriptionGroups(props.documentData)}
 					/>
 				) : (
 					<RichTextClinicalDocument

@@ -1,11 +1,9 @@
 'use client';
 
-'use client';
-
 import A4DocumentPreview from '@/components/clinical-documents/a4-document-preview';
 import PrescriptionDocument from '@/components/prescriptions/prescription-document';
 import type { RefObject } from 'react';
-import type { PrescriptionDraftItem } from './prescription-builder';
+import type { PrescriptionDraftGroup } from './prescription-builder';
 
 export interface PrescriptionPatientData {
 	name: string;
@@ -21,16 +19,14 @@ interface PrescriptionPreviewProps {
 	printRef: RefObject<HTMLDivElement | null>;
 	patient: PrescriptionPatientData;
 	tutorName: string;
-	items: PrescriptionDraftItem[];
-	administrationRoute: string;
+	groups: PrescriptionDraftGroup[];
 }
 
 export default function PrescriptionPreview({
 	printRef,
 	patient,
 	tutorName,
-	items,
-	administrationRoute,
+	groups,
 }: PrescriptionPreviewProps) {
 	return (
 		<A4DocumentPreview>
@@ -40,8 +36,7 @@ export default function PrescriptionPreview({
 					...patient,
 					tutorName,
 				}}
-				items={items}
-				administrationRoute={administrationRoute}
+				groups={groups}
 			/>
 		</A4DocumentPreview>
 	);

@@ -1,6 +1,6 @@
 'use client';
 
-import type { PrescriptionDocumentItem } from '@/api/schema/prescription-document.schema';
+import type { PrescriptionDocumentGroup } from '@/api/schema/prescription-document.schema';
 import { WhatsappIcon } from '@/components/icons/icon-whatsapp';
 import { sanitizeRichTextHtml } from '@/lib/security/html';
 import Image from 'next/image';
@@ -19,15 +19,13 @@ export interface PrescriptionDocumentPatient {
 
 interface PrescriptionDocumentProps {
 	patient: PrescriptionDocumentPatient;
-	items: PrescriptionDocumentItem[];
-	administrationRoute: string;
+	groups: PrescriptionDocumentGroup[];
 	printRef?: Ref<HTMLDivElement>;
 }
 
 export default function PrescriptionDocument({
 	patient,
-	items,
-	administrationRoute,
+	groups,
 	printRef,
 }: PrescriptionDocumentProps) {
 	return (
@@ -110,57 +108,62 @@ export default function PrescriptionDocument({
 						Receituário
 					</h2>
 
-					{administrationRoute.trim() && (
-						<p className='mb-4 text-center text-[13px] font-semibold uppercase'>
-							{administrationRoute}
-						</p>
-					)}
-
-					<div className='space-y-[3%]'>
-						{items.length === 0 ? (
+					<div className='space-y-6'>
+						{groups.length === 0 ? (
 							<p className='text-center text-[11px] text-zinc-400'>
 								Nenhum medicamento adicionado.
 							</p>
 						) : (
-							items.map((item, index) => (
-								<div
-									key={`${item.sourceId ?? 'custom'}-${index}`}
-									className='space-y-1'
-								>
-									{/* Linha medicamento / farmácia / quantidade */}
-									<div className='grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-2 text-[11px]'>
-										{/* Nome + linha esquerda */}
-										<div className='flex min-w-0 items-end gap-2'>
-											<strong className='shrink-0 whitespace-nowrap'>
-												{item.name || 'Medicamento'}
-											</strong>
+							groups.map((group, groupIndex) => (
+								<section key={`${group.administrationRoute}-${groupIndex}`}>
+									{group.administrationRoute.trim() && (
+										<p className='mb-4 text-center text-[13px] font-semibold uppercase'>
+											{group.administrationRoute}
+										</p>
+									)}
 
-											<div className='mb-0.75 min-w-4 flex-1 border-b border-black' />
-										</div>
+									<div className='space-y-[3%]'>
+										{group.items.map((item, itemIndex) => (
+											<div
+												key={`${
+													item.sourceId ?? 'custom'
+												}-${groupIndex}-${itemIndex}`}
+												className='space-y-1'
+											>
+												<div className='grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-2 text-[11px]'>
+													<div className='flex min-w-0 items-end gap-2'>
+														<strong className='shrink-0 whitespace-nowrap'>
+															{item.name || 'Medicamento'}
+														</strong>
 
-										{/* Farmácia sempre centralizada */}
-										<span className='whitespace-nowrap text-center'>
-											({item.pharmacy || 'Farmácia veterinária'})
-										</span>
+														<div className='mb-0.75 min-w-4 flex-1 border-b border-black' />
+													</div>
 
-										{/* Linha direita + quantidade */}
-										<div className='flex min-w-0 items-end gap-2'>
-											<div className='mb-0.75 min-w-4 flex-1 border-b border-black' />
+													<span className='whitespace-nowrap text-center'>
+														({item.pharmacy || 'Farmácia veterinária'})
+													</span>
 
-											<strong className='shrink-0 whitespace-nowrap'>
-												{item.quantity || '---'}
-											</strong>
-										</div>
+													<div className='flex min-w-0 items-end gap-2'>
+														<div className='mb-0.75 min-w-4 flex-1 border-b border-black' />
+
+														<strong className='shrink-0 whitespace-nowrap'>
+															{item.quantity || '---'}
+														</strong>
+													</div>
+												</div>
+
+												<div
+													className='text-[11px] leading-5'
+													dangerouslySetInnerHTML={{
+														__html: sanitizeRichTextHtml(
+															item.orientations || '',
+														),
+													}}
+												/>
+											</div>
+										))}
 									</div>
-
-									{/* Orientações */}
-									<div
-										className='text-[11px] leading-5'
-										dangerouslySetInnerHTML={{
-											__html: sanitizeRichTextHtml(item.orientations || ''),
-										}}
-									/>
-								</div>
+								</section>
 							))
 						)}
 					</div>

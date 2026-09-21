@@ -8,11 +8,26 @@ export const prescriptionDocumentItemSchema = z.object({
 	orientations: z.string().min(1),
 });
 
+export const prescriptionDocumentGroupSchema = z.object({
+	administrationRoute: z.string().trim().min(1, 'Informe o modo de uso'),
+
+	items: z
+		.array(prescriptionDocumentItemSchema)
+		.min(1, 'Adicione pelo menos um medicamento'),
+});
+
+/*
+ * groups é o formato atual.
+ *
+ * administrationRoute/items permanecem opcionais apenas para
+ * compatibilidade com receitas antigas já armazenadas no JSONB.
+ */
 export const prescriptionDocumentDataSchema = z.object({
 	tutor: z.object({
 		id: z.string().uuid(),
 		name: z.string(),
 	}),
+
 	patient: z.object({
 		name: z.string(),
 		species: z.string(),
@@ -21,12 +36,20 @@ export const prescriptionDocumentDataSchema = z.object({
 		weight: z.string(),
 		sex: z.string(),
 	}),
-	administrationRoute: z.string(),
-	items: z.array(prescriptionDocumentItemSchema),
+
+	groups: z.array(prescriptionDocumentGroupSchema).optional(),
+
+	// Formato legado
+	administrationRoute: z.string().optional(),
+	items: z.array(prescriptionDocumentItemSchema).optional(),
 });
 
 export type PrescriptionDocumentItem = z.infer<
 	typeof prescriptionDocumentItemSchema
+>;
+
+export type PrescriptionDocumentGroup = z.infer<
+	typeof prescriptionDocumentGroupSchema
 >;
 
 export type PrescriptionDocumentData = z.infer<
@@ -37,10 +60,10 @@ export const savePrescriptionDocumentSchema = z.object({
 	petId: z.uuid(),
 	tutorId: z.uuid(),
 	doctorId: z.uuid(),
-	administrationRoute: z.string().trim(),
-	items: z
-		.array(prescriptionDocumentItemSchema)
-		.min(1, 'Adicione pelo menos um medicamento'),
+
+	groups: z
+		.array(prescriptionDocumentGroupSchema)
+		.min(1, 'Adicione pelo menos um modo de uso'),
 });
 
 export type SavePrescriptionDocumentSchema = z.infer<

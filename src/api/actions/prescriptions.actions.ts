@@ -24,6 +24,7 @@ import { and, count, desc, eq, ilike, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { MAX_PAGE_SIZE, PaginatedData } from '../config/consts';
 import {
+	type PrescriptionDocumentGroup,
 	savePrescriptionDocumentSchema,
 	updatePrescriptionDocumentSchema,
 } from '../schema/prescription-document.schema';
@@ -33,13 +34,12 @@ import {
 } from '../schema/prescriptions.schema';
 
 /**
- * Mantido por compatibilidade com o fluxo antigo.
+ * Renderiza os medicamentos de um único bloco da receita.
  *
- * Os novos documentos também usam esse HTML como representação
- * renderizável da receita, enquanto documentData mantém o snapshot
- * estruturado e editável.
+ * Também é usado pelo fluxo legado, que ainda não possui
+ * o conceito de grupos/modos de uso.
  */
-const buildPrescriptionContent = (
+const buildPrescriptionItemsContent = (
 	prescriptionItems: Array<{
 		id?: string;
 		sourceId?: string | null;
@@ -49,7 +49,7 @@ const buildPrescriptionContent = (
 		orientations: string;
 	}>,
 ): string => {
-	const items = prescriptionItems
+	return prescriptionItems
 		.map(
 			(item) =>
 				`<div style="display: flex; flex-direction: column; gap: 0px; margin-bottom: 12px;">
@@ -87,8 +87,56 @@ const buildPrescriptionContent = (
 				</div>`,
 		)
 		.join('');
+};
 
-	return `<div class="prescription-content" style="display: flex; flex-direction: column; gap: 4px;">${items}</div>`;
+/**
+ * Representação HTML da nova receita estruturada.
+ *
+ * Cada modo de uso possui seu próprio bloco de medicamentos.
+ *
+ * Ex.:
+ * - USO ORAL
+ *   - Medicamento A
+ *   - Medicamento B
+ *
+ * - USO TÓPICO
+ *   - Medicamento C
+ */
+const buildPrescriptionContent = (
+	groups: PrescriptionDocumentGroup[],
+): string => {
+	const content = groups
+		.map((group) => {
+			const items = buildPrescriptionItemsContent(group.items);
+
+			return `
+				<section style="margin-bottom: 24px;">
+					<h3
+						style="
+							margin: 0 0 12px;
+							text-align: center;
+							font-size: 14px;
+							font-weight: bold;
+							text-transform: uppercase;
+						"
+					>
+						${escapeHtml(group.administrationRoute)}
+					</h3>
+
+					${items}
+				</section>
+			`;
+		})
+		.join('');
+
+	return `
+		<div
+			class="prescription-content"
+			style="display: flex; flex-direction: column; gap: 4px;"
+		>
+			${content}
+		</div>
+	`;
 };
 
 /**
@@ -124,9 +172,7 @@ export const getPrescriptionsPaginated = async (
 	});
 
 	const totalCountResult = await db
-		.select({
-			value: count(),
-		})
+		.select({ value: count() })
 		.from(prescriptionsTable)
 		.where(
 			normalizedSearch
@@ -140,6 +186,7 @@ export const getPrescriptionsPaginated = async (
 
 	return {
 		data: data as PrescriptionsWithRelations[],
+
 		metadata: {
 			totalCount,
 			pageCount,
@@ -175,7 +222,14 @@ export const createPrescription = actionClient
 
 		const content = parsedInput.customContent
 			? sanitizeRichTextHtml(parsedInput.customContent)
-			: buildPrescriptionContent(prescriptionItems);
+			: `
+				<div
+					class="prescription-content"
+					style="display: flex; flex-direction: column; gap: 4px;"
+				>
+					${buildPrescriptionItemsContent(prescriptionItems)}
+				</div>
+			`;
 
 		await db.insert(prescriptionsTable).values({
 			petId: parsedInput.petId,
@@ -272,16 +326,23 @@ export const savePrescriptionDocument = actionClient
 			.limit(1);
 
 		/*
-		 * Sanitiza tudo antes de persistir.
+		 * Sanitiza todos os blocos e medicamentos
+		 * antes de persistir.
 		 */
-		const items = parsedInput.items.map((item) => ({
-			sourceId: item.sourceId,
-			name: item.name.trim(),
-			pharmacy: item.pharmacy.trim(),
-			quantity: item.quantity.trim(),
+		const groups: PrescriptionDocumentGroup[] = parsedInput.groups.map(
+			(group) => ({
+				administrationRoute: group.administrationRoute.trim(),
 
-			orientations: sanitizeRichTextHtml(item.orientations),
-		}));
+				items: group.items.map((item) => ({
+					sourceId: item.sourceId,
+					name: item.name.trim(),
+					pharmacy: item.pharmacy.trim(),
+					quantity: item.quantity.trim(),
+
+					orientations: sanitizeRichTextHtml(item.orientations),
+				})),
+			}),
+		);
 
 		/*
 		 * Snapshot histórico.
@@ -299,31 +360,23 @@ export const savePrescriptionDocument = actionClient
 				name: pet.name,
 				species: pet.species,
 				breed: pet.breed,
-
 				age: formatAgeShort(new Date(`${pet.birthDate}T12:00:00`)),
-
 				weight: formatWeight(latestWeight?.weightInGrams ?? null),
-
 				sex: pet.gender === 'male' ? 'M' : 'F',
 			},
 
-			administrationRoute: parsedInput.administrationRoute.trim(),
-
-			items,
+			groups,
 		};
 
-		const content = buildPrescriptionContent(items);
+		const content = buildPrescriptionContent(groups);
 
 		const [prescription] = await db
 			.insert(prescriptionsTable)
 			.values({
 				petId: parsedInput.petId,
-
 				doctorId,
-
 				content,
 				documentData,
-
 				issuedAt: new Date(),
 			})
 			.returning({
@@ -331,7 +384,6 @@ export const savePrescriptionDocument = actionClient
 			});
 
 		revalidatePath(`/pets/${parsedInput.petId}`);
-
 		revalidatePath('/prescriptions');
 
 		return {
@@ -406,31 +458,47 @@ export const updatePrescriptionDocument = actionClient
 			throw new Error('Tutor não pertence ao paciente');
 		}
 
-		const items = parsedInput.items.map((item) => ({
-			sourceId: item.sourceId,
-			name: item.name.trim(),
-			pharmacy: item.pharmacy.trim(),
-			quantity: item.quantity.trim(),
-			orientations: sanitizeRichTextHtml(item.orientations),
-		}));
+		/*
+		 * Sanitiza todos os grupos novamente.
+		 *
+		 * Mesmo na atualização nunca confiamos no HTML
+		 * enviado pelo browser.
+		 */
+		const groups: PrescriptionDocumentGroup[] = parsedInput.groups.map(
+			(group) => ({
+				administrationRoute: group.administrationRoute.trim(),
+				items: group.items.map((item) => ({
+					sourceId: item.sourceId,
+					name: item.name.trim(),
+					pharmacy: item.pharmacy.trim(),
+					quantity: item.quantity.trim(),
+					orientations: sanitizeRichTextHtml(item.orientations),
+				})),
+			}),
+		);
 
 		/*
 		 * Mantemos o snapshot do paciente da emissão original.
 		 *
 		 * Peso e idade NÃO são recalculados ao editar.
+		 *
+		 * Não espalhamos os campos legados
+		 * administrationRoute/items no novo documentData.
+		 * Uma receita antiga, ao ser editada, é automaticamente
+		 * persistida no novo formato com groups.
 		 */
 		const documentData = {
-			...existingPrescription.documentData,
 			tutor: {
 				id: tutor.id,
 				name: tutor.name,
 			},
-			administrationRoute: parsedInput.administrationRoute.trim(),
-			items,
+
 			patient: existingPrescription.documentData.patient,
+
+			groups,
 		};
 
-		const content = buildPrescriptionContent(items);
+		const content = buildPrescriptionContent(groups);
 
 		await db
 			.update(prescriptionsTable)
@@ -464,15 +532,7 @@ export const getPrescriptionsByPet = async (petId: string) => {
 
 	return await db.query.prescriptionsTable.findMany({
 		where: (prescriptions, { eq }) => eq(prescriptions.petId, petId),
-
-		with: {
-			doctor: {
-				with: {
-					user: true,
-				},
-			},
-		},
-
+		with: { doctor: { with: { user: true } } },
 		orderBy: (prescriptions, { desc }) => desc(prescriptions.issuedAt),
 	});
 };
@@ -534,6 +594,7 @@ export const getPrescriptionById = async (prescriptionId: string) => {
 
 	const data = await db.query.prescriptionsTable.findFirst({
 		where: (prescriptions, { eq }) => eq(prescriptions.id, prescriptionId),
+
 		with: {
 			doctor: { with: { user: true } },
 			pet: {
