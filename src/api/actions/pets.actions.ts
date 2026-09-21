@@ -14,6 +14,7 @@ import {
 	speciesTable,
 	usersTable,
 } from '@/db/schema';
+import { sendEmailMessage } from '@/lib/integrations/email';
 import { actionClient } from '@/lib/next-safe-action';
 import type { AuthContext } from '@/lib/security/auth-context';
 import { requireAuthContext } from '@/lib/security/auth-context';
@@ -39,10 +40,9 @@ import z from 'zod';
 import { monthNames, PaginatedData } from '../config/consts';
 import {
 	createPetWithTutorAndBreedSchema,
-	PetsWithRelations,
 	PetOption,
+	PetsWithRelations,
 } from '../schema/pets.schema';
-import { sendEmailMessage } from '@/lib/integrations/email';
 
 const buildPetsListWhere = (
 	context: AuthContext,
@@ -316,10 +316,24 @@ export const upsertPet = actionClient
 				);
 			}
 
-			if (parsedInput.weightInGrams) {
+			const newWeightInGrams = Math.round(parsedInput.weightInGrams * 1000);
+
+			const latestWeight = isNewRegistration
+				? null
+				: await tx.query.petWeightsTable.findFirst({
+						where: eq(petWeightsTable.petId, insertedPet.id),
+						orderBy: [desc(petWeightsTable.measuredAt)],
+					});
+
+			const shouldRegisterWeight =
+				isNewRegistration ||
+				!latestWeight ||
+				latestWeight.weightInGrams !== newWeightInGrams;
+
+			if (shouldRegisterWeight) {
 				await tx.insert(petWeightsTable).values({
 					petId: insertedPet.id,
-					weightInGrams: Math.round(parsedInput.weightInGrams * 1000),
+					weightInGrams: newWeightInGrams,
 					authorId,
 					measuredAt: new Date(),
 				});
@@ -422,10 +436,7 @@ export const getPetHistory = async (petId: string) => {
 		return null;
 	}
 
-	return filterPetForViewer(
-		context,
-		data as unknown as PetsWithRelations,
-	);
+	return filterPetForViewer(context, data as unknown as PetsWithRelations);
 };
 
 export const getPetsForSelection = async (): Promise<PetOption[]> => {
