@@ -43,7 +43,7 @@ export async function signPrescriptionPdf({
 		name: signerName,
 		location,
 		signingTime,
-		signatureLength: 32_768,
+		signatureLength: 65_536,
 		/*
 		 * PAdES utiliza ETSI.CAdES.detached em vez do
 		 * adbe.pkcs7.detached tradicional.

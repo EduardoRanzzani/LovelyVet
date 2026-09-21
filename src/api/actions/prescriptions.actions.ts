@@ -366,6 +366,8 @@ export const savePrescriptionDocument = actionClient
 				sex: pet.gender === 'male' ? 'M' : 'F',
 			},
 
+			isControlled: parsedInput.isControlled,
+
 			groups,
 		};
 
@@ -497,6 +499,8 @@ export const updatePrescriptionDocument = actionClient
 			},
 
 			patient: existingPrescription.documentData.patient,
+
+			isControlled: parsedInput.isControlled,
 
 			groups,
 		};

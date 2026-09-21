@@ -27,7 +27,6 @@ export const prescriptionDocumentDataSchema = z.object({
 		id: z.string().uuid(),
 		name: z.string(),
 	}),
-
 	patient: z.object({
 		name: z.string(),
 		species: z.string(),
@@ -36,9 +35,8 @@ export const prescriptionDocumentDataSchema = z.object({
 		weight: z.string(),
 		sex: z.string(),
 	}),
-
+	isControlled: z.boolean().optional(),
 	groups: z.array(prescriptionDocumentGroupSchema).optional(),
-
 	// Formato legado
 	administrationRoute: z.string().optional(),
 	items: z.array(prescriptionDocumentItemSchema).optional(),
@@ -61,6 +59,8 @@ export const savePrescriptionDocumentSchema = z.object({
 	tutorId: z.uuid(),
 	doctorId: z.uuid(),
 
+	isControlled: z.boolean().default(false),
+
 	groups: z
 		.array(prescriptionDocumentGroupSchema)
 		.min(1, 'Adicione pelo menos um modo de uso'),
@@ -77,4 +77,12 @@ export const updatePrescriptionDocumentSchema =
 
 export type UpdatePrescriptionDocumentSchema = z.infer<
 	typeof updatePrescriptionDocumentSchema
+>;
+
+export const signPrescriptionDocumentSchema = z.object({
+	prescriptionId: z.uuid(),
+});
+
+export type SignPrescriptionDocumentSchema = z.infer<
+	typeof signPrescriptionDocumentSchema
 >;
