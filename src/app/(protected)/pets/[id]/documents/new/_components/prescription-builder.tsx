@@ -240,8 +240,8 @@ export default function PrescriptionBuilder({
 							value={field.id}
 							className='rounded-xl border bg-card px-3 last:border-b sm:px-5'
 						>
-							<AccordionTrigger className='min-w-0 py-3 hover:no-underline sm:py-4'>
-								<div className='flex min-w-0 items-center gap-2 justify-between w-full'>
+							<div className='flex min-w-0 items-center gap-2'>
+								<AccordionTrigger className='min-w-0 flex-1 py-3 hover:no-underline sm:py-4'>
 									<div className='flex min-w-0 flex-1 flex-col text-left'>
 										<span className='truncate font-semibold'>
 											Medicamento {index + 1}
@@ -254,19 +254,19 @@ export default function PrescriptionBuilder({
 												.join(' · ') || 'Toque para preencher os dados'}
 										</span>
 									</div>
+								</AccordionTrigger>
 
-									<Button
-										type='button'
-										size='icon'
-										variant='outline'
-										onClick={() => handleRemove(index, field.id)}
-										aria-label={`Excluir medicamento ${index + 1}`}
-										className='shrink-0'
-									>
-										<Trash2Icon className='size-4 text-destructive' />
-									</Button>
-								</div>
-							</AccordionTrigger>
+								<Button
+									type='button'
+									size='icon'
+									variant='outline'
+									onClick={() => handleRemove(index, field.id)}
+									aria-label={`Excluir medicamento ${index + 1}`}
+									className='shrink-0'
+								>
+									<Trash2Icon className='size-4 text-destructive' />
+								</Button>
+							</div>
 
 							<AccordionContent className='border-t pt-4'>
 								<div className='grid gap-4 md:grid-cols-3'>
