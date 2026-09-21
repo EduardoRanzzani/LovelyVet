@@ -3,6 +3,7 @@ import { USER_ROLES } from '@/lib/security/roles';
 import {
 	boolean,
 	check,
+	customType,
 	date,
 	index,
 	integer,
@@ -17,6 +18,15 @@ import {
 	uuid,
 } from 'drizzle-orm/pg-core';
 import type { PrescriptionDocumentData } from '@/api/schema/prescription-document.schema';
+
+const bytea = customType<{
+	data: Buffer;
+	driverData: Buffer;
+}>({
+	dataType() {
+		return 'bytea';
+	},
+});
 
 // --- ENUMS ---
 export const clinicalDocumentTypeEnum = pgEnum('clinical_document_type', [
@@ -346,6 +356,49 @@ export const prescriptionsTable = pgTable('prescriptions', {
 		.$onUpdate(() => new Date())
 		.notNull(),
 });
+
+export const prescriptionSignaturesTable = pgTable(
+	'prescription_signatures',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		prescriptionId: uuid('prescription_id')
+			.notNull()
+			.references(() => prescriptionsTable.id, {
+				onDelete: 'restrict',
+			}),
+		/*
+		 * Usuário autenticado que executou a assinatura.
+		 *
+		 * Depois vamos exigir que seja a conta da veterinária
+		 * proprietária do certificado.
+		 */
+		signedByUserId: uuid('signed_by_user_id')
+			.notNull()
+			.references(() => usersTable.id, {
+				onDelete: 'restrict',
+			}),
+		/*
+		 * PDF final já contendo a assinatura PAdES.
+		 *
+		 * Não é o PDF antes da assinatura.
+		 */
+		pdf: bytea('pdf').notNull(),
+		/*
+		 * SHA-256 dos bytes EXATOS armazenados acima.
+		 */
+		pdfSha256: text('pdf_sha256').notNull(),
+		signedAt: timestamp('signed_at').defaultNow().notNull(),
+		createdAt: timestamp('created_at').defaultNow().notNull(),
+	},
+	(table) => [
+		uniqueIndex('prescription_signatures_prescription_id_unique').on(
+			table.prescriptionId,
+		),
+		index('prescription_signatures_signed_by_user_id_idx').on(
+			table.signedByUserId,
+		),
+	],
+);
 
 // Documentos clínicos de texto rico
 export const clinicalDocumentsTable = pgTable('clinical_documents', {
@@ -708,6 +761,24 @@ export const prescriptionsRelations = relations(
 			references: [appointmentsTable.id],
 		}),
 		medicineItems: many(prescriptionMedicineItemsTable),
+		signature: one(prescriptionSignaturesTable, {
+			fields: [prescriptionsTable.id],
+			references: [prescriptionSignaturesTable.prescriptionId],
+		}),
+	}),
+);
+
+export const prescriptionSignaturesRelations = relations(
+	prescriptionSignaturesTable,
+	({ one }) => ({
+		prescription: one(prescriptionsTable, {
+			fields: [prescriptionSignaturesTable.prescriptionId],
+			references: [prescriptionsTable.id],
+		}),
+		signedByUser: one(usersTable, {
+			fields: [prescriptionSignaturesTable.signedByUserId],
+			references: [usersTable.id],
+		}),
 	}),
 );
 

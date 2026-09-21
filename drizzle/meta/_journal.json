@@ -260,6 +260,13 @@
       "when": 1789936745934,
       "tag": "0036_lazy_titanium_man",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1790015174432,
+      "tag": "0037_low_slapstick",
+      "breakpoints": true
     }
   ]
 }

@@ -23,6 +23,7 @@ import { assertCanAccessPet } from '@/lib/security/pet-access';
 import { and, count, desc, eq, ilike, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { MAX_PAGE_SIZE, PaginatedData } from '../config/consts';
+import { assertPrescriptionIsUnsigned } from '@/lib/prescriptions/prescription-signature';
 import {
 	type PrescriptionDocumentGroup,
 	savePrescriptionDocumentSchema,
@@ -418,6 +419,8 @@ export const updatePrescriptionDocument = actionClient
 		if (!existingPrescription) {
 			throw new Error('Receita não encontrada');
 		}
+
+		await assertPrescriptionIsUnsigned(existingPrescription.id);
 
 		if (existingPrescription.petId !== parsedInput.petId) {
 			throw new Error('Paciente inválido para esta receita');

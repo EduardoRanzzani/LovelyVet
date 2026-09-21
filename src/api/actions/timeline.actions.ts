@@ -14,6 +14,7 @@ import { revalidatePath } from 'next/cache';
 import { timelineItemSchema } from '../schema/timeline.schema';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
+import { assertPrescriptionIsUnsigned } from '@/lib/prescriptions/prescription-signature';
 
 export const deleteTimelineItem = actionClient
 	.schema(timelineItemSchema)
@@ -51,17 +52,23 @@ export const deleteTimelineItem = actionClient
 				}
 				await db.delete(petNotesTable).where(eq(petNotesTable.id, id));
 				break;
-			case 'prescription':
+			case 'prescription': {
 				const prescription = await db.query.prescriptionsTable.findFirst({
 					where: eq(prescriptionsTable.id, id),
 				});
+
 				if (!prescription) {
 					throw new Error('Prescrição não encontrada');
 				}
+
+				await assertPrescriptionIsUnsigned(prescription.id);
+
 				await db
 					.delete(prescriptionsTable)
 					.where(eq(prescriptionsTable.id, id));
+
 				break;
+			}
 			case 'referral':
 			case 'exam_request':
 				const document = await db.query.clinicalDocumentsTable.findFirst({
