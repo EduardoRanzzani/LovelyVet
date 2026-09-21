@@ -251,17 +251,17 @@ export default function ClinicalDocumentBuilder({
 						</div>
 
 						<TabsList className='hidden h-auto w-full grid-cols-3 md:grid'>
-							<TabsTrigger value='prescription' className='min-w-0 py-2'>
+							<TabsTrigger value='prescription' className='min-w-0'>
 								<FileTextIcon className='size-4' />
 								<span className='truncate'>Receita</span>
 							</TabsTrigger>
 
-							<TabsTrigger value='referral' className='min-w-0 py-2'>
+							<TabsTrigger value='referral' className='min-w-0'>
 								<StethoscopeIcon className='size-4' />
 								<span className='truncate'>Encaminhamento</span>
 							</TabsTrigger>
 
-							<TabsTrigger value='exam-request' className='min-w-0 py-2'>
+							<TabsTrigger value='exam-request' className='min-w-0'>
 								<FileSearchIcon className='size-4' />
 								<span className='truncate'>Solicitação de Exame</span>
 							</TabsTrigger>
@@ -308,9 +308,7 @@ export default function ClinicalDocumentBuilder({
 								) : (
 									<DownloadIcon className='size-4' />
 								)}
-								{exportingType === 'prescription'
-									? 'Gerando...'
-									: 'Baixar PDF'}
+								{exportingType === 'prescription' ? 'Gerando...' : 'Baixar PDF'}
 							</Button>
 						</div>
 					)}
