@@ -1,6 +1,11 @@
 'use client';
 
 import { Input } from '@/components/ui/input';
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { ChevronDown, ChevronUp, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
@@ -50,10 +55,9 @@ const SelectForm = <T extends FieldValues>({
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState('');
 	const [activeIndex, setActiveIndex] = useState<number>(-1);
-	const containerRef = useRef<HTMLDivElement>(null);
+
 	const triggerRef = useRef<HTMLDivElement>(null);
 	const searchInputRef = useRef<HTMLInputElement>(null);
-	const listboxRef = useRef<HTMLDivElement>(null);
 	const optionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
 	const uid = useId();
@@ -61,56 +65,36 @@ const SelectForm = <T extends FieldValues>({
 	const labelId = `${uid}-label`;
 	const errorId = `${uid}-error`;
 
-	useEffect(() => {
-		const handleClickOutside = (e: MouseEvent) => {
-			if (
-				containerRef.current &&
-				!containerRef.current.contains(e.target as Node)
-			) {
-				setOpen(false);
-			}
-		};
-		document.addEventListener('mousedown', handleClickOutside);
-		return () => document.removeEventListener('mousedown', handleClickOutside);
-	}, []);
-
-	// Ao abrir, foca a busca e reseta o índice ativo
-	useEffect(() => {
-		if (open) {
-			requestAnimationFrame(() => searchInputRef.current?.focus());
-		}
-	}, [open]);
-
-	// Mantém a opção ativa visível ao navegar
+	// Mantém a opção ativa visível durante navegação pelo teclado.
+	// Não há setState aqui, então continua compatível com as regras
+	// mais rígidas do React 19.
 	useEffect(() => {
 		if (open && activeIndex >= 0) {
-			optionRefs.current[activeIndex]?.scrollIntoView({ block: 'nearest' });
+			optionRefs.current[activeIndex]?.scrollIntoView({
+				block: 'nearest',
+			});
 		}
 	}, [activeIndex, open]);
 
-	// Abre a lista já definindo o índice ativo inicial
-	const openList = () => {
-		setOpen(true);
-		setActiveIndex(0);
-	};
+	const handleOpenChange = (nextOpen: boolean) => {
+		setOpen(nextOpen);
 
-	// Fecha a lista já limpando busca e índice ativo
-	const closeList = (refocusTrigger = true) => {
-		setOpen(false);
+		if (nextOpen) {
+			setActiveIndex(0);
+			return;
+		}
+
 		setSearch('');
 		setActiveIndex(-1);
-		if (refocusTrigger) triggerRef.current?.focus();
 	};
 
-	const handleTriggerKeyDown = (e: React.KeyboardEvent) => {
-		if (
-			e.key === 'Enter' ||
-			e.key === ' ' ||
-			e.key === 'ArrowDown' ||
-			e.key === 'ArrowUp'
-		) {
-			e.preventDefault();
-			openList();
+	const closeList = (refocusTrigger = true) => {
+		handleOpenChange(false);
+
+		if (refocusTrigger) {
+			requestAnimationFrame(() => {
+				triggerRef.current?.focus();
+			});
 		}
 	};
 
@@ -129,10 +113,12 @@ const SelectForm = <T extends FieldValues>({
 						? [field.value as string | number | boolean]
 						: [];
 
-				const selectedOptions = options.filter((o) => values.includes(o.value));
+				const selectedOptions = options.filter((option) =>
+					values.includes(option.value),
+				);
 
-				const filteredOptions = options.filter((opt) =>
-					opt.label.toLowerCase().includes(search.toLowerCase()),
+				const filteredOptions = options.filter((option) =>
+					option.label.toLowerCase().includes(search.toLowerCase()),
 				);
 
 				const handleSelect = (value: string | number | boolean) => {
@@ -142,16 +128,20 @@ const SelectForm = <T extends FieldValues>({
 						const currentValues = (
 							Array.isArray(field.value) ? field.value : []
 						) as (string | number | boolean)[];
+
 						const updatedArray = currentValues.includes(value)
-							? currentValues.filter((v) => v !== value)
+							? currentValues.filter((currentValue) => currentValue !== value)
 							: [...currentValues, value];
+
 						newValue = updatedArray as PathValue<T, Path<T>>;
 					} else {
 						newValue = value as PathValue<T, Path<T>>;
+
 						closeList();
 					}
 
 					field.onChange(newValue);
+
 					onSelect?.(
 						newValue as
 							| string
@@ -173,148 +163,192 @@ const SelectForm = <T extends FieldValues>({
 					switch (e.key) {
 						case 'ArrowDown':
 							e.preventDefault();
-							setActiveIndex((prev) =>
-								prev < filteredOptions.length - 1 ? prev + 1 : 0,
+
+							setActiveIndex((previous) =>
+								previous < filteredOptions.length - 1 ? previous + 1 : 0,
 							);
+
 							break;
+
 						case 'ArrowUp':
 							e.preventDefault();
-							setActiveIndex((prev) =>
-								prev > 0 ? prev - 1 : filteredOptions.length - 1,
+
+							setActiveIndex((previous) =>
+								previous > 0 ? previous - 1 : filteredOptions.length - 1,
 							);
+
 							break;
+
 						case 'Home':
 							e.preventDefault();
 							setActiveIndex(0);
 							break;
+
 						case 'End':
 							e.preventDefault();
+
 							setActiveIndex(filteredOptions.length - 1);
+
 							break;
+
 						case 'Enter':
 							e.preventDefault();
+
 							if (activeIndex >= 0 && filteredOptions[activeIndex]) {
 								handleSelect(filteredOptions[activeIndex].value);
 							}
+
 							break;
+
 						case ' ':
-							// Evita interferir na digitação da busca; só seleciona se o foco
-							// não estiver no input de texto (caso raro, mas seguro por padrão)
 							if (document.activeElement !== searchInputRef.current) {
 								e.preventDefault();
+
 								if (activeIndex >= 0 && filteredOptions[activeIndex]) {
 									handleSelect(filteredOptions[activeIndex].value);
 								}
 							}
+
 							break;
+
 						case 'Escape':
 							e.preventDefault();
 							closeList();
 							break;
+
 						case 'Tab':
-							closeList(false);
+							handleOpenChange(false);
 							break;
+
 						default:
 							break;
 					}
 				};
 
+				const handleTriggerKeyDown = (e: React.KeyboardEvent) => {
+					if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') {
+						return;
+					}
+
+					e.preventDefault();
+
+					if (!open) {
+						handleOpenChange(true);
+					}
+				};
+
 				return (
 					<div
-						className={cn(
-							'relative flex w-full min-w-0 max-w-full flex-col',
-							className,
-						)}
-						ref={containerRef}
+						className={cn('flex w-full min-w-0 max-w-full flex-col', className)}
 					>
 						<label id={labelId} className='mb-1 text-xs font-medium'>
-							{label} {required && <span className='text-red-500'>*</span>}
+							{label}
+
+							{required && <span className='text-red-500'>*</span>}
 						</label>
 
-						<div
-							ref={triggerRef}
-							role='combobox'
-							tabIndex={0}
-							aria-haspopup='listbox'
-							aria-expanded={open}
-							aria-controls={listboxId}
-							aria-labelledby={labelId}
-							aria-required={required}
-							aria-invalid={!!error}
-							aria-describedby={error ? errorId : undefined}
-							onKeyDown={handleTriggerKeyDown}
-							className={cn(
-								'border-input flex h-9 w-full min-w-0 max-w-full cursor-pointer items-center justify-between gap-2 overflow-hidden rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-all outline-none',
-								'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-								error ? 'border-destructive' : 'focus-visible:border-ring',
-							)}
-							onClick={() => setOpen((prev) => !prev)}
-						>
-							<div className='flex min-w-0 flex-1 items-center gap-1 overflow-hidden'>
-								{selectedOptions.length > 0 ? (
-									multiple ? (
-										/* RENDERIZAÇÃO MULTIPLE: BADGES */
-										<>
-											<div className='flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-hidden'>
-												{selectedOptions.slice(0, maxVisible).map((opt) => (
-													<span
-														key={opt.key || opt.value.toString()}
-														className='bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 px-2 py-0.5 rounded-sm text-[11px] font-medium flex items-center shrink-0 border border-zinc-200 dark:border-zinc-700 whitespace-nowrap max-w-30'
-													>
-														<span className='truncate'>{opt.label}</span>
-														<X
-															className='w-3 h-3 ml-1 cursor-pointer hover:text-destructive'
-															role='button'
-															aria-label={`Remover ${opt.label}`}
-															tabIndex={0}
-															onClick={(e) => {
-																e.stopPropagation();
-																handleSelect(opt.value);
-															}}
-															onKeyDown={(e) => {
-																if (e.key === 'Enter' || e.key === ' ') {
-																	e.preventDefault();
-																	e.stopPropagation();
-																	handleSelect(opt.value);
-																}
-															}}
-														/>
-													</span>
-												))}
-											</div>
-											{selectedOptions.length > maxVisible && (
-												<span className='text-[10px] font-bold text-muted-foreground bg-zinc-50 dark:bg-zinc-900 px-1.5 py-0.5 rounded border shrink-0'>
-													+{selectedOptions.length - maxVisible}
+						<Popover open={open} onOpenChange={handleOpenChange} modal={false}>
+							<PopoverTrigger asChild>
+								<div
+									ref={triggerRef}
+									role='combobox'
+									tabIndex={0}
+									aria-haspopup='listbox'
+									aria-expanded={open}
+									aria-controls={listboxId}
+									aria-labelledby={labelId}
+									aria-required={required}
+									aria-invalid={!!error}
+									aria-describedby={error ? errorId : undefined}
+									onKeyDown={handleTriggerKeyDown}
+									className={cn(
+										'border-input flex h-9 w-full min-w-0 max-w-full cursor-pointer items-center justify-between gap-2 overflow-hidden rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-all outline-none',
+										'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+										error ? 'border-destructive' : 'focus-visible:border-ring',
+									)}
+								>
+									<div className='flex min-w-0 flex-1 items-center gap-1 overflow-hidden'>
+										{selectedOptions.length > 0 ? (
+											multiple ? (
+												<>
+													<div className='flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-hidden'>
+														{selectedOptions
+															.slice(0, maxVisible)
+															.map((option) => (
+																<span
+																	key={option.key || option.value.toString()}
+																	className='flex max-w-30 shrink-0 items-center whitespace-nowrap rounded-sm border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100'
+																>
+																	<span className='truncate'>
+																		{option.label}
+																	</span>
+
+																	<X
+																		className='ml-1 h-3 w-3 cursor-pointer hover:text-destructive'
+																		role='button'
+																		aria-label={`Remover ${option.label}`}
+																		tabIndex={0}
+																		onClick={(e) => {
+																			e.preventDefault();
+																			e.stopPropagation();
+
+																			handleSelect(option.value);
+																		}}
+																		onKeyDown={(e) => {
+																			if (e.key === 'Enter' || e.key === ' ') {
+																				e.preventDefault();
+																				e.stopPropagation();
+
+																				handleSelect(option.value);
+																			}
+																		}}
+																	/>
+																</span>
+															))}
+													</div>
+
+													{selectedOptions.length > maxVisible && (
+														<span className='shrink-0 rounded border bg-zinc-50 px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground dark:bg-zinc-900'>
+															+{selectedOptions.length - maxVisible}
+														</span>
+													)}
+												</>
+											) : (
+												<span className='block min-w-0 flex-1 truncate text-zinc-900 dark:text-zinc-100'>
+													{selectedOptions[0].label}
 												</span>
-											)}
-										</>
-									) : (
-										/* RENDERIZAÇÃO SINGLE: TEXTO PURO */
-										<span className='block min-w-0 flex-1 truncate text-zinc-900 dark:text-zinc-100'>
-											{selectedOptions[0].label}
-										</span>
-									)
-								) : (
-									<span className='truncate text-zinc-400'>{placeholder}</span>
-								)}
-							</div>
+											)
+										) : (
+											<span className='truncate text-zinc-400'>
+												{placeholder}
+											</span>
+										)}
+									</div>
 
-							<div className='flex items-center opacity-50 shrink-0'>
-								{open ? (
-									<ChevronUp className='w-4 h-4' aria-hidden='true' />
-								) : (
-									<ChevronDown className='w-4 h-4' aria-hidden='true' />
-								)}
-							</div>
-						</div>
+									<div className='flex shrink-0 items-center opacity-50'>
+										{open ? (
+											<ChevronUp className='h-4 w-4' aria-hidden='true' />
+										) : (
+											<ChevronDown className='h-4 w-4' aria-hidden='true' />
+										)}
+									</div>
+								</div>
+							</PopoverTrigger>
 
-						{/* LISTBOX / DROPDOWN */}
-						{open && (
-							<div
-								className='absolute left-0 right-0 z-10 mt-1 flex max-h-60 w-full min-w-0 max-w-full flex-col overflow-hidden rounded-md border border-zinc-300 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-950'
-								style={{ top: '100%' }}
+							<PopoverContent
+								align='start'
+								sideOffset={4}
+								collisionPadding={8}
+								className='z-100 w-(--radix-popover-trigger-width) min-w-0 overflow-hidden p-0'
+								onOpenAutoFocus={(e) => {
+									e.preventDefault();
+
+									requestAnimationFrame(() => {
+										searchInputRef.current?.focus();
+									});
+								}}
 							>
-								<div className='p-2 border-b border-zinc-100 dark:border-zinc-800'>
+								<div className='shrink-0 border-b border-zinc-100 p-2 dark:border-zinc-800'>
 									<Input
 										ref={searchInputRef}
 										type='text'
@@ -338,36 +372,36 @@ const SelectForm = <T extends FieldValues>({
 								</div>
 
 								<div
-									ref={listboxRef}
 									id={listboxId}
 									role='listbox'
 									aria-multiselectable={multiple}
 									aria-labelledby={labelId}
-									className='flex-1 overflow-y-auto'
+									className='max-h-60 overflow-y-auto overscroll-contain'
 								>
-									{filteredOptions.map((opt, index) => {
-										const isSelected = values.includes(opt.value);
+									{filteredOptions.map((option, index) => {
+										const isSelected = values.includes(option.value);
 										const isActive = index === activeIndex;
+
 										return (
 											<div
-												key={opt.key || opt.value.toString()}
+												key={option.key || option.value.toString()}
 												id={`${listboxId}-option-${index}`}
 												role='option'
 												aria-selected={isSelected}
-												ref={(el) => {
-													optionRefs.current[index] = el;
+												ref={(element) => {
+													optionRefs.current[index] = element;
 												}}
 												className={cn(
-													'px-3 py-2 text-sm cursor-pointer transition flex items-center gap-2 outline-none',
+													'flex cursor-pointer items-center gap-2 px-3 py-2 text-sm outline-none transition',
 													'hover:bg-zinc-100 dark:hover:bg-zinc-800',
 													isActive && 'bg-zinc-100 dark:bg-zinc-800',
 													isSelected &&
-														'bg-zinc-50 dark:bg-zinc-900 font-medium',
+														'bg-zinc-50 font-medium dark:bg-zinc-900',
 												)}
 												onMouseEnter={() => setActiveIndex(index)}
 												onClick={(e) => {
 													e.stopPropagation();
-													handleSelect(opt.value);
+													handleSelect(option.value);
 												}}
 											>
 												{multiple && (
@@ -377,26 +411,29 @@ const SelectForm = <T extends FieldValues>({
 														readOnly
 														tabIndex={-1}
 														aria-hidden='true'
-														className='w-4 h-4 rounded border-zinc-300 accent-primary'
+														className='h-4 w-4 rounded border-zinc-300 accent-primary'
 													/>
 												)}
+
 												<span className='min-w-0 flex-1 truncate'>
-													{opt.label}
+													{option.label}
 												</span>
 											</div>
 										);
 									})}
+
 									{filteredOptions.length === 0 && (
 										<div
 											role='status'
-											className='px-3 py-4 text-sm text-center text-zinc-400'
+											className='px-3 py-4 text-center text-sm text-zinc-400'
 										>
 											Nenhum resultado encontrado
 										</div>
 									)}
 								</div>
-							</div>
-						)}
+							</PopoverContent>
+						</Popover>
+
 						{error && (
 							<p
 								id={errorId}
