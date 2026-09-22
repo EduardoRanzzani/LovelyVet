@@ -1,5 +1,9 @@
 import type { PrescriptionDocumentData } from '@/api/schema/prescription-document.schema';
 import { normalizePrescriptionGroups } from '@/lib/prescriptions/normalize-prescription-groups';
+import {
+	parseRichTextHtml,
+	type RichTextAlignment,
+} from '@/lib/pdf/rich-text';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import {
@@ -15,6 +19,7 @@ import {
 interface PrescriptionPdfValidation {
 	url: string;
 	qrCode: Buffer;
+	token: string;
 }
 
 interface GeneratePrescriptionPdfOptions {
@@ -32,9 +37,12 @@ interface PrescriptionPdfAssets {
 interface PageResources {
 	font: PDFFont;
 	boldFont: PDFFont;
+	italicFont: PDFFont;
+	boldItalicFont: PDFFont;
 	logo: PDFImage;
 	paws: PDFImage;
 	validationQrCode?: PDFImage;
+	validationToken?: string;
 }
 
 const PAGE_WIDTH = PageSizes.A4[0];
@@ -85,42 +93,6 @@ const formatSigningDate = (date: Date): string => {
 	}).format(date);
 };
 
-const decodeHtmlEntities = (value: string): string => {
-	return value
-		.replace(/&#x([0-9a-f]+);/gi, (_match, hexadecimal: string) => {
-			const codePoint = Number.parseInt(hexadecimal, 16);
-
-			return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : '';
-		})
-		.replace(/&#(\d+);/g, (_match, decimal: string) => {
-			const codePoint = Number.parseInt(decimal, 10);
-
-			return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : '';
-		})
-		.replaceAll('&nbsp;', ' ')
-		.replaceAll('&amp;', '&')
-		.replaceAll('&lt;', '<')
-		.replaceAll('&gt;', '>')
-		.replaceAll('&quot;', '"')
-		.replaceAll('&#039;', "'");
-};
-
-const richTextToPlainText = (html: string): string => {
-	const text = html
-		.replace(/<br\s*\/?>/gi, '\n')
-		.replace(/<li[^>]*>/gi, '- ')
-		.replace(/<\/li>/gi, '\n')
-		.replace(/<\/p>/gi, '\n')
-		.replace(/<\/?(?:ul|ol)[^>]*>/gi, '\n')
-		.replace(/<[^>]+>/g, '');
-
-	return decodeHtmlEntities(text)
-		.replace(/\u00a0/g, ' ')
-		.replace(/[ \t]+\n/g, '\n')
-		.replace(/\n{3,}/g, '\n\n')
-		.trim();
-};
-
 const fitText = (
 	value: string,
 	font: PDFFont,
@@ -143,88 +115,125 @@ const fitText = (
 	return result ? `${result}...` : '';
 };
 
-const splitLongWord = (
-	word: string,
-	font: PDFFont,
-	fontSize: number,
-	maxWidth: number,
-): string[] => {
-	const parts: string[] = [];
-	let current = '';
+interface StyledTextFragment {
+	text: string;
+	font: PDFFont;
+	width: number;
+}
 
-	for (const character of word) {
-		const next = `${current}${character}`;
+interface StyledTextLine {
+	fragments: StyledTextFragment[];
+	width: number;
+	alignment: RichTextAlignment;
+}
 
-		if (current && font.widthOfTextAtSize(next, fontSize) > maxWidth) {
-			parts.push(current);
-			current = character;
-			continue;
-		}
-
-		current = next;
-	}
-
-	if (current) {
-		parts.push(current);
-	}
-
-	return parts;
+const getRichTextFont = (
+	resources: PageResources,
+	bold: boolean,
+	italic: boolean,
+): PDFFont => {
+	if (bold && italic) return resources.boldItalicFont;
+	if (bold) return resources.boldFont;
+	if (italic) return resources.italicFont;
+	return resources.font;
 };
 
-const wrapText = (
-	value: string,
-	font: PDFFont,
+const layoutRichText = (
+	html: string,
+	resources: PageResources,
 	fontSize: number,
 	maxWidth: number,
-): string[] => {
-	const result: string[] = [];
+): StyledTextLine[] => {
+	const lines: StyledTextLine[] = [];
 
-	for (const paragraph of value.split('\n')) {
-		const normalized = paragraph.trim();
+	for (const paragraph of parseRichTextHtml(html)) {
+		let fragments: StyledTextFragment[] = [];
+		let lineWidth = 0;
+		let pendingSpace = false;
 
-		if (!normalized) {
-			result.push('');
-			continue;
+		const finishLine = () => {
+			if (fragments.length > 0) {
+				lines.push({ fragments, width: lineWidth, alignment: paragraph.alignment });
+			}
+			fragments = [];
+			lineWidth = 0;
+			pendingSpace = false;
+		};
+
+		for (const run of paragraph.runs) {
+			const font = getRichTextFont(resources, run.bold, run.italic);
+
+			for (const part of run.text.split(/(\s+)/).filter(Boolean)) {
+				if (part.includes('\n')) {
+					finishLine();
+					continue;
+				}
+
+				if (/^\s+$/.test(part)) {
+					pendingSpace = fragments.length > 0;
+					continue;
+				}
+
+				const prefix = pendingSpace ? ' ' : '';
+				let text = `${prefix}${part}`;
+				let width = font.widthOfTextAtSize(text, fontSize);
+
+				if (fragments.length > 0 && lineWidth + width > maxWidth) {
+					finishLine();
+					text = part;
+					width = font.widthOfTextAtSize(text, fontSize);
+				}
+
+				fragments.push({ text, font, width });
+				lineWidth += width;
+				pendingSpace = false;
+			}
 		}
 
-		const words = normalized.split(/\s+/);
-
-		let currentLine = '';
-
-		for (const word of words) {
-			const candidate = currentLine ? `${currentLine} ${word}` : word;
-
-			if (font.widthOfTextAtSize(candidate, fontSize) <= maxWidth) {
-				currentLine = candidate;
-				continue;
-			}
-
-			if (currentLine) {
-				result.push(currentLine);
-
-				currentLine = '';
-			}
-
-			if (font.widthOfTextAtSize(word, fontSize) <= maxWidth) {
-				currentLine = word;
-				continue;
-			}
-
-			const parts = splitLongWord(word, font, fontSize, maxWidth);
-
-			if (parts.length > 1) {
-				result.push(...parts.slice(0, -1));
-			}
-
-			currentLine = parts.at(-1) ?? '';
-		}
-
-		if (currentLine) {
-			result.push(currentLine);
-		}
+		finishLine();
 	}
 
-	return result;
+	return lines;
+};
+
+const drawRichText = ({
+	page,
+	html,
+	y,
+	resources,
+}: {
+	page: PDFPage;
+	html: string;
+	y: number;
+	resources: PageResources;
+}): number => {
+	const lines = layoutRichText(html, resources, BODY_FONT_SIZE, CONTENT_WIDTH);
+	let lineY = y;
+
+	for (const line of lines) {
+		let x = MARGIN_X;
+
+		if (line.alignment === 'center') {
+			x += (CONTENT_WIDTH - line.width) / 2;
+		} else if (line.alignment === 'right') {
+			x += CONTENT_WIDTH - line.width;
+		}
+
+		for (const fragment of line.fragments) {
+			page.drawText(fragment.text, {
+				x,
+				y: lineY,
+				font: fragment.font,
+				size: BODY_FONT_SIZE,
+				color: rgb(0, 0, 0),
+			});
+			x += fragment.width;
+		}
+
+		lineY -= BODY_LINE_HEIGHT;
+	}
+
+	return Math.max(lines.length, 1) * BODY_LINE_HEIGHT;
 };
 
 const drawCenteredText = (
@@ -482,7 +491,7 @@ const drawValidationQrCode = (page: PDFPage, resources: PageResources) => {
 	 * Ele não substitui a assinatura
 	 * atual.
 	 */
-	const qrSize = 50;
+	const qrSize = 58;
 	const qrX = MARGIN_X;
 	const qrY = 91;
 
@@ -495,36 +504,44 @@ const drawValidationQrCode = (page: PDFPage, resources: PageResources) => {
 
 	const textX = qrX + qrSize + 8;
 
-	page.drawText('Valide esta receita', {
+	page.drawText('Este documento foi assinado digitalmente.', {
 		x: textX,
-		y: qrY + 37,
+		y: qrY + 46,
 		font: resources.boldFont,
-		size: 7.5,
+		size: 7,
 		color: rgb(0, 0, 0),
 	});
 
-	page.drawText('Escaneie o QR Code', {
+	page.drawText('Escaneie o QR Code para validar no LovelyVet.', {
 		x: textX,
-		y: qrY + 25,
+		y: qrY + 34,
 		font: resources.font,
-		size: 6.5,
+		size: 6.3,
 		color: rgb(0.1, 0.1, 0.1),
 	});
 
-	page.drawText('para conferir a assinatura digital.', {
+	page.drawText(`TOKEN: ${resources.validationToken ?? '-'}`, {
 		x: textX,
-		y: qrY + 15,
-		font: resources.font,
-		size: 6.5,
+		y: qrY + 22,
+		font: resources.boldFont,
+		size: 7,
 		color: rgb(0.1, 0.1, 0.1),
 	});
 
-	page.drawText('app.reginamaciel.com.br', {
+	page.drawText('Confira a assinatura criptográfica em:', {
 		x: textX,
-		y: qrY + 5,
+		y: qrY + 10,
 		font: resources.font,
-		size: 5.8,
+		size: 6.3,
 		color: rgb(0.3, 0.3, 0.3),
+	});
+
+	page.drawText('https://validar.iti.gov.br', {
+		x: textX,
+		y: qrY,
+		font: resources.boldFont,
+		size: 6.3,
+		color: rgb(0.05, 0.25, 0.65),
 	});
 };
 
@@ -537,57 +554,42 @@ const drawFooter = (
 	const right = PAGE_WIDTH - MARGIN_X;
 
 	if (signingTime) {
-		/*
-		 * QR Code à esquerda.
-		 *
-		 * Só existe no PDF que será
-		 * efetivamente assinado.
-		 */
 		drawValidationQrCode(page, resources);
 
-		/*
-		 * BLOCO VISUAL DE ASSINATURA
-		 * EXISTENTE.
-		 *
-		 * Mantido no lado direito.
-		 */
-		const boxWidth = 205;
-		const boxHeight = 48;
-		const boxX = right - boxWidth;
-		const boxY = 93;
+		const signatureRight = PAGE_WIDTH - 108;
 
-		page.drawRectangle({
-			x: boxX,
-			y: boxY,
-			width: boxWidth,
-			height: boxHeight,
-			borderWidth: 0.6,
-			borderColor: rgb(0.25, 0.25, 0.25),
-		});
-
-		page.drawText('Documento assinado digitalmente', {
-			x: boxX + 8,
-			y: boxY + 33,
-			font: resources.boldFont,
-			size: 7.5,
-			color: rgb(0, 0, 0),
-		});
-
-		page.drawText('M.V. Regina de Oliveira Maciel', {
-			x: boxX + 8,
-			y: boxY + 21,
-			font: resources.font,
-			size: 7,
-			color: rgb(0, 0, 0),
-		});
-
-		page.drawText(`CRMV/MS 9193 - ${formatSigningDate(signingTime)}`, {
-			x: boxX + 8,
-			y: boxY + 9,
-			font: resources.font,
-			size: 6.5,
-			color: rgb(0.15, 0.15, 0.15),
-		});
+		drawRightText(
+			page,
+			'M.V. Regina de Oliveira Maciel',
+			signatureRight,
+			154,
+			resources.boldFont,
+			8.5,
+		);
+		drawRightText(
+			page,
+			'CRMV/MS 9193',
+			signatureRight,
+			142,
+			resources.font,
+			7.5,
+		);
+		drawRightText(
+			page,
+			'SIPEAGRO MV00802562025',
+			signatureRight,
+			130,
+			resources.font,
+			7.5,
+		);
+		drawRightText(
+			page,
+			`Assinado em ${formatSigningDate(signingTime)}`,
+			signatureRight,
+			118,
+			resources.font,
+			6.2,
+		);
 	} else {
 		drawRightText(
 			page,
@@ -611,7 +613,7 @@ const drawFooter = (
 
 	page.drawText(`Campo Grande, ${formatIssuedDate(issuedAt)}.`, {
 		x: MARGIN_X,
-		y: 74,
+		y: 66,
 		font: resources.font,
 		size: 8,
 		color: rgb(0, 0, 0),
@@ -619,7 +621,7 @@ const drawFooter = (
 
 	page.drawText('WhatsApp: (67) 99120-1007', {
 		x: MARGIN_X,
-		y: 55,
+		y: 49,
 		font: resources.font,
 		size: 8,
 		color: rgb(0, 0, 0),
@@ -657,11 +659,9 @@ const drawMedication = ({
 	orientations: string;
 	resources: PageResources;
 }): number => {
-	const leftColumnWidth = 190;
-
-	const centerColumnWidth = 170;
-
-	const rightColumnWidth = CONTENT_WIDTH - leftColumnWidth - centerColumnWidth;
+	const leftColumnWidth = 230;
+	const rightColumnWidth = 72;
+	const centerColumnWidth = CONTENT_WIDTH - leftColumnWidth - rightColumnWidth;
 
 	const nameText = fitText(
 		name || 'Medicamento',
@@ -703,14 +703,20 @@ const drawMedication = ({
 		BODY_FONT_SIZE,
 	);
 
-	if (leftX + nameWidth + 6 < centerX - 4) {
+	const pharmacyWidth = resources.font.widthOfTextAtSize(
+		pharmacyText,
+		BODY_FONT_SIZE,
+	);
+	const pharmacyX = centerX + (centerColumnWidth - pharmacyWidth) / 2;
+
+	if (leftX + nameWidth + 6 < pharmacyX - 6) {
 		page.drawLine({
 			start: {
 				x: leftX + nameWidth + 6,
 				y: y + 1,
 			},
 			end: {
-				x: centerX - 5,
+				x: pharmacyX - 6,
 				y: y + 1,
 			},
 			thickness: 0.6,
@@ -718,13 +724,8 @@ const drawMedication = ({
 		});
 	}
 
-	const pharmacyWidth = resources.font.widthOfTextAtSize(
-		pharmacyText,
-		BODY_FONT_SIZE,
-	);
-
 	page.drawText(pharmacyText, {
-		x: centerX + (centerColumnWidth - pharmacyWidth) / 2,
+		x: pharmacyX,
 		y,
 		font: resources.font,
 		size: BODY_FONT_SIZE,
@@ -744,14 +745,17 @@ const drawMedication = ({
 		color: rgb(0, 0, 0),
 	});
 
-	if (rightX + 5 < rightX + rightColumnWidth - quantityWidth - 6) {
+	const pharmacyEndX = pharmacyX + pharmacyWidth;
+	const quantityX = rightX + rightColumnWidth - quantityWidth;
+
+	if (pharmacyEndX + 6 < quantityX - 6) {
 		page.drawLine({
 			start: {
-				x: rightX + 5,
+				x: pharmacyEndX + 6,
 				y: y + 1,
 			},
 			end: {
-				x: rightX + rightColumnWidth - quantityWidth - 6,
+				x: quantityX - 6,
 				y: y + 1,
 			},
 			thickness: 0.6,
@@ -759,31 +763,14 @@ const drawMedication = ({
 		});
 	}
 
-	const plainOrientations = richTextToPlainText(orientations);
+	const richTextHeight = drawRichText({
+		page,
+		html: orientations,
+		y: y - 16,
+		resources,
+	});
 
-	const lines = wrapText(
-		plainOrientations,
-		resources.font,
-		BODY_FONT_SIZE,
-		CONTENT_WIDTH,
-	);
-
-	let lineY = y - 16;
-
-	for (const line of lines) {
-		if (line) {
-			page.drawText(line, {
-				x: MARGIN_X,
-				y: lineY,
-				font: resources.font,
-				size: BODY_FONT_SIZE,
-				color: rgb(0, 0, 0),
-			});
-		}
-		lineY -= BODY_LINE_HEIGHT;
-	}
-
-	return 16 + Math.max(lines.length, 1) * BODY_LINE_HEIGHT + 10;
+	return 16 + richTextHeight + 10;
 };
 
 export async function generatePrescriptionPdf({
@@ -802,12 +789,15 @@ export async function generatePrescriptionPdf({
 
 	const pdf = await PDFDocument.create();
 
-	const [font, boldFont, logo, paws] = await Promise.all([
+	const [font, boldFont, italicFont, boldItalicFont, logo, paws] =
+		await Promise.all([
 		pdf.embedFont(StandardFonts.Helvetica),
 		pdf.embedFont(StandardFonts.HelveticaBold),
+		pdf.embedFont(StandardFonts.HelveticaOblique),
+		pdf.embedFont(StandardFonts.HelveticaBoldOblique),
 		pdf.embedPng(assets.logo),
 		pdf.embedPng(assets.paws),
-	]);
+		]);
 
 	/*
 	 * O QR é incorporado ao PDF antes
@@ -824,9 +814,12 @@ export async function generatePrescriptionPdf({
 	const resources: PageResources = {
 		font,
 		boldFont,
+		italicFont,
+		boldItalicFont,
 		logo,
 		paws,
 		validationQrCode,
+		validationToken: validation?.token,
 	};
 
 	let page = createPrescriptionPage(
@@ -863,10 +856,9 @@ export async function generatePrescriptionPdf({
 
 		for (let itemIndex = 0; itemIndex < group.items.length; itemIndex += 1) {
 			const item = group.items[itemIndex];
-			const plainOrientations = richTextToPlainText(item.orientations);
-			const orientationLines = wrapText(
-				plainOrientations,
-				font,
+			const orientationLines = layoutRichText(
+				item.orientations,
+				resources,
 				BODY_FONT_SIZE,
 				CONTENT_WIDTH,
 			);

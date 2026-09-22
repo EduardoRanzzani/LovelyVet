@@ -492,13 +492,7 @@ export default function ClinicalDocumentBuilder({
 												checked={isControlled}
 												disabled={isPrescriptionSigned}
 												onCheckedChange={(checked) => {
-													const controlled = checked === true;
-
-													setIsControlled(controlled);
-
-													if (!controlled) {
-														setSignDigitally(false);
-													}
+													setIsControlled(checked === true);
 												}}
 											/>
 
@@ -514,8 +508,7 @@ export default function ClinicalDocumentBuilder({
 											</div>
 										</div>
 
-										{isControlled &&
-											canSignPrescription &&
+										{canSignPrescription &&
 											!isPrescriptionSigned && (
 												<div className='flex items-start gap-3'>
 													<Checkbox
@@ -540,8 +533,7 @@ export default function ClinicalDocumentBuilder({
 												</div>
 											)}
 
-										{isControlled &&
-											!canSignPrescription &&
+										{!canSignPrescription &&
 											!isPrescriptionSigned && (
 												<p className='text-xs text-muted-foreground'>
 													A assinatura digital só pode ser realizada pela conta

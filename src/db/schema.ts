@@ -387,6 +387,7 @@ export const prescriptionSignaturesTable = pgTable(
 		 * SHA-256 dos bytes EXATOS armazenados acima.
 		 */
 		pdfSha256: text('pdf_sha256').notNull(),
+		validationToken: text('validation_token').notNull(),
 		certificateSubject: text('certificate_subject').notNull(),
 		certificateCommonName: text('certificate_common_name').notNull(),
 		certificateIssuer: text('certificate_issuer').notNull(),
@@ -402,6 +403,9 @@ export const prescriptionSignaturesTable = pgTable(
 	(table) => [
 		uniqueIndex('prescription_signatures_prescription_id_unique').on(
 			table.prescriptionId,
+		),
+		uniqueIndex('prescription_signatures_validation_token_unique').on(
+			table.validationToken,
 		),
 		index('prescription_signatures_signed_by_user_id_idx').on(
 			table.signedByUserId,

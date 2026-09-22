@@ -12,8 +12,11 @@ import { getPrescriptionValidationUrl } from '@/lib/prescriptions/prescription-v
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { assertCanSignWithReginaCertificate } from '@/lib/security/prescription-signing-access';
 import { eq, sql } from 'drizzle-orm';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
+
+const createValidationToken = (): string =>
+	randomBytes(6).toString('hex').toUpperCase();
 
 export const signPrescriptionDocument = actionClient
 	.schema(signPrescriptionDocumentSchema)
@@ -75,12 +78,6 @@ export const signPrescriptionDocument = actionClient
 				);
 			}
 
-			if (prescription.documentData.isControlled !== true) {
-				throw new Error(
-					'Apenas receitas controladas podem ser assinadas digitalmente.',
-				);
-			}
-
 			const existingSignature =
 				await tx.query.prescriptionSignaturesTable.findFirst({
 					where: eq(
@@ -95,17 +92,13 @@ export const signPrescriptionDocument = actionClient
 			}
 
 			/*
-			 * O ID da assinatura é criado ANTES do PDF.
-			 *
-			 * O QR Code aponta para esse ID e, depois,
-			 * o mesmo UUID é persistido em
-			 * prescription_signatures.id.
-			 *
-			 * Assim o QR identifica exatamente esta
-			 * assinatura digital.
+			 * O ID e o token são criados antes do PDF.
+			 * O QR aponta para o token público e ambos são
+			 * persistidos junto da assinatura definitiva.
 			 */
 			const signatureId = randomUUID();
-			const validationUrl = getPrescriptionValidationUrl(signatureId);
+			const validationToken = createValidationToken();
+			const validationUrl = getPrescriptionValidationUrl(validationToken);
 			const validationQrCode = await generateQrCodePng(validationUrl);
 
 			/*
@@ -134,6 +127,7 @@ export const signPrescriptionDocument = actionClient
 				validation: {
 					url: validationUrl,
 					qrCode: validationQrCode,
+					token: validationToken,
 				},
 			});
 
@@ -142,7 +136,9 @@ export const signPrescriptionDocument = actionClient
 
 			const { pdf: signedPdf, certificate } = await signPrescriptionPdf({
 				pdf: unsignedPdf,
-				reason: 'Assinatura digital de receita veterinária controlada',
+				reason: prescription.documentData.isControlled
+					? 'Assinatura digital de receita veterinária controlada'
+					: 'Assinatura digital de receita veterinária',
 				location: 'Campo Grande - MS',
 				signingTime,
 			});
@@ -159,10 +155,6 @@ export const signPrescriptionDocument = actionClient
 				[signature] = await tx
 					.insert(prescriptionSignaturesTable)
 					.values({
-						/*
-						 * É o mesmo UUID que já está
-						 * codificado no QR Code.
-						 */
 						id: signatureId,
 						prescriptionId: prescription.id,
 						signedByUserId: context.userId,
@@ -177,6 +169,7 @@ export const signPrescriptionDocument = actionClient
 						 */
 						pdf: signedPdf,
 						pdfSha256,
+						validationToken,
 						certificateSubject: certificate.subject,
 						certificateCommonName: certificate.commonName,
 						certificateIssuer: certificate.issuer,
@@ -220,6 +213,7 @@ export const signPrescriptionDocument = actionClient
 				signatureId: signature.id,
 				signedAt: signingTime.toISOString(),
 				pdfSha256,
+				validationToken,
 				certificate: {
 					commonName: certificate.commonName,
 					serialNumber: certificate.serialNumber,
@@ -238,6 +232,7 @@ export const signPrescriptionDocument = actionClient
 			signatureId: result.signatureId,
 			signedAt: result.signedAt,
 			pdfSha256: result.pdfSha256,
+			validationToken: result.validationToken,
 			certificate: result.certificate,
 			message: 'Receita assinada digitalmente com sucesso.',
 		};

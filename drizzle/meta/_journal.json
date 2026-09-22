@@ -281,6 +281,13 @@
       "when": 1790024585504,
       "tag": "0039_yummy_wolf_cub",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1790086016740,
+      "tag": "0040_lush_the_hand",
+      "breakpoints": true
     }
   ]
 }

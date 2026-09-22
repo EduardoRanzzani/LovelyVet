@@ -3,6 +3,7 @@ import { prescriptionSignaturesTable } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { FileCheck2Icon, ShieldAlertIcon, ShieldCheckIcon } from 'lucide-react';
 import { createHash } from 'node:crypto';
+import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,9 +38,12 @@ export default async function PrescriptionValidationPage({
 	params,
 }: PrescriptionValidationPageProps) {
 	const { id } = await params;
+	const lookup = z.uuid().safeParse(id).success
+		? eq(prescriptionSignaturesTable.id, id)
+		: eq(prescriptionSignaturesTable.validationToken, id.trim().toUpperCase());
 
 	const signature = await db.query.prescriptionSignaturesTable.findFirst({
-		where: eq(prescriptionSignaturesTable.id, id),
+		where: lookup,
 
 		with: {
 			prescription: true,
@@ -222,6 +226,12 @@ export default async function PrescriptionValidationPage({
 						/>
 
 						<ValidationField
+							label='Token de validação'
+							value={signature.validationToken}
+							monospace
+						/>
+
+						<ValidationField
 							label='Identificador da assinatura'
 							value={signature.id}
 							monospace
@@ -244,9 +254,17 @@ export default async function PrescriptionValidationPage({
 				<div className='p-4 border rounded-xl bg-background/70'>
 					<p className='text-xs leading-5 text-muted-foreground'>
 						Esta página confirma o registro da assinatura e a integridade do PDF
-						armazenado pelo LovelyVet. A validação criptográfica da cadeia do
-						certificado e seu status de confiança também podem ser conferidos em
-						um verificador de assinaturas digitais compatível com o PDF.
+						armazenado pelo LovelyVet. Para conferir a assinatura criptográfica e
+						a cadeia do certificado, envie o PDF ao{' '}
+						<a
+							href='https://validar.iti.gov.br/'
+							target='_blank'
+							rel='noreferrer'
+							className='font-medium underline'
+						>
+							VALIDAR do ITI
+						</a>
+						.
 					</p>
 				</div>
 			</div>
