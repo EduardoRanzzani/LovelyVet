@@ -8,7 +8,10 @@ import { actionClient } from '@/lib/next-safe-action';
 import { generatePrescriptionPdf } from '@/lib/pdf/generate-prescription-pdf';
 import { signPrescriptionPdf } from '@/lib/pdf/sign-pdf-with-pfx';
 import { generateQrCodePng } from '@/lib/qr-code';
-import { getPrescriptionValidationUrl } from '@/lib/prescriptions/prescription-validation-url';
+import {
+	getPrescriptionPdfUrl,
+	getPrescriptionValidationUrl,
+} from '@/lib/prescriptions/prescription-validation-url';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { assertCanSignWithReginaCertificate } from '@/lib/security/prescription-signing-access';
 import { eq, sql } from 'drizzle-orm';
@@ -93,13 +96,17 @@ export const signPrescriptionDocument = actionClient
 
 			/*
 			 * O ID e o token são criados antes do PDF.
-			 * O QR aponta para o token público e ambos são
+			 * O QR abre o PDF assinado por uma rota pública
+			 * protegida pelo token, enquanto a página de
+			 * validação continua disponível para consulta
+			 * manual. Ambos são
 			 * persistidos junto da assinatura definitiva.
 			 */
 			const signatureId = randomUUID();
 			const validationToken = createValidationToken();
 			const validationUrl = getPrescriptionValidationUrl(validationToken);
-			const validationQrCode = await generateQrCodePng(validationUrl);
+			const prescriptionPdfUrl = getPrescriptionPdfUrl(signatureId);
+			const validationQrCode = await generateQrCodePng(prescriptionPdfUrl);
 
 			/*
 			 * O mesmo instante é utilizado:

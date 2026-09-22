@@ -7,3 +7,6 @@ export const getPrescriptionValidationUrl = (signatureId: string): string => {
 
 	return `${appUrl.replace(/\/$/, '')}/receitas/validar/${signatureId}`;
 };
+
+export const getPrescriptionPdfUrl = (signatureId: string): string =>
+	`${getPrescriptionValidationUrl(signatureId)}/pdf`;

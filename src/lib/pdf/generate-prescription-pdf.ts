@@ -51,7 +51,7 @@ const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_X * 2;
 
 const CONTENT_TOP = 535;
 const CONTENT_BOTTOM = 165;
-const SIGNED_CONTENT_BOTTOM = 238;
+const SIGNED_CONTENT_BOTTOM = 252;
 
 // Os tamanhos abaixo correspondem aos 11 px e 20 px usados na prévia HTML.
 const BODY_FONT_SIZE = 8.25;
@@ -504,7 +504,7 @@ const drawValidationQrCode = (
 
 	page.drawText('M.V. Regina de Oliveira Maciel', {
 		x: MARGIN_X,
-		y: 219,
+		y: 232,
 		font: resources.boldFont,
 		size: 10.5,
 		color: rgb(0, 0, 0),
@@ -512,7 +512,7 @@ const drawValidationQrCode = (
 
 	page.drawText('CRMV/MS 9193 / SIPEAGRO MV00802562025', {
 		x: MARGIN_X,
-		y: 205,
+		y: 216,
 		font: resources.font,
 		size: 8.25,
 		color: rgb(0, 0, 0),
@@ -553,7 +553,7 @@ const drawValidationQrCode = (
 	});
 
 	page.drawText(
-		'Escaneie o QR Code para confirmar o registro desta receita no LovelyVet.',
+		'Escaneie o QR Code para abrir esta receita assinada no navegador.',
 		{
 			x: textX,
 			y: qrY + 9,
@@ -581,9 +581,9 @@ const drawValidationQrCode = (
 
 	page.drawRectangle({
 		x: MARGIN_X,
-		y: 88,
+		y: 80,
 		width: CONTENT_WIDTH,
-		height: 45,
+		height: 53,
 		color: rgb(0.96, 0.96, 0.96),
 	});
 
