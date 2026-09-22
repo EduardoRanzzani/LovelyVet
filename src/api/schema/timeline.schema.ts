@@ -42,6 +42,7 @@ export interface TimelineItem {
 	content: string | JSX.Element;
 	icon: React.ReactNode;
 	color: string;
+	canDelete?: boolean;
 }
 
 export const timelineItemSchema = z.object({

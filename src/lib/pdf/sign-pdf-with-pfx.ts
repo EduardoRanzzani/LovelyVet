@@ -3,51 +3,57 @@ import { P12Signer } from '@signpdf/signer-p12';
 import signpdf from '@signpdf/signpdf';
 import { SUBFILTER_ETSI_CADES_DETACHED } from '@signpdf/utils';
 import { PDFDocument } from 'pdf-lib';
-import { getPrescriptionSigningCertificate } from './prescription-signing-certificate';
+import {
+	getPrescriptionSigningCertificate,
+	type PrescriptionSigningCertificateMetadata,
+} from './prescription-signing-certificate';
 
 interface SignPrescriptionPdfOptions {
 	pdf: Buffer | Uint8Array;
-	signerName: string;
 	reason?: string;
 	location?: string;
 	contactInfo?: string;
 	signingTime?: Date;
 }
 
+interface SignPrescriptionPdfResult {
+	pdf: Buffer;
+	certificate: PrescriptionSigningCertificateMetadata;
+}
+
 export async function signPrescriptionPdf({
 	pdf,
-	signerName,
 	reason = 'Assinatura digital de receita veterinária',
 	location = 'Campo Grande - MS',
 	contactInfo = '',
 	signingTime = new Date(),
-}: SignPrescriptionPdfOptions): Promise<Buffer> {
-	const { buffer: certificate, passphrase } =
-		await getPrescriptionSigningCertificate();
+}: SignPrescriptionPdfOptions): Promise<SignPrescriptionPdfResult> {
+	const {
+		buffer: certificate,
+		passphrase,
+		metadata,
+	} = await getPrescriptionSigningCertificate(signingTime);
 
 	const pdfDocument = await PDFDocument.load(pdf, {
 		updateMetadata: false,
 	});
 
-	/*
-	 * Reserva espaço no PDF para a assinatura CMS/PKCS#7.
-	 *
-	 * Certificados ICP-Brasil normalmente carregam uma cadeia de
-	 * certificados razoavelmente grande, então reservamos mais espaço
-	 * que o mínimo padrão.
-	 */
 	pdflibAddPlaceholder({
 		pdfDoc: pdfDocument,
 		reason,
 		contactInfo,
-		name: signerName,
+		/*
+		 * Não usamos mais um nome hardcoded.
+		 * O nome exibido vem do próprio certificado.
+		 */
+		name: metadata.commonName,
 		location,
 		signingTime,
-		signatureLength: 65_536,
 		/*
-		 * PAdES utiliza ETSI.CAdES.detached em vez do
-		 * adbe.pkcs7.detached tradicional.
+		 * Reservamos espaço adicional para a cadeia
+		 * ICP-Brasil/CMS.
 		 */
+		signatureLength: 65_536,
 		subFilter: SUBFILTER_ETSI_CADES_DETACHED,
 		appName: 'LovelyVet',
 	});
@@ -58,7 +64,21 @@ export async function signPrescriptionPdf({
 		passphrase,
 	});
 
-	const signedPdf = await signpdf.sign(Buffer.from(pdfWithPlaceholder), signer);
+	let signedPdf: Buffer;
 
-	return Buffer.from(signedPdf);
+	try {
+		signedPdf = await signpdf.sign(Buffer.from(pdfWithPlaceholder), signer);
+	} catch (error) {
+		console.error('[PFX] Falha ao assinar PDF:', error);
+		throw new Error(
+			error instanceof Error
+				? `Falha criptográfica ao assinar o PDF: ${error.message}`
+				: 'Falha criptográfica ao assinar o PDF.',
+		);
+	}
+
+	return {
+		pdf: Buffer.from(signedPdf),
+		certificate: metadata,
+	};
 }

@@ -12,10 +12,16 @@ import {
 	type PDFPage,
 } from 'pdf-lib';
 
+interface PrescriptionPdfValidation {
+	url: string;
+	qrCode: Buffer;
+}
+
 interface GeneratePrescriptionPdfOptions {
 	documentData: PrescriptionDocumentData;
 	issuedAt: Date | string;
 	signingTime?: Date;
+	validation?: PrescriptionPdfValidation;
 }
 
 interface PrescriptionPdfAssets {
@@ -28,6 +34,7 @@ interface PageResources {
 	boldFont: PDFFont;
 	logo: PDFImage;
 	paws: PDFImage;
+	validationQrCode?: PDFImage;
 }
 
 const PAGE_WIDTH = PageSizes.A4[0];
@@ -181,6 +188,7 @@ const wrapText = (
 		}
 
 		const words = normalized.split(/\s+/);
+
 		let currentLine = '';
 
 		for (const word of words) {
@@ -193,6 +201,7 @@ const wrapText = (
 
 			if (currentLine) {
 				result.push(currentLine);
+
 				currentLine = '';
 			}
 
@@ -306,6 +315,7 @@ const drawInfoCell = ({
 
 const drawPageDecoration = (page: PDFPage, resources: PageResources) => {
 	const watermarkWidth = 300;
+
 	const watermarkHeight =
 		(watermarkWidth * resources.logo.height) / resources.logo.width;
 
@@ -344,6 +354,7 @@ const drawHeader = (
 	resources: PageResources,
 ) => {
 	const logoWidth = 64;
+
 	const logoHeight = (logoWidth * resources.logo.height) / resources.logo.width;
 
 	page.drawImage(resources.logo, {
@@ -404,9 +415,7 @@ const drawHeader = (
 	});
 
 	const secondRowY = PAGE_HEIGHT - 223;
-
 	const secondRowGap = 8;
-
 	const secondRowWidth = (CONTENT_WIDTH - secondRowGap * 4) / 5;
 
 	const patientValues = [
@@ -438,12 +447,84 @@ const drawHeader = (
 		documentData.isControlled ? 22 : 24,
 	);
 
-	page.drawText(`Emissão: ${formatIssuedDate(issuedAt)}`, {
-		x: MARGIN_X,
-		y: PAGE_HEIGHT - 302,
-		font: resources.font,
+	/*
+	page.drawText(
+		`Emissão: ${formatIssuedDate(
+			issuedAt,
+		)}`,
+		{
+			x: MARGIN_X,
+			y: PAGE_HEIGHT - 302,
+			font:
+				resources.font,
+			size: 7.5,
+			color: rgb(
+				0.25,
+				0.25,
+				0.25,
+			),
+		},
+	);
+	*/
+
+	void issuedAt;
+};
+
+const drawValidationQrCode = (page: PDFPage, resources: PageResources) => {
+	if (!resources.validationQrCode) {
+		return;
+	}
+
+	/*
+	 * O QR fica à esquerda do bloco
+	 * visual de assinatura.
+	 *
+	 * Ele não substitui a assinatura
+	 * atual.
+	 */
+	const qrSize = 50;
+	const qrX = MARGIN_X;
+	const qrY = 91;
+
+	page.drawImage(resources.validationQrCode, {
+		x: qrX,
+		y: qrY,
+		width: qrSize,
+		height: qrSize,
+	});
+
+	const textX = qrX + qrSize + 8;
+
+	page.drawText('Valide esta receita', {
+		x: textX,
+		y: qrY + 37,
+		font: resources.boldFont,
 		size: 7.5,
-		color: rgb(0.25, 0.25, 0.25),
+		color: rgb(0, 0, 0),
+	});
+
+	page.drawText('Escaneie o QR Code', {
+		x: textX,
+		y: qrY + 25,
+		font: resources.font,
+		size: 6.5,
+		color: rgb(0.1, 0.1, 0.1),
+	});
+
+	page.drawText('para conferir a assinatura digital.', {
+		x: textX,
+		y: qrY + 15,
+		font: resources.font,
+		size: 6.5,
+		color: rgb(0.1, 0.1, 0.1),
+	});
+
+	page.drawText('app.reginamaciel.com.br', {
+		x: textX,
+		y: qrY + 5,
+		font: resources.font,
+		size: 5.8,
+		color: rgb(0.3, 0.3, 0.3),
 	});
 };
 
@@ -456,6 +537,20 @@ const drawFooter = (
 	const right = PAGE_WIDTH - MARGIN_X;
 
 	if (signingTime) {
+		/*
+		 * QR Code à esquerda.
+		 *
+		 * Só existe no PDF que será
+		 * efetivamente assinado.
+		 */
+		drawValidationQrCode(page, resources);
+
+		/*
+		 * BLOCO VISUAL DE ASSINATURA
+		 * EXISTENTE.
+		 *
+		 * Mantido no lado direito.
+		 */
 		const boxWidth = 205;
 		const boxHeight = 48;
 		const boxX = right - boxWidth;
@@ -504,7 +599,6 @@ const drawFooter = (
 		);
 
 		drawRightText(page, 'CRMV/MS 9193', right, 111, resources.font, 7.5);
-
 		drawRightText(
 			page,
 			'SIPEAGRO MV00802562025',
@@ -540,13 +634,9 @@ const createPrescriptionPage = (
 	resources: PageResources,
 ): PDFPage => {
 	const page = pdf.addPage(PageSizes.A4);
-
 	drawPageDecoration(page, resources);
-
 	drawHeader(page, documentData, issuedAt, resources);
-
 	drawFooter(page, issuedAt, signingTime, resources);
-
 	return page;
 };
 
@@ -568,7 +658,9 @@ const drawMedication = ({
 	resources: PageResources;
 }): number => {
 	const leftColumnWidth = 190;
+
 	const centerColumnWidth = 170;
+
 	const rightColumnWidth = CONTENT_WIDTH - leftColumnWidth - centerColumnWidth;
 
 	const nameText = fitText(
@@ -593,7 +685,9 @@ const drawMedication = ({
 	);
 
 	const leftX = MARGIN_X;
+
 	const centerX = leftX + leftColumnWidth;
+
 	const rightX = centerX + centerColumnWidth;
 
 	page.drawText(nameText, {
@@ -686,7 +780,6 @@ const drawMedication = ({
 				color: rgb(0, 0, 0),
 			});
 		}
-
 		lineY -= BODY_LINE_HEIGHT;
 	}
 
@@ -697,6 +790,7 @@ export async function generatePrescriptionPdf({
 	documentData,
 	issuedAt,
 	signingTime,
+	validation,
 }: GeneratePrescriptionPdfOptions): Promise<Buffer> {
 	const groups = normalizePrescriptionGroups(documentData);
 
@@ -715,11 +809,24 @@ export async function generatePrescriptionPdf({
 		pdf.embedPng(assets.paws),
 	]);
 
+	/*
+	 * O QR é incorporado ao PDF antes
+	 * de signPrescriptionPdf().
+	 *
+	 * Dessa forma, o QR também faz
+	 * parte dos bytes protegidos pela
+	 * assinatura criptográfica.
+	 */
+	const validationQrCode = validation
+		? await pdf.embedPng(validation.qrCode)
+		: undefined;
+
 	const resources: PageResources = {
 		font,
 		boldFont,
 		logo,
 		paws,
+		validationQrCode,
 	};
 
 	let page = createPrescriptionPage(
@@ -740,7 +847,6 @@ export async function generatePrescriptionPdf({
 			signingTime,
 			resources,
 		);
-
 		y = CONTENT_TOP;
 	};
 
@@ -757,9 +863,7 @@ export async function generatePrescriptionPdf({
 
 		for (let itemIndex = 0; itemIndex < group.items.length; itemIndex += 1) {
 			const item = group.items[itemIndex];
-
 			const plainOrientations = richTextToPlainText(item.orientations);
-
 			const orientationLines = wrapText(
 				plainOrientations,
 				font,
@@ -769,12 +873,9 @@ export async function generatePrescriptionPdf({
 
 			const estimatedHeight =
 				16 + Math.max(orientationLines.length, 1) * BODY_LINE_HEIGHT + 10;
-
 			if (y - estimatedHeight < CONTENT_BOTTOM) {
 				startNewPage();
-
 				drawCenteredText(page, route, y, boldFont, 11);
-
 				y -= 25;
 			}
 
@@ -787,10 +888,8 @@ export async function generatePrescriptionPdf({
 				orientations: item.orientations,
 				resources,
 			});
-
 			y -= usedHeight;
 		}
-
 		y -= 12;
 	}
 
@@ -802,6 +901,16 @@ export async function generatePrescriptionPdf({
 			? 'Receita veterinária controlada'
 			: 'Receita veterinária',
 	);
+
+	if (validation) {
+		pdf.setKeywords([
+			'LovelyVet',
+			'receita veterinária',
+			'assinatura digital',
+			'validação',
+			validation.url,
+		]);
+	}
 
 	const bytes = await pdf.save({
 		useObjectStreams: true,

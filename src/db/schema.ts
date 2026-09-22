@@ -387,6 +387,15 @@ export const prescriptionSignaturesTable = pgTable(
 		 * SHA-256 dos bytes EXATOS armazenados acima.
 		 */
 		pdfSha256: text('pdf_sha256').notNull(),
+		certificateSubject: text('certificate_subject').notNull(),
+		certificateCommonName: text('certificate_common_name').notNull(),
+		certificateIssuer: text('certificate_issuer').notNull(),
+		certificateSerialNumber: text('certificate_serial_number').notNull(),
+		certificateFingerprintSha256: text(
+			'certificate_fingerprint_sha256',
+		).notNull(),
+		certificateValidFrom: timestamp('certificate_valid_from').notNull(),
+		certificateValidTo: timestamp('certificate_valid_to').notNull(),
 		signedAt: timestamp('signed_at').defaultNow().notNull(),
 		createdAt: timestamp('created_at').defaultNow().notNull(),
 	},

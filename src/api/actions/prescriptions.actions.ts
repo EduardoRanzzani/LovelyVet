@@ -553,18 +553,38 @@ export const getPrescriptionsByPet = async (petId: string) => {
 export const getPrescriptionDocumentById = async (prescriptionId: string) => {
 	const context = await requireAuthContext();
 
-	const [prescription] = await db
-		.select({
-			id: prescriptionsTable.id,
-			petId: prescriptionsTable.petId,
-			documentData: prescriptionsTable.documentData,
-			issuedAt: prescriptionsTable.issuedAt,
-			createdAt: prescriptionsTable.createdAt,
-			updatedAt: prescriptionsTable.updatedAt,
-		})
-		.from(prescriptionsTable)
-		.where(eq(prescriptionsTable.id, prescriptionId))
-		.limit(1);
+	const prescription = await db.query.prescriptionsTable.findFirst({
+		where: eq(prescriptionsTable.id, prescriptionId),
+
+		columns: {
+			id: true,
+			petId: true,
+			documentData: true,
+			issuedAt: true,
+			createdAt: true,
+			updatedAt: true,
+		},
+
+		with: {
+			signature: {
+				columns: {
+					id: true,
+					signedAt: true,
+					pdfSha256: true,
+					signedByUserId: true,
+				},
+
+				with: {
+					signedByUser: {
+						columns: {
+							id: true,
+							name: true,
+						},
+					},
+				},
+			},
+		},
+	});
 
 	if (!prescription) {
 		return null;

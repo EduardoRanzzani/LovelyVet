@@ -162,7 +162,10 @@ export const getPetById = async (
 			},
 			prescriptions: {
 				orderBy: desc(prescriptionsTable.issuedAt),
-				with: { doctor: { with: { user: true } } },
+				with: {
+					doctor: { with: { user: true } },
+					signature: { columns: { id: true, signedAt: true, pdfSha256: true } },
+				},
 			},
 			weightHistory: {
 				orderBy: desc(petWeightsTable.measuredAt),

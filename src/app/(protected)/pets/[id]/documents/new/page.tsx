@@ -1,4 +1,5 @@
 import { getPetById } from '@/api/actions/pets.actions';
+import { getPrescriptionDocumentById } from '@/api/actions/prescriptions.actions';
 import { formatAge, formatAgeShort } from '@/api/util';
 import {
 	PageContainer,
@@ -11,10 +12,10 @@ import { Badge } from '@/components/ui/badge';
 import { formatWeight } from '@/helpers/weight';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
+import { canSignWithReginaCertificate } from '@/lib/security/prescription-signing-access';
 import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import ClinicalDocumentBuilder from './_components/clinical-document-builder';
-import { getPrescriptionDocumentById } from '@/api/actions/prescriptions.actions';
 
 interface NewClinicalDocumentPageProps {
 	params: Promise<{
@@ -84,7 +85,7 @@ export default async function NewClinicalDocumentPage({
 			</PageHeader>
 
 			<PageContent>
-				<div className='rounded-xl border bg-card p-6'>
+				<div className='p-6 border rounded-xl bg-card'>
 					<div className='flex flex-col gap-4'>
 						<div className='flex flex-wrap items-center gap-3'>
 							<h2 className='text-2xl font-semibold'>{pet.name}</h2>
@@ -124,6 +125,23 @@ export default async function NewClinicalDocumentPage({
 					petId={pet.id}
 					prescriptionId={prescription?.id}
 					initialPrescription={prescription?.documentData ?? null}
+					initialSignature={
+						prescription?.signature
+							? {
+									id: prescription.signature.id,
+									signedAt: prescription.signature.signedAt.toISOString(),
+									pdfSha256: prescription.signature.pdfSha256,
+									signedByUser: prescription.signature.signedByUser
+										? {
+												id: prescription.signature.signedByUser.id,
+												name: prescription.signature.signedByUser.name,
+											}
+										: null,
+								}
+							: null
+					}
+					canSignPrescription={canSignWithReginaCertificate(context)}
+					signingAsAdministrator={context.role === 'admin'}
 					tutors={tutors}
 					patient={{
 						name: pet.name,

@@ -1,0 +1,1 @@
+ALTER TABLE "prescription_signatures" ADD COLUMN "created_at" timestamp DEFAULT now() NOT NULL;

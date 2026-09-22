@@ -12,6 +12,7 @@ import {
 	petWeightsTable,
 	petsTable,
 	prescriptionsTable,
+	prescriptionSignaturesTable,
 	servicesTable,
 	speciesTable,
 	usersTable,
@@ -67,6 +68,7 @@ export type PetsWithRelations = typeof petsTable.$inferSelect & {
 		doctor: typeof doctorsTable.$inferSelect & {
 			user: typeof usersTable.$inferSelect;
 		};
+		signature: PrescriptionSignatureSummary | null;
 	})[];
 	clinicalDocuments?: (typeof clinicalDocumentsTable.$inferSelect & {
 		doctor: typeof doctorsTable.$inferSelect & {
@@ -117,3 +119,8 @@ export type PetOption = {
 	breed: { specieId: string };
 	petTutors: { tutor: { user: { name: string } } }[];
 };
+
+export type PrescriptionSignatureSummary = Pick<
+	typeof prescriptionSignaturesTable.$inferSelect,
+	'id' | 'signedAt' | 'pdfSha256'
+>;

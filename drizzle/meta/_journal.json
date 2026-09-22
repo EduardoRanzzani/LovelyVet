@@ -267,6 +267,20 @@
       "when": 1790015174432,
       "tag": "0037_low_slapstick",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1790024468767,
+      "tag": "0038_chemical_wildside",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1790024585504,
+      "tag": "0039_yummy_wolf_cub",
+      "breakpoints": true
     }
   ]
 }

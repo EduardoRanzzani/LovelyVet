@@ -113,6 +113,7 @@ export default function DocumentPdfDownloadButton(
 							date,
 						}}
 						groups={normalizePrescriptionGroups(props.documentData)}
+						isControlled={props.documentData.isControlled ?? false}
 					/>
 				) : (
 					<RichTextClinicalDocument

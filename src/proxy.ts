@@ -7,6 +7,12 @@ const isPublicRoute = createRouteMatcher([
 	'/sign-in(.*)',
 	'/sign-up(.*)',
 	'/teste',
+
+	/*
+	 * Página acessada pelo QR Code
+	 * existente na receita assinada.
+	 */
+	'/receitas/validar(.*)',
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
@@ -19,13 +25,19 @@ export default clerkMiddleware(async (auth, req) => {
 
 	/*
 	 * 2. Rotas públicas.
+	 *
+	 * A validação da receita precisa
+	 * funcionar sem login, pois o QR
+	 * pode ser escaneado por farmácia,
+	 * tutor ou outro terceiro.
 	 */
 	if (isPublicRoute(req)) {
 		return NextResponse.next();
 	}
 
 	/*
-	 * 3. Demais rotas exigem autenticação.
+	 * 3. Demais rotas exigem
+	 * autenticação.
 	 */
 	const { userId } = await auth();
 
@@ -34,6 +46,7 @@ export default clerkMiddleware(async (auth, req) => {
 	}
 
 	const { nextUrl } = req;
+
 	const pathname = nextUrl.pathname;
 
 	if (pathname === '/') {

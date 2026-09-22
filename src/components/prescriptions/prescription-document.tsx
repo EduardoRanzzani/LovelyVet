@@ -21,19 +21,21 @@ interface PrescriptionDocumentProps {
 	patient: PrescriptionDocumentPatient;
 	groups: PrescriptionDocumentGroup[];
 	printRef?: Ref<HTMLDivElement>;
+	isControlled?: boolean;
 }
 
 export default function PrescriptionDocument({
 	patient,
 	groups,
 	printRef,
+	isControlled = false,
 }: PrescriptionDocumentProps) {
 	return (
 		<div
 			ref={printRef}
 			className='prescription-print-area relative mx-auto h-[297mm] w-[210mm] shrink-0 overflow-hidden bg-white text-black shadow-lg'
 		>
-			<div className='relative flex h-full flex-col p-4 px-20 pb-12 text-black'>
+			<div className='relative flex flex-col h-full p-4 px-20 pb-12 text-black'>
 				{/* Marca d'água */}
 				<div className='pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.035]'>
 					<Image
@@ -56,7 +58,7 @@ export default function PrescriptionDocument({
 						alt=''
 						width={300}
 						height={300}
-						className='w-full object-contain'
+						className='object-contain w-full'
 					/>
 				</div>
 
@@ -103,9 +105,9 @@ export default function PrescriptionDocument({
 				</section>
 
 				{/* Conteúdo */}
-				<main className='relative z-10 mt-6 flex-1'>
+				<main className='relative z-10 flex-1 mt-6'>
 					<h2 className='mb-2 text-center text-[30px] font-bold'>
-						Receituário
+						{isControlled ? 'Receituário Controlado' : 'Receituário'}
 					</h2>
 
 					<div className='space-y-6'>
@@ -131,7 +133,7 @@ export default function PrescriptionDocument({
 												className='space-y-1'
 											>
 												<div className='grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-2 text-[11px]'>
-													<div className='flex min-w-0 items-end gap-2'>
+													<div className='flex items-end min-w-0 gap-2'>
 														<strong className='shrink-0 whitespace-nowrap'>
 															{item.name || 'Medicamento'}
 														</strong>
@@ -139,11 +141,11 @@ export default function PrescriptionDocument({
 														<div className='mb-0.75 min-w-4 flex-1 border-b border-black' />
 													</div>
 
-													<span className='whitespace-nowrap text-center'>
+													<span className='text-center whitespace-nowrap'>
 														({item.pharmacy || 'Farmácia veterinária'})
 													</span>
 
-													<div className='flex min-w-0 items-end gap-2'>
+													<div className='flex items-end min-w-0 gap-2'>
 														<div className='mb-0.75 min-w-4 flex-1 border-b border-black' />
 
 														<strong className='shrink-0 whitespace-nowrap'>
@@ -201,7 +203,7 @@ export default function PrescriptionDocument({
 						alt=''
 						width={300}
 						height={300}
-						className='w-full object-contain'
+						className='object-contain w-full'
 					/>
 				</div>
 			</div>

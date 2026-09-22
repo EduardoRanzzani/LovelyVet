@@ -28,12 +28,14 @@ import type { UserRole } from '@/lib/security/roles';
 import { format, formatDate } from 'date-fns';
 import {
 	CalendarIcon,
+	DownloadIcon,
 	DropletIcon,
 	FileIcon,
 	FilmIcon,
 	GalleryHorizontalIcon,
 	MessageCircleIcon,
 	ScaleIcon,
+	ShieldCheckIcon,
 	ShoppingCartIcon,
 	SquarePenIcon,
 	StethoscopeIcon,
@@ -47,6 +49,7 @@ import { toast } from 'sonner';
 import PetFormClient from './pet-form';
 import TabHistory from './tabs/tab-history';
 import TabTimeline from './tabs/tab-timeline';
+import { Badge } from '@/components/ui/badge';
 
 interface PetDetailsClientProps {
 	pet: PetsWithRelations;
@@ -129,6 +132,7 @@ const PetDetailsClient = ({
 			title: 'Receita Emitida',
 			doctor: p.doctor.user.name,
 			avatarPerson: toTimelinePerson(p.doctor.user),
+			canDelete: !p.signature,
 			content: (
 				<div className='flex flex-col gap-3'>
 					<div
@@ -138,8 +142,15 @@ const PetDetailsClient = ({
 						}}
 					/>
 
-					<div className='flex flex-wrap gap-2'>
-						{!isCustomer && p.documentData && (
+					<div className='flex flex-wrap items-center gap-2'>
+						{p.signature && (
+							<Badge variant='outline' className='gap-1'>
+								<ShieldCheckIcon className='size-3' />
+								Assinada digitalmente
+							</Badge>
+						)}
+
+						{!isCustomer && p.documentData && !p.signature && (
 							<Button variant='outline' size='sm' asChild>
 								<Link
 									href={`/pets/${pet.id}/documents/new?prescriptionId=${p.id}`}
@@ -150,12 +161,21 @@ const PetDetailsClient = ({
 							</Button>
 						)}
 
-						{p.documentData && (
-							<DocumentPdfDownloadButton
-								kind='prescription'
-								documentData={p.documentData}
-								issuedAt={p.issuedAt}
-							/>
+						{p.signature ? (
+							<Button variant='outline' size='sm' asChild>
+								<a href={`/api/prescriptions/${p.id}/signed-pdf`}>
+									<DownloadIcon className='size-4' />
+									PDF assinado
+								</a>
+							</Button>
+						) : (
+							p.documentData && (
+								<DocumentPdfDownloadButton
+									kind='prescription'
+									documentData={p.documentData}
+									issuedAt={p.issuedAt}
+								/>
+							)
 						)}
 					</div>
 				</div>

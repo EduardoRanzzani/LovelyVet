@@ -27,7 +27,7 @@ const PetTimelineClient = ({
 						colorClass={event.color}
 						content={event.content}
 						avatarPerson={event.avatarPerson}
-						canDelete={canDelete}
+						canDelete={canDelete && event.canDelete !== false}
 						onDelete={() => onDelete(event)}
 					/>
 				))

@@ -20,6 +20,7 @@ interface PrescriptionPreviewProps {
 	patient: PrescriptionPatientData;
 	tutorName: string;
 	groups: PrescriptionDraftGroup[];
+	isControlled?: boolean;
 }
 
 export default function PrescriptionPreview({
@@ -27,6 +28,7 @@ export default function PrescriptionPreview({
 	patient,
 	tutorName,
 	groups,
+	isControlled = false,
 }: PrescriptionPreviewProps) {
 	return (
 		<A4DocumentPreview>
@@ -37,6 +39,7 @@ export default function PrescriptionPreview({
 					tutorName,
 				}}
 				groups={groups}
+				isControlled={isControlled}
 			/>
 		</A4DocumentPreview>
 	);
