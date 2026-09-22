@@ -500,7 +500,7 @@ const drawValidationQrCode = (
 	const textX = qrX + qrSize + 12;
 	const validationAddress = resources.validationUrl
 		? `${new URL(resources.validationUrl).origin.replace(/^https?:\/\//, '')}/receitas/validar`
-		: 'app.reginamaciel.com.br/receitas/validar';
+		: 'https://app.reginamaciel.com.br/receitas/validar';
 
 	page.drawText('M.V. Regina de Oliveira Maciel', {
 		x: MARGIN_X,
