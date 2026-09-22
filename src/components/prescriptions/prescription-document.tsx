@@ -195,7 +195,7 @@ export default function PrescriptionDocument({
 				</footer>
 
 				{/* Patas rodapé */}
-				<div className='pointer-events-none absolute bottom-[-2] right-[-4] w-[30%]'>
+				<div className='pointer-events-none absolute bottom-[-2] right-2 w-[30%]'>
 					<Image
 						unoptimized
 						loading='eager'

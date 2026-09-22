@@ -1,9 +1,6 @@
 import type { PrescriptionDocumentData } from '@/api/schema/prescription-document.schema';
 import { normalizePrescriptionGroups } from '@/lib/prescriptions/normalize-prescription-groups';
-import {
-	parseRichTextHtml,
-	type RichTextAlignment,
-} from '@/lib/pdf/rich-text';
+import { parseRichTextHtml, type RichTextAlignment } from '@/lib/pdf/rich-text';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import {
@@ -43,6 +40,7 @@ interface PageResources {
 	paws: PDFImage;
 	validationQrCode?: PDFImage;
 	validationToken?: string;
+	validationUrl?: string;
 }
 
 const PAGE_WIDTH = PageSizes.A4[0];
@@ -53,9 +51,11 @@ const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_X * 2;
 
 const CONTENT_TOP = 535;
 const CONTENT_BOTTOM = 165;
+const SIGNED_CONTENT_BOTTOM = 238;
 
-const BODY_FONT_SIZE = 10;
-const BODY_LINE_HEIGHT = 12;
+// Os tamanhos abaixo correspondem aos 11 px e 20 px usados na prévia HTML.
+const BODY_FONT_SIZE = 8.25;
+const BODY_LINE_HEIGHT = 15;
 
 let assetsPromise: Promise<PrescriptionPdfAssets> | null = null;
 
@@ -89,6 +89,7 @@ const formatSigningDate = (date: Date): string => {
 		year: 'numeric',
 		hour: '2-digit',
 		minute: '2-digit',
+		second: '2-digit',
 		timeZone: 'America/Campo_Grande',
 	}).format(date);
 };
@@ -153,7 +154,11 @@ const layoutRichText = (
 
 		const finishLine = () => {
 			if (fragments.length > 0) {
-				lines.push({ fragments, width: lineWidth, alignment: paragraph.alignment });
+				lines.push({
+					fragments,
+					width: lineWidth,
+					alignment: paragraph.alignment,
+				});
 			}
 			fragments = [];
 			lineWidth = 0;
@@ -292,11 +297,11 @@ const drawInfoCell = ({
 	font: PDFFont;
 	boldFont: PDFFont;
 }) => {
-	page.drawText(fitText(value || '-', font, 9, width - 4), {
+	page.drawText(fitText(value || '-', font, 8.25, width - 4), {
 		x,
 		y,
 		font,
-		size: 9,
+		size: 8.25,
 		color: rgb(0, 0, 0),
 	});
 
@@ -317,7 +322,7 @@ const drawInfoCell = ({
 		x,
 		y: y - 15,
 		font: boldFont,
-		size: 7.5,
+		size: 6.75,
 		color: rgb(0, 0, 0),
 	});
 };
@@ -348,7 +353,7 @@ const drawPageDecoration = (page: PDFPage, resources: PageResources) => {
 	});
 
 	page.drawImage(resources.paws, {
-		x: PAGE_WIDTH - pawWidth + 14,
+		x: PAGE_WIDTH - pawWidth - 6,
 		y: -15,
 		width: pawWidth,
 		height: pawHeight,
@@ -378,7 +383,7 @@ const drawHeader = (
 		'Dra. Regina de Oliveira Maciel',
 		PAGE_HEIGHT - 113,
 		resources.boldFont,
-		11,
+		12,
 	);
 
 	drawCenteredText(
@@ -386,7 +391,7 @@ const drawHeader = (
 		'Médica Veterinária CRMV/MS 9193',
 		PAGE_HEIGHT - 128,
 		resources.font,
-		8.5,
+		8.25,
 	);
 
 	drawCenteredText(
@@ -394,7 +399,7 @@ const drawHeader = (
 		'SIPEAGRO MV00802562025',
 		PAGE_HEIGHT - 140,
 		resources.font,
-		8.5,
+		8.25,
 	);
 
 	const firstRowY = PAGE_HEIGHT - 183;
@@ -453,7 +458,7 @@ const drawHeader = (
 		documentData.isControlled ? 'Receituário Controlado' : 'Receituário',
 		PAGE_HEIGHT - 282,
 		resources.boldFont,
-		documentData.isControlled ? 22 : 24,
+		22.5,
 	);
 
 	/*
@@ -479,21 +484,39 @@ const drawHeader = (
 	void issuedAt;
 };
 
-const drawValidationQrCode = (page: PDFPage, resources: PageResources) => {
+const drawValidationQrCode = (
+	page: PDFPage,
+	signingTime: Date,
+	resources: PageResources,
+	tutorName: string,
+) => {
 	if (!resources.validationQrCode) {
 		return;
 	}
 
-	/*
-	 * O QR fica à esquerda do bloco
-	 * visual de assinatura.
-	 *
-	 * Ele não substitui a assinatura
-	 * atual.
-	 */
-	const qrSize = 58;
+	const qrSize = 62;
 	const qrX = MARGIN_X;
-	const qrY = 91;
+	const qrY = 142;
+	const textX = qrX + qrSize + 12;
+	const validationAddress = resources.validationUrl
+		? `${new URL(resources.validationUrl).origin.replace(/^https?:\/\//, '')}/receitas/validar`
+		: 'app.reginamaciel.com.br/receitas/validar';
+
+	page.drawText('M.V. Regina de Oliveira Maciel', {
+		x: MARGIN_X,
+		y: 219,
+		font: resources.boldFont,
+		size: 10.5,
+		color: rgb(0, 0, 0),
+	});
+
+	page.drawText('CRMV/MS 9193 / SIPEAGRO MV00802562025', {
+		x: MARGIN_X,
+		y: 205,
+		font: resources.font,
+		size: 8.25,
+		color: rgb(0, 0, 0),
+	});
 
 	page.drawImage(resources.validationQrCode, {
 		x: qrX,
@@ -502,46 +525,124 @@ const drawValidationQrCode = (page: PDFPage, resources: PageResources) => {
 		height: qrSize,
 	});
 
-	const textX = qrX + qrSize + 8;
-
-	page.drawText('Este documento foi assinado digitalmente.', {
+	page.drawText('Este documento foi assinado eletronicamente.', {
 		x: textX,
-		y: qrY + 46,
+		y: qrY + 48,
 		font: resources.boldFont,
-		size: 7,
+		size: 10.5,
 		color: rgb(0, 0, 0),
 	});
 
-	page.drawText('Escaneie o QR Code para validar no LovelyVet.', {
-		x: textX,
-		y: qrY + 34,
-		font: resources.font,
-		size: 6.3,
-		color: rgb(0.1, 0.1, 0.1),
-	});
+	page.drawText(
+		`Receita Digital emitida em ${formatSigningDate(signingTime)} por Dra. Regina de Oliveira Maciel para ${tutorName}`,
+		{
+			x: textX,
+			y: qrY + 33,
+			font: resources.font,
+			size: 7.25,
+			color: rgb(0, 0, 0),
+		},
+	);
 
-	page.drawText(`TOKEN: ${resources.validationToken ?? '-'}`, {
+	page.drawText('CRMV/MS 9193 / SIPEAGRO MV00802562025 via LovelyVet.', {
 		x: textX,
 		y: qrY + 22,
-		font: resources.boldFont,
-		size: 7,
-		color: rgb(0.1, 0.1, 0.1),
+		font: resources.font,
+		size: 7.25,
+		color: rgb(0, 0, 0),
 	});
 
-	page.drawText('Confira a assinatura criptográfica em:', {
+	page.drawText(
+		'Escaneie o QR Code para confirmar o registro desta receita no LovelyVet.',
+		{
+			x: textX,
+			y: qrY + 9,
+			font: resources.font,
+			size: 7.25,
+			color: rgb(0, 0, 0),
+		},
+	);
+
+	page.drawText('Confira também a assinatura criptográfica em', {
 		x: textX,
-		y: qrY + 10,
+		y: qrY - 2,
 		font: resources.font,
-		size: 6.3,
-		color: rgb(0.3, 0.3, 0.3),
+		size: 7.25,
+		color: rgb(0, 0, 0),
 	});
 
 	page.drawText('https://validar.iti.gov.br', {
-		x: textX,
-		y: qrY,
+		x: textX + 151,
+		y: qrY - 2,
 		font: resources.boldFont,
-		size: 6.3,
+		size: 7.25,
 		color: rgb(0.05, 0.25, 0.65),
+	});
+
+	page.drawRectangle({
+		x: MARGIN_X,
+		y: 88,
+		width: CONTENT_WIDTH,
+		height: 45,
+		color: rgb(0.96, 0.96, 0.96),
+	});
+
+	page.drawText('Para dispensação:', {
+		x: MARGIN_X + 10,
+		y: 116,
+		font: resources.font,
+		size: 9,
+		color: rgb(0, 0, 0),
+	});
+
+	page.drawText('Farmácias e laboratórios:', {
+		x: MARGIN_X + 10,
+		y: 100,
+		font: resources.boldFont,
+		size: 8,
+		color: rgb(0, 0, 0),
+	});
+
+	page.drawText('acesse', {
+		x: MARGIN_X + 111,
+		y: 100,
+		font: resources.font,
+		size: 8,
+		color: rgb(0, 0, 0),
+	});
+
+	page.drawText(validationAddress, {
+		x: MARGIN_X + 138,
+		y: 100,
+		font: resources.boldFont,
+		size: 8,
+		color: rgb(0.05, 0.25, 0.65),
+	});
+
+	page.drawText('e insira o token apresentado ao lado.', {
+		x: MARGIN_X + 10,
+		y: 90,
+		font: resources.font,
+		size: 7.25,
+		color: rgb(0, 0, 0),
+	});
+
+	page.drawRectangle({
+		x: PAGE_WIDTH - MARGIN_X - 125,
+		y: 96,
+		width: 115,
+		height: 24,
+		borderColor: rgb(0.7, 0.7, 0.7),
+		borderWidth: 0.6,
+		color: rgb(1, 1, 1),
+	});
+
+	page.drawText(`TOKEN: ${resources.validationToken ?? '-'}`, {
+		x: PAGE_WIDTH - MARGIN_X - 116,
+		y: 104,
+		font: resources.boldFont,
+		size: 7.25,
+		color: rgb(0, 0, 0),
 	});
 };
 
@@ -550,46 +651,12 @@ const drawFooter = (
 	issuedAt: Date | string,
 	signingTime: Date | undefined,
 	resources: PageResources,
+	tutorName: string,
 ) => {
 	const right = PAGE_WIDTH - MARGIN_X;
 
 	if (signingTime) {
-		drawValidationQrCode(page, resources);
-
-		const signatureRight = PAGE_WIDTH - 108;
-
-		drawRightText(
-			page,
-			'M.V. Regina de Oliveira Maciel',
-			signatureRight,
-			154,
-			resources.boldFont,
-			8.5,
-		);
-		drawRightText(
-			page,
-			'CRMV/MS 9193',
-			signatureRight,
-			142,
-			resources.font,
-			7.5,
-		);
-		drawRightText(
-			page,
-			'SIPEAGRO MV00802562025',
-			signatureRight,
-			130,
-			resources.font,
-			7.5,
-		);
-		drawRightText(
-			page,
-			`Assinado em ${formatSigningDate(signingTime)}`,
-			signatureRight,
-			118,
-			resources.font,
-			6.2,
-		);
+		drawValidationQrCode(page, signingTime, resources, tutorName);
 	} else {
 		drawRightText(
 			page,
@@ -597,7 +664,7 @@ const drawFooter = (
 			right,
 			123,
 			resources.boldFont,
-			8.5,
+			8.25,
 		);
 
 		drawRightText(page, 'CRMV/MS 9193', right, 111, resources.font, 7.5);
@@ -607,25 +674,25 @@ const drawFooter = (
 			right,
 			99,
 			resources.font,
-			7.5,
+			8.25,
 		);
+
+		page.drawText(`Campo Grande, ${formatIssuedDate(issuedAt)}.`, {
+			x: MARGIN_X,
+			y: 66,
+			font: resources.font,
+			size: 8.25,
+			color: rgb(0, 0, 0),
+		});
+
+		page.drawText('WhatsApp: (67) 99120-1007', {
+			x: MARGIN_X,
+			y: 49,
+			font: resources.font,
+			size: 7.5,
+			color: rgb(0, 0, 0),
+		});
 	}
-
-	page.drawText(`Campo Grande, ${formatIssuedDate(issuedAt)}.`, {
-		x: MARGIN_X,
-		y: 66,
-		font: resources.font,
-		size: 8,
-		color: rgb(0, 0, 0),
-	});
-
-	page.drawText('WhatsApp: (67) 99120-1007', {
-		x: MARGIN_X,
-		y: 49,
-		font: resources.font,
-		size: 8,
-		color: rgb(0, 0, 0),
-	});
 };
 
 const createPrescriptionPage = (
@@ -634,11 +701,12 @@ const createPrescriptionPage = (
 	issuedAt: Date | string,
 	signingTime: Date | undefined,
 	resources: PageResources,
+	tutorName: string,
 ): PDFPage => {
 	const page = pdf.addPage(PageSizes.A4);
 	drawPageDecoration(page, resources);
 	drawHeader(page, documentData, issuedAt, resources);
-	drawFooter(page, issuedAt, signingTime, resources);
+	drawFooter(page, issuedAt, signingTime, resources, tutorName);
 	return page;
 };
 
@@ -659,22 +727,21 @@ const drawMedication = ({
 	orientations: string;
 	resources: PageResources;
 }): number => {
-	const leftColumnWidth = 230;
 	const rightColumnWidth = 72;
-	const centerColumnWidth = CONTENT_WIDTH - leftColumnWidth - rightColumnWidth;
+	const pharmacyMaxWidth = 150;
 
 	const nameText = fitText(
 		name || 'Medicamento',
 		resources.boldFont,
 		BODY_FONT_SIZE,
-		leftColumnWidth - 10,
+		(CONTENT_WIDTH - pharmacyMaxWidth) / 2 - 10,
 	);
 
 	const pharmacyText = fitText(
 		`(${pharmacy || 'Farmácia veterinária'})`,
 		resources.font,
 		BODY_FONT_SIZE,
-		centerColumnWidth - 10,
+		pharmacyMaxWidth,
 	);
 
 	const quantityText = fitText(
@@ -686,9 +753,7 @@ const drawMedication = ({
 
 	const leftX = MARGIN_X;
 
-	const centerX = leftX + leftColumnWidth;
-
-	const rightX = centerX + centerColumnWidth;
+	const rightX = MARGIN_X + CONTENT_WIDTH - rightColumnWidth;
 
 	page.drawText(nameText, {
 		x: leftX,
@@ -707,7 +772,7 @@ const drawMedication = ({
 		pharmacyText,
 		BODY_FONT_SIZE,
 	);
-	const pharmacyX = centerX + (centerColumnWidth - pharmacyWidth) / 2;
+	const pharmacyX = (PAGE_WIDTH - pharmacyWidth) / 2;
 
 	if (leftX + nameWidth + 6 < pharmacyX - 6) {
 		page.drawLine({
@@ -780,6 +845,7 @@ export async function generatePrescriptionPdf({
 	validation,
 }: GeneratePrescriptionPdfOptions): Promise<Buffer> {
 	const groups = normalizePrescriptionGroups(documentData);
+	const tutorName = documentData.tutor.name;
 
 	if (groups.length === 0) {
 		throw new Error('A receita não possui medicamentos.');
@@ -791,12 +857,12 @@ export async function generatePrescriptionPdf({
 
 	const [font, boldFont, italicFont, boldItalicFont, logo, paws] =
 		await Promise.all([
-		pdf.embedFont(StandardFonts.Helvetica),
-		pdf.embedFont(StandardFonts.HelveticaBold),
-		pdf.embedFont(StandardFonts.HelveticaOblique),
-		pdf.embedFont(StandardFonts.HelveticaBoldOblique),
-		pdf.embedPng(assets.logo),
-		pdf.embedPng(assets.paws),
+			pdf.embedFont(StandardFonts.Helvetica),
+			pdf.embedFont(StandardFonts.HelveticaBold),
+			pdf.embedFont(StandardFonts.HelveticaOblique),
+			pdf.embedFont(StandardFonts.HelveticaBoldOblique),
+			pdf.embedPng(assets.logo),
+			pdf.embedPng(assets.paws),
 		]);
 
 	/*
@@ -820,6 +886,7 @@ export async function generatePrescriptionPdf({
 		paws,
 		validationQrCode,
 		validationToken: validation?.token,
+		validationUrl: validation?.url,
 	};
 
 	let page = createPrescriptionPage(
@@ -828,8 +895,10 @@ export async function generatePrescriptionPdf({
 		issuedAt,
 		signingTime,
 		resources,
+		tutorName,
 	);
 
+	const contentBottom = signingTime ? SIGNED_CONTENT_BOTTOM : CONTENT_BOTTOM;
 	let y = CONTENT_TOP;
 
 	const startNewPage = () => {
@@ -839,18 +908,19 @@ export async function generatePrescriptionPdf({
 			issuedAt,
 			signingTime,
 			resources,
+			tutorName,
 		);
 		y = CONTENT_TOP;
 	};
 
 	for (const group of groups) {
-		if (y < CONTENT_BOTTOM + 45) {
+		if (y < contentBottom + 45) {
 			startNewPage();
 		}
 
 		const route = group.administrationRoute.trim().toUpperCase();
 
-		drawCenteredText(page, route, y, boldFont, 11);
+		drawCenteredText(page, route, y, boldFont, 9.75);
 
 		y -= 25;
 
@@ -865,9 +935,9 @@ export async function generatePrescriptionPdf({
 
 			const estimatedHeight =
 				16 + Math.max(orientationLines.length, 1) * BODY_LINE_HEIGHT + 10;
-			if (y - estimatedHeight < CONTENT_BOTTOM) {
+			if (y - estimatedHeight < contentBottom) {
 				startNewPage();
-				drawCenteredText(page, route, y, boldFont, 11);
+				drawCenteredText(page, route, y, boldFont, 9.75);
 				y -= 25;
 			}
 
