@@ -100,6 +100,7 @@ export const getCreatedPets = async (
 	monthName?: string,
 ): Promise<PetsWithRelations[]> => {
 	const context = await requireAuthContext();
+	requireStaff(context);
 	const accessCondition = buildPetAccessCondition(context);
 
 	const now = new Date();
@@ -252,8 +253,12 @@ export const getPetsPaginated = async (
 
 	const totalCount = Number(totalCountResult[0]?.value ?? 0);
 
+	const visibleData = (data as PetsWithRelations[]).map((pet) =>
+		filterPetForViewer(context, pet),
+	);
+
 	return {
-		data: data as PetsWithRelations[],
+		data: visibleData,
 		metadata: {
 			totalCount,
 			pageCount: Math.ceil(totalCount / limit),

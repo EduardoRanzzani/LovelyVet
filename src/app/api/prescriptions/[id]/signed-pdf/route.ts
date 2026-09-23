@@ -2,6 +2,7 @@ import { db } from '@/db';
 import { prescriptionSignaturesTable, prescriptionsTable } from '@/db/schema';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { assertCanAccessPet } from '@/lib/security/pet-access';
+import { canAccessTutorScopedData } from '@/lib/security/customer-privacy';
 import { eq } from 'drizzle-orm';
 
 interface SignedPrescriptionPdfRouteProps {
@@ -39,6 +40,15 @@ export async function GET(
 	}
 
 	await assertCanAccessPet(context, result.petId);
+
+	if (
+		!canAccessTutorScopedData(context, result.documentData?.tutor.id)
+	) {
+		return new Response('PDF assinado não encontrado.', {
+			status: 404,
+		});
+	}
+
 	const patientName = result.documentData?.patient.name ?? 'Paciente';
 	const filename = `Receita - ${patientName} - assinada.pdf`;
 

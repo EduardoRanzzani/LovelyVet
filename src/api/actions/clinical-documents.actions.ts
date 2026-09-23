@@ -19,6 +19,7 @@ import { requireStaff } from '@/lib/security/authorization';
 import { resolveClinicalDoctorId } from '@/lib/security/clinical-access';
 import { sanitizeRichTextHtml } from '@/lib/security/html';
 import { assertCanAccessPet } from '@/lib/security/pet-access';
+import { canAccessTutorScopedData } from '@/lib/security/customer-privacy';
 import { and, desc, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { saveClinicalDocumentSchema } from '../schema/clinical-documents.schema';
@@ -177,6 +178,12 @@ export const getClinicalDocumentById = async (id: string) => {
 	}
 
 	await assertCanAccessPet(context, document.petId);
+
+	if (
+		!canAccessTutorScopedData(context, document.documentData.tutor.id)
+	) {
+		return null;
+	}
 
 	return document;
 };

@@ -20,6 +20,12 @@ import { requireStaff } from '@/lib/security/authorization';
 import { resolveClinicalDoctorId } from '@/lib/security/clinical-access';
 import { escapeHtml, sanitizeRichTextHtml } from '@/lib/security/html';
 import { assertCanAccessPet } from '@/lib/security/pet-access';
+import {
+	canAccessTutorScopedData,
+	sanitizeDoctorForCustomer,
+	sanitizeTutorForCustomer,
+	sanitizeUserForCustomer,
+} from '@/lib/security/customer-privacy';
 import { and, count, desc, eq, ilike, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { MAX_PAGE_SIZE, PaginatedData } from '../config/consts';
@@ -537,11 +543,27 @@ export const getPrescriptionsByPet = async (petId: string) => {
 
 	await assertCanAccessPet(context, petId);
 
-	return await db.query.prescriptionsTable.findMany({
+	const prescriptions = await db.query.prescriptionsTable.findMany({
 		where: (prescriptions, { eq }) => eq(prescriptions.petId, petId),
 		with: { doctor: { with: { user: true } } },
 		orderBy: (prescriptions, { desc }) => desc(prescriptions.issuedAt),
 	});
+
+	if (context.role !== 'customer') {
+		return prescriptions;
+	}
+
+	return prescriptions
+		.filter((prescription) =>
+			canAccessTutorScopedData(
+				context,
+				prescription.documentData?.tutor.id,
+			),
+		)
+		.map((prescription) => ({
+			...prescription,
+			doctor: sanitizeDoctorForCustomer(prescription.doctor),
+		}));
 };
 
 /**
@@ -592,6 +614,15 @@ export const getPrescriptionDocumentById = async (prescriptionId: string) => {
 
 	await assertCanAccessPet(context, prescription.petId);
 
+	if (
+		!canAccessTutorScopedData(
+			context,
+			prescription.documentData?.tutor.id,
+		)
+	) {
+		return null;
+	}
+
 	return prescription;
 };
 
@@ -641,21 +672,32 @@ export const getPrescriptionById = async (prescriptionId: string) => {
 		throw new Error('Prescrição não encontrada');
 	}
 
-	/*
-	 * Customer não recebe dados dos outros tutores
-	 * de um pet compartilhado.
-	 */
 	if (context.role !== 'customer') {
 		return data;
 	}
 
+	if (
+		!canAccessTutorScopedData(context, data.documentData?.tutor.id)
+	) {
+		throw new Error('Prescrição não encontrada');
+	}
+
 	return {
 		...data,
+		doctor: sanitizeDoctorForCustomer(data.doctor),
 		pet: {
 			...data.pet,
-			petTutors: data.pet.petTutors.filter(
-				({ tutor }) => tutor.id === context.customerId,
-			),
+			petTutors: data.pet.petTutors
+				.filter(({ tutor }) => tutor.id === context.customerId)
+				.map(({ tutor }) => ({
+					tutor: sanitizeTutorForCustomer(tutor),
+				})),
+			weightHistory: data.pet.weightHistory?.map((weight) => ({
+				...weight,
+				author: weight.author
+					? sanitizeUserForCustomer(weight.author)
+					: weight.author,
+			})),
 		},
 	};
 };

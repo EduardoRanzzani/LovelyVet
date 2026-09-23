@@ -103,7 +103,7 @@ const PetsListClient = ({
 	const renderRow = (pet: PetsWithRelations) => {
 		const firstTutor = pet.petTutors[0]?.tutor;
 		const firstName = firstTutor?.user.name.split(' ')[0] ?? '';
-		const whatsappUrl = firstTutor
+		const whatsappUrl = canDoActions && firstTutor?.phone
 			? `https://wa.me/55${firstTutor.phone.replace(/\D/g, '')}/?text=Ol%C3%A1,%20tudo%20bem%3F%20Gostaria%20de%20falar%20com%20${firstName}%20sobre%20${pet.gender === 'female' ? 'a' : 'o'}%20${pet.name}`
 			: '';
 
@@ -229,7 +229,7 @@ const PetsListClient = ({
 							<span className='text-sm font-medium'>
 								{formatPetTutorNames(pet)}
 							</span>
-							{firstTutor ? (
+							{canDoActions && firstTutor?.phone ? (
 								<span className='text-[10px] text-muted-foreground uppercase'>
 									{firstTutor.phone}
 								</span>
@@ -264,7 +264,7 @@ const PetsListClient = ({
 	const renderMobile = (pet: PetsWithRelations) => {
 		const firstTutor = pet.petTutors[0]?.tutor;
 		const firstName = firstTutor?.user.name.split(' ')[0] ?? '';
-		const whatsappUrl = firstTutor
+		const whatsappUrl = canDoActions && firstTutor?.phone
 			? `https://wa.me/55${firstTutor.phone.replace(/\D/g, '')}/?text=Ol%C3%A1,%20tudo%20bem%3F%20Gostaria%20de%20falar%20com%20${firstName}%20sobre%20${pet.gender === 'female' ? 'a' : 'o'}%20${pet.name}`
 			: '';
 
@@ -311,7 +311,9 @@ const PetsListClient = ({
 							<TooltipContent>Visualizar {pet.name}</TooltipContent>
 						</Tooltip>
 
-						<DeleteAlertButton action={() => handleDelete(pet.id)} />
+						{canDoActions && (
+							<DeleteAlertButton action={() => handleDelete(pet.id)} />
+						)}
 					</span>
 				</div>
 

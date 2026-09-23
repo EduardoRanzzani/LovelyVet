@@ -422,23 +422,27 @@ const PetDetailsClient = ({
 							{formatPetTutorNames(pet)}
 						</p>
 
-						<p className='col-span-2'>
-							<span className='font-semibold text-muted-foreground'>
-								Endereço:
-							</span>{' '}
-							{fullAddress || '—'}
-						</p>
+						{!isCustomer && (
+							<>
+								<p className='col-span-2'>
+									<span className='font-semibold text-muted-foreground'>
+										Endereço:
+									</span>{' '}
+									{fullAddress || '—'}
+								</p>
 
-						{googleMapsUrl ? (
-							<div className='col-span-2 pt-2'>
-								<Button asChild variant='outline' className='w-full gap-2'>
-									<Link href={googleMapsUrl} target='_blank'>
-										<GoogleMapsIcon className='w-4 h-4' />
-										Abrir no Google Maps
-									</Link>
-								</Button>
-							</div>
-						) : null}
+								{googleMapsUrl ? (
+									<div className='col-span-2 pt-2'>
+										<Button asChild variant='outline' className='w-full gap-2'>
+											<Link href={googleMapsUrl} target='_blank'>
+												<GoogleMapsIcon className='w-4 h-4' />
+												Abrir no Google Maps
+											</Link>
+										</Button>
+									</div>
+								) : null}
+							</>
+						)}
 					</div>
 				</div>
 			</div>
