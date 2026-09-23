@@ -11,7 +11,7 @@ vi.mock('@/db', () => ({
 	},
 }));
 
-import { GET } from './route';
+import { GET, OPTIONS } from './route';
 import { ITI_VALIDATOR_FORMAT } from '@/lib/prescriptions/iti-validation';
 
 const id = '449d2f3c-8131-44d9-82f3-b392d389ae21';
@@ -105,5 +105,38 @@ describe('ITI QR Code flow', () => {
 		limit.mockResolvedValue([]);
 		const response = await get('?_format=application/validador-iti+json&_secretCode=ABC123');
 		expect(response.status).toBe(404);
+	});
+});
+
+
+describe('ITI browser cross-origin access', () => {
+	it.each([
+		['?_format=application/validador-iti+json&_secretCode=ABC123', 200],
+		['?_format=application/validador-iti+json&_secretCode=wrong', 401],
+		['?raw=1', 200],
+		['', 307],
+	] as const)('allows the ITI browser to read %s', async (query, status) => {
+		const response = await GET(new Request(`${baseUrl}${query}`, {
+			headers: { origin: 'https://validar.iti.gov.br', accept: 'text/html' },
+		}), { params: Promise.resolve({ id }) });
+		expect(response.status).toBe(status);
+		expect(response.headers.get('access-control-allow-origin')).toBe('https://validar.iti.gov.br');
+		expect(response.headers.get('cache-control')).toBe('private, no-store');
+	});
+
+	it('also exposes missing prescriptions to the ITI browser', async () => {
+		limit.mockResolvedValue([]);
+		const response = await get('?_format=application/validador-iti+json&_secretCode=ABC123');
+		expect(response.status).toBe(404);
+		expect(response.headers.get('access-control-allow-origin')).toBe('https://validar.iti.gov.br');
+	});
+
+	it('answers preflight without querying a prescription', () => {
+		const response = OPTIONS();
+		expect(response.status).toBe(204);
+		expect(response.headers.get('access-control-allow-origin')).toBe('https://validar.iti.gov.br');
+		expect(response.headers.get('access-control-allow-methods')).toBe('GET, HEAD, OPTIONS');
+		expect(response.headers.get('access-control-allow-headers')).toBe('Accept, Content-Type');
+		expect(limit).not.toHaveBeenCalled();
 	});
 });

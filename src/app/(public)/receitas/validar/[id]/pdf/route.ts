@@ -9,6 +9,23 @@ import { getPrescriptionPdfUrl } from '@/lib/prescriptions/prescription-validati
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
+// The ITI portal fetches this endpoint from its browser, not just its server.
+const publicPdfHeaders = {
+	'Access-Control-Allow-Origin': 'https://validar.iti.gov.br',
+	'Cache-Control': 'private, no-store',
+};
+
+export function OPTIONS() {
+	return new Response(null, {
+		status: 204,
+		headers: {
+			...publicPdfHeaders,
+			'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+			'Access-Control-Allow-Headers': 'Accept, Content-Type',
+		},
+	});
+}
+
 interface PublicSignedPrescriptionPdfRouteProps {
 	params: Promise<{
 		id: string;
@@ -40,7 +57,7 @@ export async function GET(
 		.limit(1);
 
 	if (!result) {
-		return new Response('PDF assinado não encontrado.', { status: 404 });
+		return new Response('PDF assinado não encontrado.', { status: 404, headers: publicPdfHeaders });
 	}
 
 	const requestUrl = new URL(request.url);
@@ -52,16 +69,14 @@ export async function GET(
 		if (!isValidItiSecretCode(secretCode, result.validationToken)) {
 			return Response.json(
 				{ error: 'Código de acesso inválido.' },
-				{ status: 401 },
+				{ status: 401, headers: publicPdfHeaders },
 			);
 		}
 
 		return Response.json(
 			createItiPrescriptionResponse(`${getPrescriptionPdfUrl(id)}?raw=1`),
 			{
-				headers: {
-					'Cache-Control': 'private, no-store',
-				},
+				headers: publicPdfHeaders,
 			},
 		);
 	}
@@ -76,7 +91,7 @@ export async function GET(
 			status: 307,
 			headers: {
 				Location: `/receitas/validar/${encodeURIComponent(id)}/visualizar`,
-				'Cache-Control': 'private, no-store',
+				...publicPdfHeaders,
 				Vary: 'Accept',
 			},
 		});
@@ -91,7 +106,7 @@ export async function GET(
 			'Content-Disposition': `inline; filename*=UTF-8''${encodeURIComponent(
 				filename,
 			)}`,
-			'Cache-Control': 'private, no-store',
+			...publicPdfHeaders,
 			'X-Content-Type-Options': 'nosniff',
 			'X-PDF-SHA256': result.pdfSha256,
 			Vary: 'Accept',
