@@ -9,7 +9,7 @@ import { generatePrescriptionPdf } from '@/lib/pdf/generate-prescription-pdf';
 import { signPrescriptionPdf } from '@/lib/pdf/sign-pdf-with-pfx';
 import { generateQrCodePng } from '@/lib/qr-code';
 import {
-	getPrescriptionPdfUrl,
+	getPrescriptionQrCodeUrl,
 	getPrescriptionValidationUrl,
 } from '@/lib/prescriptions/prescription-validation-url';
 import { requireAuthContext } from '@/lib/security/auth-context';
@@ -96,17 +96,17 @@ export const signPrescriptionDocument = actionClient
 
 			/*
 			 * O ID e o token são criados antes do PDF.
-			 * O QR abre o PDF assinado por uma rota pública
-			 * protegida pelo token, enquanto a página de
-			 * validação continua disponível para consulta
-			 * manual. Ambos são
+			 * O QR contém uma URL HTTPS sem parâmetros nem código de acesso.
+			 * O ITI acrescenta _format e _secretCode para obter o JSON;
+			 * o navegador comum abre o leitor da receita. O token impresso
+			 * é o código de acesso informado ao ITI. ID e token são
 			 * persistidos junto da assinatura definitiva.
 			 */
 			const signatureId = randomUUID();
 			const validationToken = createValidationToken();
 			const validationUrl = getPrescriptionValidationUrl(validationToken);
-			const prescriptionPdfUrl = getPrescriptionPdfUrl(signatureId);
-			const validationQrCode = await generateQrCodePng(prescriptionPdfUrl);
+			const qrCodeUrl = getPrescriptionQrCodeUrl(signatureId);
+			const validationQrCode = await generateQrCodePng(qrCodeUrl);
 
 			/*
 			 * O mesmo instante é utilizado:

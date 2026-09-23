@@ -627,6 +627,14 @@ const drawValidationQrCode = (
 		color: rgb(0, 0, 0),
 	});
 
+	page.drawText('Código de acesso no ITI', {
+		x: PAGE_WIDTH - MARGIN_X - 116,
+		y: 85,
+		font: resources.font,
+		size: 7.25,
+		color: rgb(0, 0, 0),
+	});
+
 	page.drawRectangle({
 		x: PAGE_WIDTH - MARGIN_X - 125,
 		y: 96,

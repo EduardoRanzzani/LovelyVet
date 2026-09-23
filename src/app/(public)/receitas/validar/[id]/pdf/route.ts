@@ -2,8 +2,8 @@ import { db } from '@/db';
 import { prescriptionSignaturesTable, prescriptionsTable } from '@/db/schema';
 import {
 	createItiPrescriptionResponse,
+	isItiValidatorFormat,
 	isValidItiSecretCode,
-	ITI_VALIDATOR_FORMAT,
 } from '@/lib/prescriptions/iti-validation';
 import { getPrescriptionPdfUrl } from '@/lib/prescriptions/prescription-validation-url';
 import { eq } from 'drizzle-orm';
@@ -46,7 +46,7 @@ export async function GET(
 	const requestUrl = new URL(request.url);
 	const requestedFormat = requestUrl.searchParams.get('_format');
 
-	if (requestedFormat === ITI_VALIDATOR_FORMAT) {
+	if (isItiValidatorFormat(requestedFormat)) {
 		const secretCode = requestUrl.searchParams.get('_secretCode');
 
 		if (!isValidItiSecretCode(secretCode, result.validationToken)) {
@@ -57,13 +57,29 @@ export async function GET(
 		}
 
 		return Response.json(
-			createItiPrescriptionResponse(getPrescriptionPdfUrl(id)),
+			createItiPrescriptionResponse(`${getPrescriptionPdfUrl(id)}?raw=1`),
 			{
 				headers: {
 					'Cache-Control': 'private, no-store',
 				},
 			},
 		);
+	}
+
+	// Mobile browsers can download even inline PDFs. Human navigation uses our
+	// renderer; API clients and the ITI still receive the original signed bytes.
+	if (
+		requestUrl.searchParams.get('raw') !== '1' &&
+		request.headers.get('accept')?.includes('text/html')
+	) {
+		return new Response(null, {
+			status: 307,
+			headers: {
+				Location: `/receitas/validar/${encodeURIComponent(id)}/visualizar`,
+				'Cache-Control': 'private, no-store',
+				Vary: 'Accept',
+			},
+		});
 	}
 
 	const patientName = result.documentData?.patient.name ?? 'Paciente';
@@ -78,6 +94,7 @@ export async function GET(
 			'Cache-Control': 'private, no-store',
 			'X-Content-Type-Options': 'nosniff',
 			'X-PDF-SHA256': result.pdfSha256,
+			Vary: 'Accept',
 		},
 	});
 }
