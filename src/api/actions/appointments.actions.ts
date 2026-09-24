@@ -9,6 +9,7 @@ import {
 	shiftsTable,
 } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
+import { resolveRequestedDoctorId } from '@/lib/security/doctor-scope';
 import {
 	buildAppointmentAccessCondition,
 	requireAccessibleAppointment,
@@ -162,12 +163,12 @@ export const getAllAppointments = async (): Promise<
 	requireStaff(context);
 
 	const appointments = await db.query.appointmentsTable.findMany({
+		where: (appointments) =>
+			buildAppointmentAccessCondition(context, undefined, appointments),
 		with: {
 			pet: {
 				with: {
-					petTutors: {
-						with: { tutor: { with: { user: true } } },
-					},
+					petTutors: { with: { tutor: { with: { user: true } } } },
 				},
 			},
 			doctor: { with: { user: true } },
@@ -203,10 +204,12 @@ export const getAppointments = async (
 	}
 
 	const appointments = await db.query.appointmentsTable.findMany({
-		where: and(
-			lte(appointmentsTable.scheduledAt, endRange),
-			gte(appointmentsTable.scheduledAt, startRange),
-		),
+		where: (appointments) =>
+			and(
+				buildAppointmentAccessCondition(context, undefined, appointments),
+				lte(appointments.scheduledAt, endRange),
+				gte(appointments.scheduledAt, startRange),
+			),
 		with: {
 			pet: {
 				with: {
@@ -224,10 +227,17 @@ export const getAppointments = async (
 export const getDoctorAvailability = actionClient
 	.schema(getDoctorAvailabilitySchema)
 	.action(async ({ parsedInput }) => {
-		await requireAuthContext();
+		const context = await requireAuthContext();
 
-		const { doctorId, serviceIds, dayStart, dayEnd, appointmentId } =
-			parsedInput;
+		const {
+			doctorId: requestedDoctorId,
+			serviceIds,
+			dayStart,
+			dayEnd,
+			appointmentId,
+		} = parsedInput;
+
+		const doctorId = resolveRequestedDoctorId(context, requestedDoctorId);
 
 		/*
 		 * Não confiamos na duração enviada pelo navegador.
@@ -394,6 +404,8 @@ export const upsertAppointment = actionClient
 
 		const { id, services, ...data } = parsedInput;
 
+		const doctorId = resolveRequestedDoctorId(context, data.doctorId);
+
 		/*
 		 * BOLA:
 		 * customer só pode criar/alterar
@@ -502,7 +514,7 @@ export const upsertAppointment = actionClient
 				await tx.execute(sql`
 					SELECT pg_advisory_xact_lock(
 						hashtext('lovelyvet:doctor_schedule'),
-						hashtext(${data.doctorId})
+						hashtext(${doctorId})
 					)
 				`);
 
@@ -520,7 +532,7 @@ export const upsertAppointment = actionClient
 				 */
 				const appointmentData = {
 					petId: data.petId,
-					doctorId: data.doctorId,
+					doctorId,
 					scheduledAt: data.scheduledAt,
 					endsAt,
 					status,
@@ -554,7 +566,7 @@ export const upsertAppointment = actionClient
 						id: true,
 					},
 					where: and(
-						eq(appointmentsTable.doctorId, data.doctorId),
+						eq(appointmentsTable.doctorId, doctorId),
 						lt(appointmentsTable.scheduledAt, endsAt),
 						gt(appointmentsTable.endsAt, data.scheduledAt),
 						notInArray(appointmentsTable.status, ['cancelled', 'no_show']),
@@ -580,7 +592,7 @@ export const upsertAppointment = actionClient
 						id: true,
 					},
 					where: and(
-						eq(shiftsTable.doctorId, data.doctorId),
+						eq(shiftsTable.doctorId, doctorId),
 						lt(shiftsTable.startTime, endsAt),
 						gt(shiftsTable.endTime, data.scheduledAt),
 					),
@@ -605,7 +617,7 @@ export const upsertAppointment = actionClient
 							id: true,
 						},
 						where: and(
-							eq(calendarEventsTable.doctorId, data.doctorId),
+							eq(calendarEventsTable.doctorId, doctorId),
 							lt(calendarEventsTable.startTime, endsAt),
 							gt(calendarEventsTable.endTime, data.scheduledAt),
 						),

@@ -6,6 +6,7 @@ import type { AuthContext } from './auth-context';
 type AppointmentAccessColumns = {
 	id: typeof appointmentsTable.id;
 	petId: typeof appointmentsTable.petId;
+	doctorId: typeof appointmentsTable.doctorId;
 };
 
 export const buildAppointmentAccessCondition = (
@@ -19,6 +20,13 @@ export const buildAppointmentAccessCondition = (
 		conditions.push(eq(columns.id, appointmentId));
 	}
 
+	if (context.role === 'doctor') {
+		if (!context.doctorId) {
+			throw new Error('Perfil de veterinário não encontrado');
+		}
+		conditions.push(eq(columns.doctorId, context.doctorId));
+	}
+
 	if (context.role === 'customer') {
 		if (!context.customerId) {
 			throw new Error('Perfil de cliente não encontrado');
@@ -27,9 +35,7 @@ export const buildAppointmentAccessCondition = (
 		conditions.push(
 			exists(
 				db
-					.select({
-						petId: petTutorsTable.petId,
-					})
+					.select({ petId: petTutorsTable.petId })
 					.from(petTutorsTable)
 					.where(
 						and(
@@ -49,11 +55,7 @@ export const requireAccessibleAppointment = async (
 	appointmentId: string,
 ) => {
 	const appointment = await db.query.appointmentsTable.findFirst({
-		columns: {
-			id: true,
-			petId: true,
-			status: true,
-		},
+		columns: { id: true, petId: true, status: true },
 		where: (appointments) =>
 			buildAppointmentAccessCondition(context, appointmentId, appointments),
 	});

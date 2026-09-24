@@ -24,20 +24,23 @@ import {
 	createShiftSchema,
 	ShiftsWithRelations,
 } from '../schema/shifts.schema';
+import {
+	getDoctorScopeId,
+	resolveRequestedDoctorId,
+} from '@/lib/security/doctor-scope';
 
 export const getAllShifts = async (): Promise<ShiftsWithRelations[]> => {
 	const context = await requireAuthContext();
 
 	requireStaff(context);
 
+	const scopedDoctorId = getDoctorScopeId(context);
+
 	const result = await db.query.shiftsTable.findMany({
-		with: {
-			doctor: {
-				with: {
-					user: true,
-				},
-			},
-		},
+		where: scopedDoctorId
+			? eq(shiftsTable.doctorId, scopedDoctorId)
+			: undefined,
+		with: { doctor: { with: { user: true } } },
 	});
 
 	return result as ShiftsWithRelations[];
@@ -50,6 +53,7 @@ export const getShifts = async (
 	const context = await requireAuthContext();
 
 	requireStaff(context);
+	const scopedDoctorId = getDoctorScopeId(context);
 
 	const now = new Date();
 	const year = now.getFullYear();
@@ -73,16 +77,11 @@ export const getShifts = async (
 
 	const shifts = await db.query.shiftsTable.findMany({
 		where: and(
+			scopedDoctorId ? eq(shiftsTable.doctorId, scopedDoctorId) : undefined,
 			lte(shiftsTable.startTime, endRange),
 			gte(shiftsTable.endTime, startRange),
 		),
-		with: {
-			doctor: {
-				with: {
-					user: true,
-				},
-			},
-		},
+		with: { doctor: { with: { user: true } } },
 	});
 
 	return shifts as ShiftsWithRelations[];
@@ -97,7 +96,7 @@ export const upsertShift = actionClient
 
 		const {
 			id,
-			doctorId,
+			doctorId: requestedDoctorId,
 			clinicId,
 			startTime,
 			duration,
@@ -106,11 +105,7 @@ export const upsertShift = actionClient
 			isPaid,
 		} = parsedInput;
 
-		if (context.role === 'doctor' && doctorId !== context.doctorId) {
-			throw new Error(
-				'Você não possui permissão para alterar os plantões deste veterinário.',
-			);
-		}
+		const doctorId = resolveRequestedDoctorId(context, requestedDoctorId);
 
 		/*
 		 * A duração chega do formulário como string.
@@ -284,9 +279,7 @@ export const upsertShift = actionClient
 			 */
 			const calendarEventConflict =
 				await tx.query.calendarEventsTable.findFirst({
-					columns: {
-						id: true,
-					},
+					columns: { id: true },
 					where: and(
 						eq(calendarEventsTable.doctorId, doctorId),
 						lt(calendarEventsTable.startTime, endDate),

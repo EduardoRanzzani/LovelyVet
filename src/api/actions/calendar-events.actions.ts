@@ -29,6 +29,7 @@ import {
 	createCalendarEventSchema,
 	getCalendarEventAvailabilitySchema,
 } from '../schema/calendar-event.schema';
+import { resolveRequestedDoctorId } from '@/lib/security/doctor-scope';
 
 export const getCalendarEventAvailability = actionClient
 	.schema(getCalendarEventAvailabilitySchema)
@@ -36,12 +37,15 @@ export const getCalendarEventAvailability = actionClient
 		const context = await requireAuthContext();
 		requireStaff(context);
 
-		const { doctorId, dayStart, dayEnd, durationMinutes, eventId } =
-			parsedInput;
+		const {
+			doctorId: requestedDoctorId,
+			dayStart,
+			dayEnd,
+			durationMinutes,
+			eventId,
+		} = parsedInput;
 
-		if (context.role === 'doctor' && context.doctorId !== doctorId) {
-			throw new Error('Você não possui permissão para consultar esta agenda.');
-		}
+		const doctorId = resolveRequestedDoctorId(context, requestedDoctorId);
 
 		const queryEnd = addMinutes(dayEnd, durationMinutes);
 
@@ -158,13 +162,16 @@ export const upsertCalendarEvent = actionClient
 		const context = await requireAuthContext();
 		requireStaff(context);
 
-		const { id, doctorId, title, startTime, endTime, notes } = parsedInput;
+		const {
+			id,
+			doctorId: requestedDoctorId,
+			title,
+			startTime,
+			endTime,
+			notes,
+		} = parsedInput;
 
-		if (context.role === 'doctor' && doctorId !== context.doctorId) {
-			throw new Error(
-				'Você não possui permissão para alterar a agenda deste veterinário.',
-			);
-		}
+		const doctorId = resolveRequestedDoctorId(context, requestedDoctorId);
 
 		const result = await db.transaction(async (tx) => {
 			const doctor = await tx.query.doctorsTable.findFirst({

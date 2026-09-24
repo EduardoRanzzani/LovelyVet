@@ -19,6 +19,7 @@ import {
 import { and, eq, gte, isNull, lte, or } from 'drizzle-orm';
 import { monthNames } from '../config/consts';
 import type { CalendarEntry } from '../schema/calendar.schema';
+import { getDoctorScopeId } from '@/lib/security/doctor-scope';
 
 export const getCalendarEntries = async (
 	monthName?: string,
@@ -37,12 +38,9 @@ export const getCalendarEntries = async (
 	 * - consultar todos;
 	 * - ou filtrar por doctorId.
 	 */
-	const scopedDoctorId =
-		context.role === 'doctor' ? context.doctorId : doctorId;
+	const authenticatedDoctorId = getDoctorScopeId(context);
 
-	if (context.role === 'doctor' && !scopedDoctorId) {
-		throw new Error('Veterinário não encontrado para o usuário autenticado.');
-	}
+	const scopedDoctorId = authenticatedDoctorId ?? doctorId;
 
 	const now = new Date();
 	const referenceYear =
