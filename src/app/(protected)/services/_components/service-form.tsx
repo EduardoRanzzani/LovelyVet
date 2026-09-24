@@ -22,6 +22,7 @@ import LoadingDialog from '@/components/ui/loading';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { BanIcon, Loader2Icon, SaveIcon } from 'lucide-react';
 import { useAction } from 'next-safe-action/hooks';
+import { fromCents } from '@/lib/money/currency';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
@@ -43,7 +44,10 @@ const ServiceFormClient = ({
 			name: service?.name || '',
 			description: service?.description || '',
 			specieId: service?.specieId || '',
-			price: service?.priceInCents ? service.priceInCents / 100 : 0,
+			price:
+				service?.priceInCents !== undefined
+					? fromCents(service.priceInCents)
+					: 0,
 		},
 	});
 

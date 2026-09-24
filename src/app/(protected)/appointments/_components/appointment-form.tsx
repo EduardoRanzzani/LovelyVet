@@ -17,6 +17,7 @@ import DateTimePickerForm from '@/components/form/datetimepicker-form';
 import InputForm from '@/components/form/input-form';
 import MoneyInputForm from '@/components/form/money-input-form';
 import SelectForm from '@/components/form/select-form';
+import { fromCents } from '@/lib/money/currency';
 import { Button } from '@/components/ui/button';
 import {
 	DialogClose,
@@ -36,6 +37,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import { endOfDay, format, startOfDay } from 'date-fns';
 import { useState } from 'react';
+import { formatCurrencyFromCents } from '@/helpers/currency';
 
 interface AppointmentFormClientProps {
 	appointment?: AppointmentListItem;
@@ -77,9 +79,10 @@ const AppointmentFormClient = ({
 				? new Date(appointment.scheduledAt)
 				: new Date(),
 			status: appointment?.status || 'pending',
-			totalPriceInCents: appointment?.totalPriceInCents
-				? appointment.totalPriceInCents / 100
-				: 0,
+			totalPriceInCents:
+				appointment?.totalPriceInCents !== undefined
+					? fromCents(appointment.totalPriceInCents)
+					: 0,
 			notes: appointment?.notes || '',
 			// Importante: inicializar o array de serviços se estiver editando
 			services: appointment?.items?.map((i) => i.serviceId) || [],
@@ -265,12 +268,11 @@ const AppointmentFormClient = ({
 										shouldValidate: true,
 									});
 
-									const total = services
+									const totalInCents = services
 										.filter((service) => validServices.includes(service.id))
-										.reduce(
-											(sum, service) => sum + service.priceInCents / 100,
-											0,
-										);
+										.reduce((sum, service) => sum + service.priceInCents, 0);
+
+									const total = fromCents(totalInCents);
 
 									form.setValue('totalPriceInCents', total, {
 										shouldValidate: true,
@@ -313,19 +315,20 @@ const AppointmentFormClient = ({
 							error={form.formState.errors.services?.message}
 							options={filteredServices.map((service) => ({
 								value: service.id,
-								label: `${service.name} - R$ ${(service.priceInCents / 100).toFixed(2)}`,
+								label: `${service.name} - ${formatCurrencyFromCents(
+									service.priceInCents,
+								)}`,
 							}))}
 							onSelect={(value) => {
 								const serviceIds = Array.isArray(value)
 									? value.map(String)
 									: [];
 
-								const total = services
+								const totalInCents = services
 									.filter((service) => serviceIds.includes(service.id))
-									.reduce(
-										(sum, service) => sum + service.priceInCents / 100,
-										0,
-									);
+									.reduce((sum, service) => sum + service.priceInCents, 0);
+
+								const total = fromCents(totalInCents);
 
 								form.setValue('totalPriceInCents', total, {
 									shouldValidate: true,

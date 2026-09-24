@@ -10,13 +10,14 @@ export type ClinicShiftOption = Pick<
 
 export const createClinicSchema = z.object({
 	id: z.uuid().optional().nullable(),
-	name: z.string().nonempty({ message: 'O nome da clínicca é obrigatório' }),
+	name: z.string().nonempty({ message: 'O nome da clínica é obrigatório' }),
 	phone: z
 		.string()
 		.nonempty({ message: 'O telefone da clínica é obrigatório' }),
 	defaultShiftPriceInCents: z
-		.number()
-		.min(1, { message: 'Valor do plantão é obrigatório' }),
+		.number({ message: 'Valor do plantão é obrigatório' })
+		.finite({ message: 'Valor do plantão inválido' })
+		.positive({ message: 'O valor do plantão deve ser maior que zero' }),
 	isActive: z.boolean(),
 	postalCode: z.string().nonempty({ message: 'O campo CEP é obrigatório' }),
 	address: z.string().nonempty({ message: 'O campo endereço é obrigatório' }),

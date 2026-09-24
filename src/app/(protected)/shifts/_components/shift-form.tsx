@@ -26,6 +26,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { differenceInHours } from 'date-fns';
 import { BanIcon, Loader2Icon, SaveIcon } from 'lucide-react';
 import { useAction } from 'next-safe-action/hooks';
+import { fromCents } from '@/lib/money/currency';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
@@ -67,7 +68,7 @@ const ShiftFormClient = ({
 			requesterName: shift?.requesterName || undefined,
 			amountInCents:
 				shift?.amountInCents !== null && shift?.amountInCents !== undefined
-					? shift.amountInCents / 100
+					? fromCents(shift.amountInCents)
 					: undefined,
 			isPaid: shift?.isPaid || false,
 		},
@@ -172,7 +173,7 @@ const ShiftFormClient = ({
 
 								form.setValue(
 									'amountInCents',
-									selectedClinic.defaultShiftPriceInCents / 100,
+									fromCents(selectedClinic.defaultShiftPriceInCents),
 									{
 										shouldDirty: true,
 										shouldValidate: true,

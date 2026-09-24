@@ -19,6 +19,10 @@ import { useSearchParams } from 'next/navigation';
 import { use } from 'react';
 import ClinicFormClient from './clinic-form';
 import { formatCurrencyFromCents } from '@/helpers/currency';
+import EditButton from '@/components/list/edit-button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { BanknoteIcon, MapPinIcon, PhoneIcon } from 'lucide-react';
 
 interface ClinicsListClientProps {
 	clinics: Promise<PaginatedData<Clinics>>;
@@ -43,8 +47,10 @@ const ClinicsListClient = ({ clinics }: ClinicsListClientProps) => {
 	];
 
 	const renderRow = (clinic: Clinics) => {
-		const fullAddress = `${clinic.address}, ${clinic.addressNumber} - ${clinic.neighborhood}. ${clinic.city}/${clinic.state}`;
-		const googleMapsUrl = `https://www.google.com/maps/place/${fullAddress}`;
+		const fullAddress = `${clinic.address}, ${clinic.addressNumber} - ${clinic.neighborhood}, ${clinic.city}/${clinic.state}`;
+		const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+			fullAddress,
+		)}`;
 
 		return (
 			<TableRow key={clinic.id}>
@@ -60,7 +66,11 @@ const ClinicsListClient = ({ clinics }: ClinicsListClientProps) => {
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<Button asChild variant={'outline'} className='2xl:size-9'>
-									<Link href={googleMapsUrl} target='_blank'>
+									<Link
+										href={googleMapsUrl}
+										target='_blank'
+										rel='noopener noreferrer'
+									>
 										<GoogleMapsIcon />
 										<span className='flex 2xl:hidden'>
 											Abrir no Google Maps
@@ -89,28 +99,79 @@ const ClinicsListClient = ({ clinics }: ClinicsListClientProps) => {
 				</TableCell>
 
 				<TableCell className='w-20 space-x-2'>
-					<span className='text-sm font-semibold'>
-						<Link href={`/clinics/${clinic.id}/edit`} className='text-blue-600'>
-							Editar
-						</Link>
-					</span>
+					<EditButton
+						tooltip={`Editar '${clinic.name}'`}
+						renderForm={(close) => (
+							<ClinicFormClient clinic={clinic} onSuccess={close} />
+						)}
+					/>
 				</TableCell>
 			</TableRow>
 		);
 	};
 
 	const renderMobile = (clinic: Clinics) => {
+		const fullAddress = `${clinic.address}, ${clinic.addressNumber} - ${clinic.neighborhood}, ${clinic.city}/${clinic.state}`;
+
+		const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+			fullAddress,
+		)}`;
+
 		return (
 			<div key={clinic.id} className='flex flex-col gap-4'>
-				<div className='flex items-center justify-between'>
-					<span className='flex flex-col'>
-						<h3 className='font-bold'>{clinic.name}</h3>
-						<p className='text-xs text-muted-foreground'>{clinic.phone}</p>
-					</span>
+				<div className='flex items-start justify-between gap-4'>
+					<div className='flex min-w-0 flex-col gap-1'>
+						<div className='flex flex-wrap items-center gap-2'>
+							<h3 className='font-bold'>{clinic.name}</h3>
 
-					<span className='flex flex-col gap-2'></span>
+							<Badge variant={clinic.isActive ? 'default' : 'secondary'}>
+								{clinic.isActive ? 'Ativa' : 'Inativa'}
+							</Badge>
+						</div>
+
+						<p className='text-xs text-muted-foreground'>
+							{clinic.city}/{clinic.state}
+						</p>
+					</div>
+
+					<EditButton
+						tooltip={`Editar '${clinic.name}'`}
+						renderForm={(close) => (
+							<ClinicFormClient clinic={clinic} onSuccess={close} />
+						)}
+					/>
 				</div>
-				<div className='flex items-center'>span</div>
+
+				<Separator />
+
+				<div className='flex flex-col gap-3'>
+					<div className='flex items-center gap-3'>
+						<PhoneIcon className='h-4 w-4 shrink-0 text-muted-foreground' />
+
+						<span className='text-sm'>{clinic.phone}</span>
+					</div>
+
+					<div className='flex items-start gap-3'>
+						<MapPinIcon className='mt-0.5 h-4 w-4 shrink-0 text-muted-foreground' />
+
+						<span className='text-sm'>{fullAddress}</span>
+					</div>
+
+					<div className='flex items-center gap-3'>
+						<BanknoteIcon className='h-4 w-4 shrink-0 text-muted-foreground' />
+
+						<span className='text-sm font-semibold'>
+							{formatCurrencyFromCents(clinic.defaultShiftPriceInCents)}
+						</span>
+					</div>
+				</div>
+
+				<Button asChild variant='outline' className='w-full'>
+					<Link href={googleMapsUrl} target='_blank' rel='noopener noreferrer'>
+						<GoogleMapsIcon />
+						Abrir no Google Maps
+					</Link>
+				</Button>
 			</div>
 		);
 	};

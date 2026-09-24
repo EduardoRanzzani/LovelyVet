@@ -10,6 +10,7 @@ import { revalidatePath } from 'next/cache';
 import z from 'zod';
 import { PaginatedData } from '../config/consts';
 import { createSpecieSchema, Species } from '../schema/species.schema';
+import { normalizePagination } from '@/lib/pagination';
 
 export const getSpecies = async (): Promise<Species[]> => {
 	await requireAuthContext();
@@ -27,7 +28,7 @@ export const getSpeciesPaginated = async (
 	const context = await requireAuthContext();
 	requireStaff(context);
 
-	const offset = (page - 1) * limit;
+	const pagination = normalizePagination(page, limit);
 
 	const filterCondition = search
 		? or(ilike(speciesTable.name, `%${search}%`))
@@ -39,8 +40,8 @@ export const getSpeciesPaginated = async (
 		})
 		.from(speciesTable)
 		.where(filterCondition)
-		.limit(limit)
-		.offset(offset)
+		.limit(pagination.limit)
+		.offset(pagination.offset)
 		.orderBy(asc(speciesTable.name));
 
 	const totalCountPromise = db
@@ -54,7 +55,7 @@ export const getSpeciesPaginated = async (
 	]);
 
 	const totalCount = totalCountResult[0].value;
-	const pageCount = Math.ceil(totalCount / limit);
+	const pageCount = Math.ceil(totalCount / pagination.limit);
 
 	const formattedData = data.map((row) => ({
 		...row.speciesTable,
@@ -65,8 +66,8 @@ export const getSpeciesPaginated = async (
 		metadata: {
 			totalCount,
 			pageCount,
-			currentPage: page,
-			limit,
+			currentPage: pagination.page,
+			limit: pagination.limit,
 		},
 	};
 };

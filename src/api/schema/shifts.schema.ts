@@ -20,7 +20,11 @@ export const createShiftSchema = z.object({
 	// }),
 	duration: z.string().min(1, 'Mínimo 1h'),
 	requesterName: z.string().optional(),
-	amountInCents: z.number().optional(),
+	amountInCents: z
+		.number()
+		.finite('O valor do plantão é inválido')
+		.min(0, 'O valor do plantão não pode ser negativo')
+		.optional(),
 	isPaid: z.boolean({ message: 'Selecione uma das opções' }),
 });
 

@@ -12,6 +12,7 @@ import { revalidatePath } from 'next/cache';
 import z from 'zod';
 import { MAX_PAGE_SIZE, PaginatedData } from '../config/consts';
 import type { DoctorOption } from '../schema/doctors.schema';
+import { normalizePagination } from '@/lib/pagination';
 import {
 	createDoctorWithUserSchema,
 	DoctorsWithRelations,
@@ -46,7 +47,7 @@ export const getDoctorsPaginated = async (
 	const context = await requireAuthContext();
 	requireAdmin(context);
 
-	const offset = (page - 1) * limit;
+	const pagination = normalizePagination(page, limit);
 	const filterCondition = search
 		? or(
 				ilike(usersTable.name, `%${search}%`),
@@ -64,8 +65,8 @@ export const getDoctorsPaginated = async (
 		.from(doctorsTable)
 		.innerJoin(usersTable, sql`${doctorsTable.userId} = ${usersTable.id}`)
 		.where(filterCondition)
-		.limit(limit)
-		.offset(offset)
+		.limit(pagination.limit)
+		.offset(pagination.offset)
 		.orderBy(asc(usersTable.name));
 
 	const totalCountPromise = db
@@ -80,7 +81,7 @@ export const getDoctorsPaginated = async (
 	]);
 
 	const totalCount = Number(totalCountResult[0]?.value ?? 0);
-	const pageCount = Math.ceil(totalCount / limit);
+	const pageCount = Math.ceil(totalCount / pagination.limit);
 
 	const formattedData = data.map((row) => ({
 		...row.doctorsTable,
@@ -92,8 +93,8 @@ export const getDoctorsPaginated = async (
 		metadata: {
 			totalCount,
 			pageCount,
-			currentPage: page,
-			limit,
+			currentPage: pagination.page,
+			limit: pagination.limit,
 		},
 	};
 };

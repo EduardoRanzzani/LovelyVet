@@ -7,9 +7,11 @@ import {
 	createClinicSchema,
 	CreateClinicSchema,
 } from '@/api/schema/clinics.schema';
+import CheckboxForm from '@/components/form/checkbox-form';
 import InputForm from '@/components/form/input-form';
 import InputFormMask from '@/components/form/input-mask-form';
 import MoneyInputForm from '@/components/form/money-input-form';
+import { fromCents } from '@/lib/money/currency';
 import { Button } from '@/components/ui/button';
 import {
 	DialogClose,
@@ -40,8 +42,11 @@ const ClinicFormClient = ({ clinic, onSuccess }: ClinicFormClientProps) => {
 			id: clinic?.id || undefined,
 			name: clinic?.name || '',
 			phone: clinic?.phone || '',
-			defaultShiftPriceInCents: clinic?.defaultShiftPriceInCents || 0,
-			isActive: clinic?.isActive || false,
+			defaultShiftPriceInCents:
+				clinic?.defaultShiftPriceInCents !== undefined
+					? fromCents(clinic.defaultShiftPriceInCents)
+					: 0,
+			isActive: clinic?.isActive ?? true,
 			postalCode: clinic?.postalCode || '',
 			address: clinic?.address || '',
 			addressNumber: clinic?.addressNumber || '',
@@ -105,12 +110,6 @@ const ClinicFormClient = ({ clinic, onSuccess }: ClinicFormClientProps) => {
 			<Form {...form}>
 				<form onSubmit={form.handleSubmit(formSubmit)} id='clinicForm'>
 					<div className='flex max-h-[calc(100dvh-12rem)] min-w-0 flex-col gap-2 overflow-y-auto px-1'>
-						<input
-							type='text'
-							{...form.register('isActive')}
-							className='hidden'
-						/>
-
 						<InputForm
 							label='Nome:'
 							register={form.register}
@@ -135,6 +134,13 @@ const ClinicFormClient = ({ clinic, onSuccess }: ClinicFormClientProps) => {
 								name='defaultShiftPriceInCents'
 							/>
 						</div>
+
+						<CheckboxForm
+							label='Clínica ativa'
+							name='isActive'
+							control={form.control}
+							error={form.formState.errors.isActive?.message}
+						/>
 
 						<div className='flex flex-row gap-4'>
 							<InputFormMask

@@ -9,6 +9,7 @@ import { asc, count, eq, ilike, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
 import { PaginatedData } from '../config/consts';
+import { normalizePagination } from '@/lib/pagination';
 import {
 	BreedsWithRelations,
 	createBreedSchema,
@@ -35,8 +36,7 @@ export const getBreedsPaginated = async (
 	const context = await requireAuthContext();
 	requireStaff(context);
 
-	const offset = (page - 1) * limit;
-
+	const pagination = normalizePagination(page, limit);
 	const filterCondition = search
 		? or(
 				ilike(breedsTable.name, `%${search}%`),
@@ -52,8 +52,8 @@ export const getBreedsPaginated = async (
 		.from(breedsTable)
 		.innerJoin(speciesTable, eq(breedsTable.specieId, speciesTable.id))
 		.where(filterCondition)
-		.limit(limit)
-		.offset(offset)
+		.limit(pagination.limit)
+		.offset(pagination.offset)
 		.orderBy(asc(breedsTable.name));
 
 	const totalCountPromise = db
@@ -68,7 +68,7 @@ export const getBreedsPaginated = async (
 	]);
 
 	const totalCount = totalCountResult[0].value;
-	const pageCount = Math.ceil(totalCount / limit);
+	const pageCount = Math.ceil(totalCount / pagination.limit);
 
 	const formattedData = data.map((row) => ({
 		...row.breedsTable,
@@ -80,8 +80,8 @@ export const getBreedsPaginated = async (
 		metadata: {
 			totalCount,
 			pageCount,
-			currentPage: page,
-			limit,
+			currentPage: pagination.page,
+			limit: pagination.limit,
 		},
 	};
 };
@@ -112,7 +112,7 @@ export const upsertBreed = actionClient
 	});
 
 export const deleteBreed = actionClient
-	.schema(z.object({ id: z.string() }))
+	.schema(z.object({ id: z.uuid({ message: 'ID da raça inválido' }) }))
 	.action(async ({ parsedInput }) => {
 		const context = await requireAuthContext();
 		requireStaff(context);

@@ -1,11 +1,7 @@
 'use server';
 
 import { db } from '@/db';
-import {
-	clerkIdentitiesTable,
-	customersTable,
-	usersTable,
-} from '@/db/schema';
+import { clerkIdentitiesTable, customersTable, usersTable } from '@/db/schema';
 import { createNewClerkUser } from '@/lib/integrations/clerk';
 import { getClerkEnvironment } from '@/lib/integrations/clerk-environment';
 import { actionClient } from '@/lib/next-safe-action';
@@ -16,6 +12,7 @@ import { and, asc, count, eq, gte, ilike, lte, or, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
 import { monthNames, PaginatedData } from '../config/consts';
+import { normalizePagination } from '@/lib/pagination';
 import {
 	createCustomerWithUserSchema,
 	CustomersWithRelations,
@@ -125,10 +122,8 @@ export const getCustomersPaginated = async (
 	const context = await requireAuthContext();
 	requireStaff(context);
 
-	const offset = (page - 1) * limit;
+	const pagination = normalizePagination(page, limit);
 
-	// 1. Construir a condição de filtro
-	// Buscamos no nome do usuário (tabela user) ou no CPF do cliente
 	const filterCondition = search
 		? or(
 				ilike(usersTable.name, `%${search}%`),
@@ -139,20 +134,15 @@ export const getCustomersPaginated = async (
 			)
 		: undefined;
 
-	// 2. Query Principal com Inner Join para garantir que temos o User e podemos filtrar por ele
 	const dataPromise = db
-		.select({
-			customersTable: customersTable,
-			usersTable: usersTable,
-		})
+		.select({ customersTable, usersTable })
 		.from(customersTable)
 		.innerJoin(usersTable, sql`${customersTable.userId} = ${usersTable.id}`)
 		.where(filterCondition)
-		.limit(limit)
-		.offset(offset)
+		.limit(pagination.limit)
+		.offset(pagination.offset)
 		.orderBy(asc(usersTable.name));
 
-	// 3. Contagem Total (precisa do join para o filtro de nome funcionar)
 	const totalCountPromise = db
 		.select({ value: count() })
 		.from(customersTable)
@@ -165,9 +155,8 @@ export const getCustomersPaginated = async (
 	]);
 
 	const totalCount = totalCountResult[0].value;
-	const pageCount = Math.ceil(totalCount / limit);
+	const pageCount = Math.ceil(totalCount / pagination.limit);
 
-	// Mapeamos o resultado para um formato mais amigável, similar ao findMany
 	const formattedData = data.map((row) => ({
 		...row.customersTable,
 		user: row.usersTable,
@@ -178,8 +167,8 @@ export const getCustomersPaginated = async (
 		metadata: {
 			totalCount,
 			pageCount,
-			currentPage: page,
-			limit,
+			currentPage: pagination.page,
+			limit: pagination.limit,
 		},
 	};
 };
@@ -279,11 +268,11 @@ export const upsertCustomer = actionClient
 							clerkIdentitiesTable.userId,
 							clerkIdentitiesTable.environment,
 						],
-							set: {
-								clerkUserId: newClerkUser.id,
-								updatedAt: new Date(),
-							},
-						});
+						set: {
+							clerkUserId: newClerkUser.id,
+							updatedAt: new Date(),
+						},
+					});
 			}
 
 			const customerData = {

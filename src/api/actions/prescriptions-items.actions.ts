@@ -13,6 +13,7 @@ import {
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
 import { sanitizeRichTextHtml } from '@/lib/security/html';
+import { normalizePagination } from '@/lib/pagination';
 
 export const getPrescriptionsItems = async () => {
 	const context = await requireAuthContext();
@@ -28,8 +29,7 @@ export const getPrescriptionsItemsPaginated = async (
 	const context = await requireAuthContext();
 	requireStaff(context);
 
-	const offset = (page - 1) * limit;
-
+	const pagination = normalizePagination(page, limit);
 	const filterCondition = search
 		? or(
 				ilike(prescriptionItemsTable.name, `%${search}%`),
@@ -39,8 +39,8 @@ export const getPrescriptionsItemsPaginated = async (
 
 	const data = await db.query.prescriptionItemsTable.findMany({
 		where: filterCondition,
-		limit: limit,
-		offset: offset,
+		limit: pagination.limit,
+		offset: pagination.offset,
 		orderBy: asc(prescriptionItemsTable.name),
 	});
 
@@ -50,15 +50,15 @@ export const getPrescriptionsItemsPaginated = async (
 		.where(filterCondition);
 
 	const totalCount = Number(totalCountResult[0]?.value ?? 0);
-	const pageCount = Math.ceil(totalCount / limit);
+	const pageCount = Math.ceil(totalCount / pagination.limit);
 
 	return {
 		data: data as PrescriptionItemsWithRelations[],
 		metadata: {
 			totalCount,
 			pageCount,
-			currentPage: page,
-			limit,
+			currentPage: pagination.page,
+			limit: pagination.limit,
 		},
 	};
 };

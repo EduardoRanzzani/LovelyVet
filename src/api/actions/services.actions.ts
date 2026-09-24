@@ -9,6 +9,8 @@ import { asc, count, eq, ilike, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
 import { MAX_PAGE_SIZE, PaginatedData } from '../config/consts';
+import { normalizePagination } from '@/lib/pagination';
+import { toCents } from '@/lib/money/currency';
 import {
 	createServiceSchema,
 	ServicesWithRelations,
@@ -31,7 +33,7 @@ export const getServicesPaginated = async (
 	const context = await requireAuthContext();
 	requireStaff(context);
 
-	const offset = (page - 1) * limit;
+	const pagination = normalizePagination(page, limit);
 
 	const filterCondition = search
 		? or(
@@ -42,8 +44,8 @@ export const getServicesPaginated = async (
 
 	const data = await db.query.servicesTable.findMany({
 		where: filterCondition,
-		limit: limit,
-		offset: offset,
+		limit: pagination.limit,
+		offset: pagination.offset,
 		orderBy: asc(servicesTable.name),
 		with: { specie: true },
 	});
@@ -55,15 +57,14 @@ export const getServicesPaginated = async (
 		.where(filterCondition);
 
 	const totalCount = Number(totalCountResult[0]?.value ?? 0);
-	const pageCount = Math.ceil(totalCount / limit);
-
+	const pageCount = Math.ceil(totalCount / pagination.limit);
 	return {
 		data: data as ServicesWithRelations[],
 		metadata: {
 			totalCount,
 			pageCount,
-			currentPage: page,
-			limit,
+			currentPage: pagination.page,
+			limit: pagination.limit,
 		},
 	};
 };
@@ -76,6 +77,7 @@ export const upsertService = actionClient
 
 		// Verifica se a especie foi preenchida, caso contrário salva null no banco
 		const specieId = parsedInput?.specieId === '' ? null : parsedInput.specieId;
+		const priceInCents = toCents(parsedInput.price);
 
 		await db
 			.insert(servicesTable)
@@ -83,16 +85,16 @@ export const upsertService = actionClient
 				id: parsedInput.id ?? undefined,
 				name: parsedInput.name,
 				description: parsedInput.description,
-				specieId: specieId,
-				priceInCents: parsedInput.price * 100,
+				specieId,
+				priceInCents,
 			})
 			.onConflictDoUpdate({
 				target: servicesTable.id,
 				set: {
 					name: parsedInput.name,
 					description: parsedInput.description,
-					specieId: specieId,
-					priceInCents: parsedInput.price * 100,
+					specieId,
+					priceInCents,
 					updatedAt: new Date(),
 				},
 			});

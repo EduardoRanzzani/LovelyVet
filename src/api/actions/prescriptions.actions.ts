@@ -20,6 +20,7 @@ import { requireStaff } from '@/lib/security/authorization';
 import { resolveClinicalDoctorId } from '@/lib/security/clinical-access';
 import { escapeHtml, sanitizeRichTextHtml } from '@/lib/security/html';
 import { assertCanAccessPet } from '@/lib/security/pet-access';
+import { normalizePagination } from '@/lib/pagination';
 import {
 	canAccessTutorScopedData,
 	sanitizeDoctorForCustomer,
@@ -155,10 +156,9 @@ export const getPrescriptionsPaginated = async (
 	search?: string,
 ): Promise<PaginatedData<PrescriptionsWithRelations>> => {
 	const context = await requireAuthContext();
-
 	requireStaff(context);
 
-	const offset = (page - 1) * limit;
+	const pagination = normalizePagination(page, limit);
 	const normalizedSearch = search?.trim();
 
 	const data = await db.query.prescriptionsTable.findMany({
@@ -166,15 +166,12 @@ export const getPrescriptionsPaginated = async (
 			? (prescriptions, { ilike }) =>
 					ilike(prescriptions.content, `%${normalizedSearch}%`)
 			: undefined,
-
 		with: {
 			pet: true,
 			doctor: true,
 		},
-
-		limit,
-		offset,
-
+		limit: pagination.limit,
+		offset: pagination.offset,
 		orderBy: (prescriptions, { asc }) => asc(prescriptions.createdAt),
 	});
 
@@ -188,17 +185,15 @@ export const getPrescriptionsPaginated = async (
 		);
 
 	const totalCount = Number(totalCountResult[0]?.value ?? 0);
-
-	const pageCount = Math.ceil(totalCount / limit);
+	const pageCount = Math.ceil(totalCount / pagination.limit);
 
 	return {
 		data: data as PrescriptionsWithRelations[],
-
 		metadata: {
 			totalCount,
 			pageCount,
-			currentPage: page,
-			limit,
+			currentPage: pagination.page,
+			limit: pagination.limit,
 		},
 	};
 };
@@ -555,10 +550,7 @@ export const getPrescriptionsByPet = async (petId: string) => {
 
 	return prescriptions
 		.filter((prescription) =>
-			canAccessTutorScopedData(
-				context,
-				prescription.documentData?.tutor.id,
-			),
+			canAccessTutorScopedData(context, prescription.documentData?.tutor.id),
 		)
 		.map((prescription) => ({
 			...prescription,
@@ -614,12 +606,7 @@ export const getPrescriptionDocumentById = async (prescriptionId: string) => {
 
 	await assertCanAccessPet(context, prescription.petId);
 
-	if (
-		!canAccessTutorScopedData(
-			context,
-			prescription.documentData?.tutor.id,
-		)
-	) {
+	if (!canAccessTutorScopedData(context, prescription.documentData?.tutor.id)) {
 		return null;
 	}
 
@@ -676,9 +663,7 @@ export const getPrescriptionById = async (prescriptionId: string) => {
 		return data;
 	}
 
-	if (
-		!canAccessTutorScopedData(context, data.documentData?.tutor.id)
-	) {
+	if (!canAccessTutorScopedData(context, data.documentData?.tutor.id)) {
 		throw new Error('Prescrição não encontrada');
 	}
 

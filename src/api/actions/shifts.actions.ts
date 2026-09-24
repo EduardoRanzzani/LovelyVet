@@ -28,6 +28,7 @@ import {
 	getDoctorScopeId,
 	resolveRequestedDoctorId,
 } from '@/lib/security/doctor-scope';
+import { toCents } from '@/lib/money/currency';
 
 export const getAllShifts = async (): Promise<ShiftsWithRelations[]> => {
 	const context = await requireAuthContext();
@@ -175,25 +176,17 @@ export const upsertShift = actionClient
 			}
 
 			/*
-			 * O formulário trabalha com reais.
+			 * O formulário trabalha com reais, apesar do nome legado
+			 * amountInCents.
 			 *
-			 * Exemplo:
+			 * O banco trabalha exclusivamente com centavos.
 			 *
-			 * 800.50
-			 *
-			 * vira:
-			 *
-			 * 80050
-			 *
-			 * no banco.
-			 *
-			 * Se o valor não vier informado,
-			 * utilizamos o valor padrão cadastrado
-			 * na clínica, que já está em centavos.
+			 * Quando nenhum valor é informado, utilizamos o valor
+			 * padrão da clínica, que já está armazenado em centavos.
 			 */
 			const amount =
 				amountInCents !== undefined
-					? Math.round(amountInCents * 100)
+					? toCents(amountInCents)
 					: clinic.defaultShiftPriceInCents;
 
 			/*

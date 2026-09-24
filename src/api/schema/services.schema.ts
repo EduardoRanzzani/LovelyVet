@@ -10,7 +10,10 @@ export const createServiceSchema = z.object({
 	name: z.string().nonempty({ message: 'Nome é obrigatório' }),
 	description: z.string().optional().nullable(),
 	specieId: z.string().optional().nullable(),
-	price: z.number().min(1, { message: 'Preço é obrigatório' }),
+	price: z
+		.number({ message: 'Preço é obrigatório' })
+		.finite({ message: 'Preço inválido' })
+		.positive({ message: 'O preço deve ser maior que zero' }),
 });
 
 export type CreateServiceSchema = z.infer<typeof createServiceSchema>;

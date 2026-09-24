@@ -22,6 +22,7 @@ import { requireStaff } from '@/lib/security/authorization';
 import { buildPetAccessCondition } from '@/lib/security/pet-access';
 import { filterPetForViewer } from '@/lib/security/pet-visibility';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
+import { normalizePagination } from '@/lib/pagination';
 import type { SQL } from 'drizzle-orm';
 import {
 	and,
@@ -230,7 +231,7 @@ export const getPetsPaginated = async (
 	const context = await requireAuthContext();
 	const filter = buildPetsListWhere(context, search);
 
-	const offset = (page - 1) * limit;
+	const pagination = normalizePagination(page, limit);
 	const data = await db.query.petsTable.findMany({
 		where: filter,
 		with: {
@@ -241,8 +242,8 @@ export const getPetsPaginated = async (
 				limit: 1,
 			},
 		},
-		limit,
-		offset,
+		limit: pagination.limit,
+		offset: pagination.offset,
 		orderBy: asc(petsTable.name),
 	});
 
@@ -261,9 +262,9 @@ export const getPetsPaginated = async (
 		data: visibleData,
 		metadata: {
 			totalCount,
-			pageCount: Math.ceil(totalCount / limit),
-			currentPage: page,
-			limit,
+			pageCount: Math.ceil(totalCount / pagination.limit),
+			currentPage: pagination.page,
+			limit: pagination.limit,
 		},
 	};
 };

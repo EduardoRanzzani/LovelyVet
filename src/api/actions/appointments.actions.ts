@@ -9,16 +9,19 @@ import {
 	petsTable,
 	shiftsTable,
 } from '@/db/schema';
+import { toCents } from '@/lib/money/currency';
 import { actionClient } from '@/lib/next-safe-action';
-import { resolveRequestedDoctorId } from '@/lib/security/doctor-scope';
+import { buildAvailableStarts } from '@/lib/scheduling/availability';
+import { assertIntervalWithinDoctorWorkingHours } from '@/lib/scheduling/doctor-working-hours';
 import {
 	buildAppointmentAccessCondition,
 	requireAccessibleAppointment,
 } from '@/lib/security/appointment-access';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
+import { resolveRequestedDoctorId } from '@/lib/security/doctor-scope';
 import { assertCanAccessPet } from '@/lib/security/pet-access';
-import { assertIntervalWithinDoctorWorkingHours } from '@/lib/scheduling/doctor-working-hours';
+import { normalizePagination } from '@/lib/pagination';
 import {
 	addMinutes,
 	addMonths,
@@ -52,7 +55,6 @@ import {
 	createAppointmentSchema,
 	getDoctorAvailabilitySchema,
 } from '../schema/appointments.schema';
-import { buildAvailableStarts } from '@/lib/scheduling/availability';
 
 export const getAppointmentsPaginated = async (
 	page: number = 1,
@@ -60,7 +62,7 @@ export const getAppointmentsPaginated = async (
 	search?: string,
 ): Promise<PaginatedData<AppointmentListItem>> => {
 	const context = await requireAuthContext();
-	const offset = (page - 1) * limit;
+	const pagination = normalizePagination(page, limit);
 
 	const searchCondition = search?.trim()
 		? exists(
@@ -82,8 +84,8 @@ export const getAppointmentsPaginated = async (
 				buildAppointmentAccessCondition(context, undefined, appointments),
 				searchCondition,
 			),
-		limit,
-		offset,
+		limit: pagination.limit,
+		offset: pagination.offset,
 		orderBy: desc(appointmentsTable.scheduledAt),
 		with: {
 			pet: {
@@ -124,8 +126,7 @@ export const getAppointmentsPaginated = async (
 		);
 
 	const totalCount = Number(totalCountResult[0]?.value ?? 0);
-
-	const pageCount = Math.ceil(totalCount / limit);
+	const pageCount = Math.ceil(totalCount / pagination.limit);
 
 	const safeData: AppointmentListItem[] = data.map((appointment) => ({
 		...appointment,
@@ -152,8 +153,8 @@ export const getAppointmentsPaginated = async (
 		metadata: {
 			totalCount,
 			pageCount,
-			currentPage: page,
-			limit,
+			currentPage: pagination.page,
+			limit: pagination.limit,
 		},
 	};
 };
@@ -475,7 +476,7 @@ export const upsertAppointment = actionClient
 				const totalPriceInCents =
 					context.role === 'customer'
 						? servicesTotalInCents
-						: Math.round(data.totalPriceInCents * 100);
+						: toCents(data.totalPriceInCents);
 
 				if (!Number.isSafeInteger(totalPriceInCents) || totalPriceInCents < 0) {
 					throw new Error('O valor total do agendamento é inválido.');

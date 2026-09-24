@@ -14,6 +14,8 @@ import {
 } from '../schema/clinics.schema';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireAdmin, requireStaff } from '@/lib/security/authorization';
+import { normalizePagination } from '@/lib/pagination';
+import { toCents } from '@/lib/money/currency';
 
 export const getClinicsPaginated = async (
 	page: number,
@@ -23,7 +25,8 @@ export const getClinicsPaginated = async (
 	const context = await requireAuthContext();
 	requireAdmin(context);
 
-	const offset = (page - 1) * limit;
+	const pagination = normalizePagination(page, limit);
+
 	const filterConditions = search
 		? or(ilike(clinicsTable.name, `%${search}%`))
 		: undefined;
@@ -34,8 +37,8 @@ export const getClinicsPaginated = async (
 		})
 		.from(clinicsTable)
 		.where(filterConditions)
-		.limit(limit)
-		.offset(offset)
+		.limit(pagination.limit)
+		.offset(pagination.offset)
 		.orderBy(asc(clinicsTable.name));
 
 	const totalCountPromise = db
@@ -49,7 +52,7 @@ export const getClinicsPaginated = async (
 	]);
 
 	const totalCount = totalCountResult[0].value;
-	const pageCount = Math.ceil(totalCount / limit);
+	const pageCount = Math.ceil(totalCount / pagination.limit);
 
 	const formattedData = data.map((row) => ({
 		...row.clinicsTable,
@@ -60,8 +63,8 @@ export const getClinicsPaginated = async (
 		metadata: {
 			totalCount,
 			pageCount,
-			currentPage: page,
-			limit,
+			currentPage: pagination.page,
+			limit: pagination.limit,
 		},
 	};
 };
@@ -90,7 +93,7 @@ export const upsertClinic = actionClient
 		requireAdmin(context);
 
 		// Converta para centavos uma única vez
-		const priceInCents = Math.round(parsedInput.defaultShiftPriceInCents * 100);
+		const priceInCents = toCents(parsedInput.defaultShiftPriceInCents);
 
 		await db
 			.insert(clinicsTable)
