@@ -45,32 +45,22 @@ export interface TimelineItem {
 	canDelete?: boolean;
 }
 
-export const timelineItemSchema = z.object({
-	type: z.enum(
-		[
-			'record',
-			'prescription',
-			'referral',
-			'exam_request',
-			'weight',
-			'appointment',
-			'vaccine',
-			'pathology',
-			'attachment',
-			'note',
-		],
-		{
-			message: 'Tipo inválido',
-		},
-	),
-	id: z.string({
-		message: 'ID é obrigatório',
+export const deletableTimelineItemTypes = [
+	'prescription',
+	'referral',
+	'exam_request',
+	'weight',
+	'vaccine',
+	'note',
+] as const;
+
+export type DeletableTimelineItemType =
+	(typeof deletableTimelineItemTypes)[number];
+
+export const deleteTimelineItemSchema = z.object({
+	type: z.enum(deletableTimelineItemTypes, {
+		message: 'Tipo de item inválido para exclusão',
 	}),
-	date: z.coerce.date().optional(),
-	title: z.string().optional(),
-	doctor: z.string().optional(),
-	content: z.string().optional(),
-	icon: z.any().optional(),
-	color: z.string().optional(),
-	petId: z.string({ message: 'ID do pet é obrigatório' }),
+	id: z.uuid({ message: 'ID do item inválido' }),
+	petId: z.uuid({ message: 'ID do pet inválido' }),
 });

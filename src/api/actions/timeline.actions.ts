@@ -9,15 +9,15 @@ import {
 	vaccinesTable,
 } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-import { timelineItemSchema } from '../schema/timeline.schema';
+import { deleteTimelineItemSchema } from '../schema/timeline.schema';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
 import { assertPrescriptionIsUnsigned } from '@/lib/prescriptions/prescription-signature';
 
 export const deleteTimelineItem = actionClient
-	.schema(timelineItemSchema)
+	.schema(deleteTimelineItemSchema)
 	.action(async ({ parsedInput }) => {
 		const context = await requireAuthContext();
 		requireStaff(context);
@@ -25,36 +25,65 @@ export const deleteTimelineItem = actionClient
 		const { id, petId, type } = parsedInput;
 
 		switch (type) {
-			case 'vaccine':
+			case 'vaccine': {
 				const vaccine = await db.query.vaccinesTable.findFirst({
-					where: eq(vaccinesTable.id, id),
+					where: and(eq(vaccinesTable.id, id), eq(vaccinesTable.petId, petId)),
 				});
+
 				if (!vaccine) {
 					throw new Error('Vacina não encontrada');
 				}
-				await db.delete(vaccinesTable).where(eq(vaccinesTable.id, id));
+
+				await db
+					.delete(vaccinesTable)
+					.where(and(eq(vaccinesTable.id, id), eq(vaccinesTable.petId, petId)));
+
 				break;
-			case 'weight':
+			}
+
+			case 'weight': {
 				const weight = await db.query.petWeightsTable.findFirst({
-					where: eq(petWeightsTable.id, id),
+					where: and(
+						eq(petWeightsTable.id, id),
+						eq(petWeightsTable.petId, petId),
+					),
 				});
+
 				if (!weight) {
 					throw new Error('Peso não encontrado');
 				}
-				await db.delete(petWeightsTable).where(eq(petWeightsTable.id, id));
+
+				await db
+					.delete(petWeightsTable)
+					.where(
+						and(eq(petWeightsTable.id, id), eq(petWeightsTable.petId, petId)),
+					);
+
 				break;
-			case 'note':
+			}
+
+			case 'note': {
 				const note = await db.query.petNotesTable.findFirst({
-					where: eq(petNotesTable.id, id),
+					where: and(eq(petNotesTable.id, id), eq(petNotesTable.petId, petId)),
 				});
+
 				if (!note) {
 					throw new Error('Observação não encontrada');
 				}
-				await db.delete(petNotesTable).where(eq(petNotesTable.id, id));
+
+				await db
+					.delete(petNotesTable)
+					.where(and(eq(petNotesTable.id, id), eq(petNotesTable.petId, petId)));
+
 				break;
+			}
+
 			case 'prescription': {
 				const prescription = await db.query.prescriptionsTable.findFirst({
-					where: eq(prescriptionsTable.id, id),
+					where: and(
+						eq(prescriptionsTable.id, id),
+						eq(prescriptionsTable.petId, petId),
+					),
 				});
 
 				if (!prescription) {
@@ -65,22 +94,42 @@ export const deleteTimelineItem = actionClient
 
 				await db
 					.delete(prescriptionsTable)
-					.where(eq(prescriptionsTable.id, id));
+					.where(
+						and(
+							eq(prescriptionsTable.id, id),
+							eq(prescriptionsTable.petId, petId),
+						),
+					);
 
 				break;
 			}
+
 			case 'referral':
-			case 'exam_request':
+			case 'exam_request': {
 				const document = await db.query.clinicalDocumentsTable.findFirst({
-					where: eq(clinicalDocumentsTable.id, id),
+					where: and(
+						eq(clinicalDocumentsTable.id, id),
+						eq(clinicalDocumentsTable.petId, petId),
+						eq(clinicalDocumentsTable.type, type),
+					),
 				});
+
 				if (!document) {
 					throw new Error('Documento clínico não encontrado');
 				}
+
 				await db
 					.delete(clinicalDocumentsTable)
-					.where(eq(clinicalDocumentsTable.id, id));
+					.where(
+						and(
+							eq(clinicalDocumentsTable.id, id),
+							eq(clinicalDocumentsTable.petId, petId),
+							eq(clinicalDocumentsTable.type, type),
+						),
+					);
+
 				break;
+			}
 		}
 
 		revalidatePath(`/pets/${petId}`);

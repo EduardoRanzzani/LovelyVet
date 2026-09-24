@@ -8,11 +8,17 @@ import {
 	PetsWithRelations,
 } from '@/api/schema/pets.schema';
 import { Species } from '@/api/schema/species.schema';
-import { TimelineItem, toTimelinePerson } from '@/api/schema/timeline.schema';
+import {
+	DeletableTimelineItemType,
+	deletableTimelineItemTypes,
+	TimelineItem,
+	toTimelinePerson,
+} from '@/api/schema/timeline.schema';
 import { formatAge } from '@/api/util';
 import DocumentPdfDownloadButton from '@/components/clinical-documents/document-pdf-download-button';
 import { GoogleMapsIcon } from '@/components/icons/icon-googlemaps';
 import EditButton from '@/components/list/edit-button';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import LoadingDialog from '@/components/ui/loading';
 import {
@@ -49,7 +55,6 @@ import { toast } from 'sonner';
 import PetFormClient from './pet-form';
 import TabHistory from './tabs/tab-history';
 import TabTimeline from './tabs/tab-timeline';
-import { Badge } from '@/components/ui/badge';
 
 interface PetDetailsClientProps {
 	pet: PetsWithRelations;
@@ -59,6 +64,11 @@ interface PetDetailsClientProps {
 	customersPromise: Promise<CustomersWithRelations[]>;
 	viewerRole: UserRole;
 }
+
+const isDeletableTimelineItemType = (
+	type: TimelineItem['type'],
+): type is DeletableTimelineItemType =>
+	deletableTimelineItemTypes.some((deletableType) => deletableType === type);
 
 const PetDetailsClient = ({
 	pet,
@@ -117,6 +127,7 @@ const PetDetailsClient = ({
 		...(pet.medicalRecords?.map((mr) => ({
 			type: 'record' as const,
 			id: mr.id,
+			canDelete: false,
 			date: new Date(mr.createdAt),
 			title: 'Atendimento Clínico',
 			doctor: mr.doctor.user.name,
@@ -236,6 +247,7 @@ const PetDetailsClient = ({
 		...(pet.appointments?.map((a) => ({
 			type: 'appointment' as const,
 			id: a.id,
+			canDelete: false,
 			date: new Date(a.createdAt),
 			title: 'Agendamento',
 			doctor: a.doctor?.user?.name || 'Não atribuído',
@@ -284,6 +296,7 @@ const PetDetailsClient = ({
 		...(pet.pathologies?.map((p) => ({
 			type: 'pathology' as const,
 			id: p.id,
+			canDelete: false,
 			date: new Date(p.diagnosedAt),
 			title: 'Patologia',
 			doctor: p.doctor.user.name,
@@ -295,6 +308,7 @@ const PetDetailsClient = ({
 		...(pet.attachments?.map((a) => ({
 			type: 'attachment' as const,
 			id: a.id,
+			canDelete: false,
 			date: new Date(a.createdAt),
 			title: 'Anexo',
 			doctor: a.author.name,
@@ -319,8 +333,12 @@ const PetDetailsClient = ({
 	const handleDelete = (item: TimelineItem) => {
 		if (!item.id) return;
 
+		if (!isDeletableTimelineItemType(item.type)) {
+			return;
+		}
+
 		execute({
-			id: item.id!,
+			id: item.id,
 			type: item.type,
 			petId: pet.id,
 		});

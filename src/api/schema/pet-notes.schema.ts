@@ -1,8 +1,7 @@
 import z from 'zod';
 
 export const createNoteSchema = z.object({
-	id: z.uuid().optional(),
-	petId: z.uuid().optional(),
+	petId: z.uuid({ message: 'O paciente é obrigatório' }),
 	content: z.string().nonempty({ message: 'O campo content é obrigatório' }),
 });
 

@@ -35,15 +35,13 @@ const DialogWeight = ({ petId }: DialogWeightProps) => {
 		resolver: zodResolver(createPetWeightSchema),
 		shouldUnregister: true,
 		defaultValues: {
+			petId,
 			weightInGrams: 0,
 		},
 	});
 
 	const formSubmit = (data: CreatePetWeightSchema) => {
-		insertPetWeightAction.execute({
-			...data,
-			petId: petId,
-		});
+		insertPetWeightAction.execute(data);
 	};
 
 	const insertPetWeightAction = useAction(insertPetWeight, {
@@ -90,8 +88,7 @@ const DialogWeight = ({ petId }: DialogWeightProps) => {
 						onSubmit={form.handleSubmit(formSubmit)}
 						className='flex flex-col gap-2'
 					>
-						<input type='hidden' name='id' {...form.register} />
-						<input type='hidden' name='petId' value={petId} />
+						<input type='hidden' {...form.register('petId')} />
 
 						<WeightInputForm
 							label='Peso:'

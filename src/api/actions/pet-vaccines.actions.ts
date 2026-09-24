@@ -4,6 +4,8 @@ import { careRemindersTable, vaccinesTable } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { resolveClinicalDoctorId } from '@/lib/security/clinical-access';
+import { assertCanAccessPet } from '@/lib/security/pet-access';
+import { assertVaccineBelongsToPet } from '@/lib/vaccines/vaccine-integrity';
 import { revalidatePath } from 'next/cache';
 import { createVaccineSchema } from '../schema/vaccine.schema';
 import { addDays, addYears, format } from 'date-fns';
@@ -14,6 +16,9 @@ export const insertVaccine = actionClient
 	.action(async ({ parsedInput }) => {
 		const context = await requireAuthContext();
 		const doctorId = resolveClinicalDoctorId(context, parsedInput.doctorId);
+
+		await assertCanAccessPet(context, parsedInput.petId);
+
 		let nextDoseDate: Date | null = null;
 
 		switch (parsedInput.nextDoseType) {
@@ -34,6 +39,15 @@ export const insertVaccine = actionClient
 		}
 
 		await db.transaction(async (tx) => {
+			if (parsedInput.id) {
+				const existingVaccine = await tx.query.vaccinesTable.findFirst({
+					columns: { id: true, petId: true },
+					where: eq(vaccinesTable.id, parsedInput.id),
+				});
+
+				assertVaccineBelongsToPet(existingVaccine, parsedInput.petId);
+			}
+
 			const values = {
 				...(parsedInput.id && { id: parsedInput.id }),
 				petId: parsedInput.petId,

@@ -24,8 +24,7 @@ export type PetWeightWithRelations = typeof petWeightsTable.$inferSelect & {
 };
 
 export const createPetWeightSchema = z.object({
-	id: z.uuid().optional(),
-	petId: z.uuid().optional(),
+	petId: z.uuid({ message: 'O paciente é obrigatório' }),
 	weightInGrams: z.number({ message: 'O campo peso é obrigatório' }),
 });
 

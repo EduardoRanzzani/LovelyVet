@@ -22,20 +22,8 @@ export const getPetWeights = async (): Promise<PetWeightWithRelations[]> => {
 		with: {
 			pet: {
 				with: {
-					breed: {
-						with: {
-							specie: true,
-						},
-					},
-					petTutors: {
-						with: {
-							tutor: {
-								with: {
-									user: true,
-								},
-							},
-						},
-					},
+					breed: { with: { specie: true } },
+					petTutors: { with: { tutor: { with: { user: true } } } },
 				},
 			},
 		},
@@ -62,10 +50,12 @@ export const insertPetWeight = actionClient
 	.schema(createPetWeightSchema)
 	.action(async ({ parsedInput }) => {
 		const context = await requireAuthContext();
+
 		requireStaff(context);
+		await assertCanAccessPet(context, parsedInput.petId);
 
 		await db.insert(petWeightsTable).values({
-			petId: parsedInput.petId!,
+			petId: parsedInput.petId,
 			weightInGrams: Math.round(parsedInput.weightInGrams * 1000),
 			authorId: context.userId,
 			measuredAt: new Date(),

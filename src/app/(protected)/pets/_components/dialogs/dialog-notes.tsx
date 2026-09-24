@@ -34,15 +34,13 @@ const DialogNotes = ({ petId }: DialogNotesProps) => {
 	const form = useForm<CreateNoteSchema>({
 		resolver: zodResolver(createNoteSchema),
 		defaultValues: {
+			petId,
 			content: '',
 		},
 	});
 
 	const formSubmit = (data: CreateNoteSchema) => {
-		insertNoteAction.execute({
-			...data,
-			petId: petId,
-		});
+		insertNoteAction.execute(data);
 	};
 
 	const insertNoteAction = useAction(insertNote, {
@@ -91,8 +89,7 @@ const DialogNotes = ({ petId }: DialogNotesProps) => {
 						onSubmit={form.handleSubmit(formSubmit)}
 						className='flex flex-col gap-2'
 					>
-						<input type='hidden' name='id' {...form.register} />
-						<input type='hidden' name='petId' value={petId} />
+						<input type='hidden' {...form.register('petId')} />
 						<EditorForm
 							control={form.control}
 							name='content'
