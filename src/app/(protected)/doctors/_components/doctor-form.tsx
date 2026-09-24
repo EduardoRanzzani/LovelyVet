@@ -4,9 +4,11 @@ import { upsertDoctor } from '@/api/actions/doctors.actions';
 import { uploadImageAction } from '@/api/actions/upload-cloudinary';
 import { timesOfDay, ufs, weekDays } from '@/api/config/consts';
 import {
-	CreateDoctorWithUserSchema,
+	type CreateDoctorWithUserSchema,
 	createDoctorWithUserSchema,
-	DoctorsWithRelations,
+	type DoctorsWithRelations,
+	type WeekDayValue,
+	weekDaySchema,
 } from '@/api/schema/doctors.schema';
 import DropzoneForm from '@/components/form/image-dropzone-form';
 import InputForm from '@/components/form/input-form';
@@ -26,7 +28,7 @@ import LoadingDialog from '@/components/ui/loading';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { BanIcon, Loader2Icon, SaveIcon } from 'lucide-react';
 import { useAction } from 'next-safe-action/hooks';
-import { useForm } from 'react-hook-form';
+import { type Resolver, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
 interface DoctorFormClientProps {
@@ -34,9 +36,24 @@ interface DoctorFormClientProps {
 	onSuccess?: () => void;
 }
 
+const toWeekDayValue = (
+	value: number | null | undefined,
+	fallback: WeekDayValue,
+): WeekDayValue => {
+	if (value === null || value === undefined) {
+		return fallback;
+	}
+
+	const result = weekDaySchema.safeParse(String(value));
+
+	return result.success ? result.data : fallback;
+};
+
 const DoctorFormClient = ({ doctor, onSuccess }: DoctorFormClientProps) => {
 	const form = useForm<CreateDoctorWithUserSchema>({
-		resolver: zodResolver(createDoctorWithUserSchema),
+		resolver: zodResolver(
+			createDoctorWithUserSchema,
+		) as Resolver<CreateDoctorWithUserSchema>,
 		shouldUnregister: true,
 		defaultValues: {
 			name: doctor?.user?.name || '',
@@ -49,14 +66,8 @@ const DoctorFormClient = ({ doctor, onSuccess }: DoctorFormClientProps) => {
 			licenseState: doctor?.licenseState || 'MS',
 			specialty: doctor?.specialty || '',
 			// Garantindo que números virem strings para o Select
-			availableFromWeekDay:
-				doctor?.availableFromWeekDay !== undefined
-					? String(doctor.availableFromWeekDay)
-					: '1',
-			availableToWeekDay:
-				doctor?.availableToWeekDay !== undefined
-					? String(doctor.availableToWeekDay)
-					: '5',
+			availableFromWeekDay: toWeekDayValue(doctor?.availableFromWeekDay, '1'),
+			availableToWeekDay: toWeekDayValue(doctor?.availableToWeekDay, '5'),
 			// Horários costumam vir como "HH:mm:ss" do banco, mas o select pode esperar "HH:mm"
 			availableFromTime: doctor?.availableFromTime
 				? doctor.availableFromTime.substring(0, 5)

@@ -5,6 +5,7 @@ import {
 	appointmentItemsTable,
 	appointmentsTable,
 	calendarEventsTable,
+	doctorsTable,
 	petsTable,
 	shiftsTable,
 } from '@/db/schema';
@@ -17,6 +18,7 @@ import {
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
 import { assertCanAccessPet } from '@/lib/security/pet-access';
+import { assertIntervalWithinDoctorWorkingHours } from '@/lib/scheduling/doctor-working-hours';
 import {
 	addMinutes,
 	addMonths,
@@ -50,6 +52,7 @@ import {
 	createAppointmentSchema,
 	getDoctorAvailabilitySchema,
 } from '../schema/appointments.schema';
+import { buildAvailableStarts } from '@/lib/scheduling/availability';
 
 export const getAppointmentsPaginated = async (
 	page: number = 1,
@@ -239,6 +242,21 @@ export const getDoctorAvailability = actionClient
 
 		const doctorId = resolveRequestedDoctorId(context, requestedDoctorId);
 
+		const doctor = await db.query.doctorsTable.findFirst({
+			columns: {
+				id: true,
+				availableFromWeekDay: true,
+				availableToWeekDay: true,
+				availableFromTime: true,
+				availableToTime: true,
+			},
+			where: eq(doctorsTable.id, doctorId),
+		});
+
+		if (!doctor) {
+			throw new Error('Veterinário não encontrado.');
+		}
+
 		/*
 		 * Não confiamos na duração enviada pelo navegador.
 		 * Ela é sempre derivada dos serviços no banco.
@@ -361,31 +379,13 @@ export const getDoctorAvailability = actionClient
 		 * Mantemos os mesmos 5 minutos já usados
 		 * pelo DateTimePicker atual.
 		 */
-		const availableStarts: string[] = [];
-
-		for (
-			let cursor = new Date(dayStart);
-			cursor < dayEnd;
-			cursor = addMinutes(cursor, 5)
-		) {
-			const candidateEnd = addMinutes(cursor, durationMinutes);
-
-			/*
-			 * Não oferecemos um horário cujo atendimento
-			 * terminaria no dia seguinte.
-			 */
-			if (candidateEnd > dayEnd) {
-				break;
-			}
-
-			const hasConflict = busyIntervals.some(
-				(interval) => interval.start < candidateEnd && interval.end > cursor,
-			);
-
-			if (!hasConflict) {
-				availableStarts.push(cursor.toISOString());
-			}
-		}
+		const availableStarts = buildAvailableStarts({
+			dayStart,
+			dayEnd,
+			durationMinutes,
+			doctor,
+			busyIntervals,
+		});
 
 		return {
 			doctorId,
@@ -498,6 +498,29 @@ export const upsertAppointment = actionClient
 				}
 
 				const endsAt = addMinutes(data.scheduledAt, totalDurationMinutes);
+
+				const doctor = await tx.query.doctorsTable.findFirst({
+					columns: {
+						id: true,
+						availableFromWeekDay: true,
+						availableToWeekDay: true,
+						availableFromTime: true,
+						availableToTime: true,
+					},
+					where: eq(doctorsTable.id, doctorId),
+				});
+
+				if (!doctor) {
+					throw new Error('Veterinário não encontrado.');
+				}
+
+				assertIntervalWithinDoctorWorkingHours(
+					{
+						start: data.scheduledAt,
+						end: endsAt,
+					},
+					doctor,
+				);
 
 				/*
 				 * Serializa alterações da agenda
