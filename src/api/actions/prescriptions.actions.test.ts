@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { prescriptionsTable } from '@/db/schema';
 
 const mocks = vi.hoisted(() => ({
 	prescriptionItemsFindMany: vi.fn(),
@@ -74,10 +73,6 @@ vi.mock('@/lib/security/pet-access', () => ({
 	assertCanAccessPet: mocks.assertCanAccessPet,
 }));
 
-vi.mock('@/lib/security/appointment-access', () => ({
-	requireAccessibleAppointment: mocks.requireAccessibleAppointment,
-}));
-
 vi.mock('@/lib/security/customer-privacy', () => ({
 	canAccessTutorScopedData: mocks.canAccessTutorScopedData,
 	sanitizeDoctorForCustomer: mocks.sanitizeDoctorForCustomer,
@@ -111,7 +106,6 @@ vi.mock('next/cache', () => ({
 }));
 
 import {
-	createPrescription,
 	getPrescriptionById,
 	getPrescriptionDocumentById,
 	getPrescriptionsByPet,
@@ -126,9 +120,6 @@ const TUTOR_ID = '33333333-3333-4333-8333-333333333333';
 const OTHER_TUTOR_ID = '44444444-4444-4444-8444-444444444444';
 const DOCTOR_ID = '55555555-5555-4555-8555-555555555555';
 const PRESCRIPTION_ID = '66666666-6666-4666-8666-666666666666';
-const ITEM_ID_1 = '77777777-7777-4777-8777-777777777777';
-const ITEM_ID_2 = '88888888-8888-4888-8888-888888888888';
-const APPOINTMENT_ID = '99999999-9999-4999-8999-999999999999';
 
 const doctorContext = {
 	clerkUserId: 'clerk-doctor',
@@ -144,13 +135,6 @@ const customerContext = {
 	role: 'customer' as const,
 	customerId: TUTOR_ID,
 	doctorId: null,
-};
-
-const legacyInput = {
-	petId: PET_ID,
-	doctorId: DOCTOR_ID,
-	prescriptionItemsIds: [ITEM_ID_1, ITEM_ID_2],
-	appointmentId: APPOINTMENT_ID,
 };
 
 const documentInput = {
@@ -252,11 +236,6 @@ describe('prescriptions actions', () => {
 		mocks.requireStaff.mockReturnValue(undefined);
 		mocks.resolveClinicalDoctorId.mockReturnValue(DOCTOR_ID);
 		mocks.assertCanAccessPet.mockResolvedValue(undefined);
-		mocks.requireAccessibleAppointment.mockResolvedValue({
-			id: APPOINTMENT_ID,
-			petId: PET_ID,
-			status: 'pending',
-		});
 		mocks.canAccessTutorScopedData.mockReturnValue(true);
 		mocks.sanitizeDoctorForCustomer.mockImplementation((doctor) => doctor);
 		mocks.sanitizeTutorForCustomer.mockImplementation((tutor) => tutor);
@@ -290,146 +269,6 @@ describe('prescriptions actions', () => {
 		});
 		mocks.dbUpdate.mockReturnValue({
 			set: mocks.updateSet,
-		});
-	});
-
-	describe('createPrescription', () => {
-		it('creates legacy prescription after validating pet and appointment', async () => {
-			mocks.prescriptionItemsFindMany.mockResolvedValue([
-				{
-					id: ITEM_ID_1,
-					name: 'Dipirona',
-					pharmacy: 'Veterinária',
-					quantity: '1 caixa',
-					orientations: '<p>8/8h</p>',
-				},
-				{
-					id: ITEM_ID_2,
-					name: 'Prednisona',
-					pharmacy: 'Humana',
-					quantity: '10 comprimidos',
-					orientations: '<p>12/12h</p>',
-				},
-			]);
-
-			const result = await createPrescription(legacyInput);
-
-			expect(mocks.assertCanAccessPet).toHaveBeenCalledWith(
-				doctorContext,
-				PET_ID,
-			);
-			expect(mocks.requireAccessibleAppointment).toHaveBeenCalledWith(
-				doctorContext,
-				APPOINTMENT_ID,
-			);
-			expect(mocks.dbInsert).toHaveBeenCalledWith(prescriptionsTable);
-			expect(mocks.insertValues).toHaveBeenCalledWith(
-				expect.objectContaining({
-					petId: PET_ID,
-					doctorId: DOCTOR_ID,
-					appointmentId: APPOINTMENT_ID,
-				}),
-			);
-			expect(result).toEqual({
-				success: true,
-				message: 'Receita criada com sucesso!',
-			});
-			expect(mocks.revalidatePath).toHaveBeenCalledWith('/pets');
-		});
-
-		it('rejects inaccessible pet', async () => {
-			mocks.assertCanAccessPet.mockRejectedValue(
-				new Error('Pet não encontrado'),
-			);
-
-			await expect(createPrescription(legacyInput)).rejects.toThrow(
-				'Pet não encontrado',
-			);
-
-			expect(mocks.prescriptionItemsFindMany).not.toHaveBeenCalled();
-			expect(mocks.dbInsert).not.toHaveBeenCalled();
-		});
-
-		it('rejects inaccessible appointment', async () => {
-			mocks.requireAccessibleAppointment.mockRejectedValue(
-				new Error('Agendamento não encontrado'),
-			);
-
-			await expect(createPrescription(legacyInput)).rejects.toThrow(
-				'Agendamento não encontrado',
-			);
-
-			expect(mocks.prescriptionItemsFindMany).not.toHaveBeenCalled();
-			expect(mocks.dbInsert).not.toHaveBeenCalled();
-		});
-
-		it('rejects appointment from another pet', async () => {
-			mocks.requireAccessibleAppointment.mockResolvedValue({
-				id: APPOINTMENT_ID,
-				petId: OTHER_PET_ID,
-				status: 'pending',
-			});
-
-			await expect(createPrescription(legacyInput)).rejects.toThrow(
-				'Agendamento não pertence ao paciente',
-			);
-
-			expect(mocks.prescriptionItemsFindMany).not.toHaveBeenCalled();
-			expect(mocks.dbInsert).not.toHaveBeenCalled();
-		});
-
-		it('rejects when no prescription items are found', async () => {
-			mocks.prescriptionItemsFindMany.mockResolvedValue([]);
-
-			await expect(createPrescription(legacyInput)).rejects.toThrow(
-				'Nenhum item de receita encontrado',
-			);
-
-			expect(mocks.dbInsert).not.toHaveBeenCalled();
-		});
-
-		it('rejects when only part of requested items exists', async () => {
-			mocks.prescriptionItemsFindMany.mockResolvedValue([
-				{
-					id: ITEM_ID_1,
-					name: 'Dipirona',
-					pharmacy: 'Veterinária',
-					quantity: '1 caixa',
-					orientations: '<p>8/8h</p>',
-				},
-			]);
-
-			await expect(createPrescription(legacyInput)).rejects.toThrow(
-				'Um ou mais itens de receita são inválidos',
-			);
-
-			expect(mocks.dbInsert).not.toHaveBeenCalled();
-		});
-
-		it('sanitizes custom legacy content', async () => {
-			mocks.prescriptionItemsFindMany.mockResolvedValue([
-				{
-					id: ITEM_ID_1,
-				},
-				{
-					id: ITEM_ID_2,
-				},
-			]);
-			mocks.sanitizeRichTextHtml.mockReturnValue('<p>Conteúdo seguro</p>');
-
-			await createPrescription({
-				...legacyInput,
-				customContent: '<p>Conteúdo seguro</p><script>alert(1)</script>',
-			});
-
-			expect(mocks.sanitizeRichTextHtml).toHaveBeenCalledWith(
-				'<p>Conteúdo seguro</p><script>alert(1)</script>',
-			);
-			expect(mocks.insertValues).toHaveBeenCalledWith(
-				expect.objectContaining({
-					content: '<p>Conteúdo seguro</p>',
-				}),
-			);
 		});
 	});
 

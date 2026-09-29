@@ -1,7 +1,12 @@
 'use server';
+
 import { db } from '@/db';
 import { prescriptionItemsTable } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
+import { normalizePagination } from '@/lib/pagination';
+import { requireAuthContext } from '@/lib/security/auth-context';
+import { requireStaff } from '@/lib/security/authorization';
+import { sanitizeRichTextHtml } from '@/lib/security/html';
 import { asc, count, eq, ilike, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
@@ -10,14 +15,11 @@ import {
 	createPrescriptionItemSchema,
 	PrescriptionItemsWithRelations,
 } from '../schema/prescriptions-items.schema';
-import { requireAuthContext } from '@/lib/security/auth-context';
-import { requireStaff } from '@/lib/security/authorization';
-import { sanitizeRichTextHtml } from '@/lib/security/html';
-import { normalizePagination } from '@/lib/pagination';
 
 export const getPrescriptionsItems = async () => {
 	const context = await requireAuthContext();
 	requireStaff(context);
+
 	return await db.query.prescriptionItemsTable.findMany();
 };
 
@@ -30,10 +32,12 @@ export const getPrescriptionsItemsPaginated = async (
 	requireStaff(context);
 
 	const pagination = normalizePagination(page, limit);
-	const filterCondition = search
+	const normalizedSearch = search?.trim();
+
+	const filterCondition = normalizedSearch
 		? or(
-				ilike(prescriptionItemsTable.name, `%${search}%`),
-				ilike(prescriptionItemsTable.orientations, `%${search}%`),
+				ilike(prescriptionItemsTable.name, `%${normalizedSearch}%`),
+				ilike(prescriptionItemsTable.orientations, `%${normalizedSearch}%`),
 			)
 		: undefined;
 
@@ -53,7 +57,7 @@ export const getPrescriptionsItemsPaginated = async (
 	const pageCount = Math.ceil(totalCount / pagination.limit);
 
 	return {
-		data: data as PrescriptionItemsWithRelations[],
+		data,
 		metadata: {
 			totalCount,
 			pageCount,
@@ -94,7 +98,7 @@ export const upsertPrescriptionItems = actionClient
 				},
 			});
 
-		revalidatePath('/prescriptions');
+		revalidatePath('/prescriptions-items');
 	});
 
 export const deletePrescriptionItem = actionClient
@@ -107,11 +111,13 @@ export const deletePrescriptionItem = actionClient
 			where: eq(prescriptionItemsTable.id, parsedInput.id),
 		});
 
-		if (!item) throw new Error('Item de receita não encontrado');
+		if (!item) {
+			throw new Error('Item de receita não encontrado');
+		}
 
 		await db
 			.delete(prescriptionItemsTable)
 			.where(eq(prescriptionItemsTable.id, parsedInput.id));
 
-		revalidatePath('/prescriptions');
+		revalidatePath('/prescriptions-items');
 	});

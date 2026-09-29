@@ -8,39 +8,34 @@ import {
 	petsTable,
 	petTutorsTable,
 	petWeightsTable,
-	prescriptionItemsTable,
 	prescriptionsTable,
 	speciesTable,
 	usersTable,
 } from '@/db/schema';
 import { formatWeight } from '@/helpers/weight';
 import { actionClient } from '@/lib/next-safe-action';
+import { normalizePagination } from '@/lib/pagination';
+import { assertPrescriptionIsUnsigned } from '@/lib/prescriptions/prescription-signature';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
 import { resolveClinicalDoctorId } from '@/lib/security/clinical-access';
-import { escapeHtml, sanitizeRichTextHtml } from '@/lib/security/html';
-import { assertCanAccessPet } from '@/lib/security/pet-access';
-import { normalizePagination } from '@/lib/pagination';
 import {
 	canAccessTutorScopedData,
 	sanitizeDoctorForCustomer,
 	sanitizeTutorForCustomer,
 	sanitizeUserForCustomer,
 } from '@/lib/security/customer-privacy';
-import { and, count, desc, eq, ilike, inArray } from 'drizzle-orm';
+import { escapeHtml, sanitizeRichTextHtml } from '@/lib/security/html';
+import { assertCanAccessPet } from '@/lib/security/pet-access';
+import { and, count, desc, eq, ilike } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { MAX_PAGE_SIZE, PaginatedData } from '../config/consts';
-import { assertPrescriptionIsUnsigned } from '@/lib/prescriptions/prescription-signature';
 import {
 	type PrescriptionDocumentGroup,
 	savePrescriptionDocumentSchema,
 	updatePrescriptionDocumentSchema,
 } from '../schema/prescription-document.schema';
-import {
-	createPrescriptionSchema,
-	PrescriptionsWithRelations,
-} from '../schema/prescriptions.schema';
-import { requireAccessibleAppointment } from '@/lib/security/appointment-access';
+import { PrescriptionsWithRelations } from '../schema/prescriptions.schema';
 
 /**
  * Renderiza os medicamentos de um único bloco da receita.
@@ -170,10 +165,11 @@ export const getPrescriptionsPaginated = async (
 		with: {
 			pet: true,
 			doctor: true,
+			signature: { columns: { id: true, signedAt: true, pdfSha256: true } },
 		},
 		limit: pagination.limit,
 		offset: pagination.offset,
-		orderBy: (prescriptions, { asc }) => asc(prescriptions.createdAt),
+		orderBy: (prescriptions, { desc }) => desc(prescriptions.createdAt),
 	});
 
 	const totalCountResult = await db
@@ -198,72 +194,6 @@ export const getPrescriptionsPaginated = async (
 		},
 	};
 };
-
-/**
- * Fluxo legado de criação.
- *
- * Mantemos temporariamente porque componentes antigos ainda podem
- * depender dele. O novo builder usa savePrescriptionDocument().
- */
-export const createPrescription = actionClient
-	.schema(createPrescriptionSchema)
-	.action(async ({ parsedInput }) => {
-		const context = await requireAuthContext();
-		const doctorId = resolveClinicalDoctorId(context, parsedInput.doctorId);
-
-		await assertCanAccessPet(context, parsedInput.petId);
-
-		if (parsedInput.appointmentId) {
-			const appointment = await requireAccessibleAppointment(
-				context,
-				parsedInput.appointmentId,
-			);
-
-			if (appointment.petId !== parsedInput.petId) {
-				throw new Error('Agendamento não pertence ao paciente');
-			}
-		}
-
-		const prescriptionItemsIds = [...new Set(parsedInput.prescriptionItemsIds)];
-
-		const prescriptionItems = await db.query.prescriptionItemsTable.findMany({
-			where: inArray(prescriptionItemsTable.id, prescriptionItemsIds),
-		});
-
-		if (prescriptionItems.length === 0) {
-			throw new Error('Nenhum item de receita encontrado');
-		}
-
-		if (prescriptionItems.length !== prescriptionItemsIds.length) {
-			throw new Error('Um ou mais itens de receita são inválidos');
-		}
-
-		const content = parsedInput.customContent
-			? sanitizeRichTextHtml(parsedInput.customContent)
-			: `
-				<div
-					class="prescription-content"
-					style="display: flex; flex-direction: column; gap: 4px;"
-				>
-					${buildPrescriptionItemsContent(prescriptionItems)}
-				</div>
-			`;
-
-		await db.insert(prescriptionsTable).values({
-			petId: parsedInput.petId,
-			doctorId,
-			appointmentId: parsedInput.appointmentId ?? null,
-			content,
-			issuedAt: new Date(),
-		});
-
-		revalidatePath('/pets');
-
-		return {
-			success: true,
-			message: 'Receita criada com sucesso!',
-		};
-	});
 
 /**
  * Novo fluxo de criação pelo builder do paciente.

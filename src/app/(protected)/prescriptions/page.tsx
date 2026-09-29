@@ -1,4 +1,3 @@
-import { getDoctors } from '@/api/actions/doctors.actions';
 import { getPrescriptionsPaginated } from '@/api/actions/prescriptions.actions';
 import { MAX_PAGE_SIZE } from '@/api/config/consts';
 import { ListSkeleton } from '@/components/list/list-skeleton';
@@ -14,40 +13,38 @@ import LoadingDialog from '@/components/ui/loading';
 import { requirePageAccess } from '@/lib/security/authorization';
 import { Suspense } from 'react';
 import PrescriptionsListClient from './_component/prescriptions-list';
-import { getPets } from '@/api/actions/pets.actions';
-import { getPrescriptionsItems } from '@/api/actions/prescriptions-items.actions';
 
-interface PrescriptionsTemplatePageProps {
-	searchParams: Promise<{ page?: string; filter?: string; keyword?: string }>;
+interface PrescriptionsPageProps {
+	searchParams: Promise<{
+		page?: string;
+		filter?: string;
+	}>;
 }
 
-const PrescriptionsTemplatePage = async ({
+export default async function PrescriptionsPage({
 	searchParams,
-}: PrescriptionsTemplatePageProps) => {
+}: PrescriptionsPageProps) {
 	await requirePageAccess('/prescriptions');
 
 	const params = await searchParams;
 	const page = Number(params.page) || 1;
 	const filter = params.filter || '';
 
-	const dataPromise = getPrescriptionsPaginated(page, MAX_PAGE_SIZE, filter);
-
-	const prescriptionItems = await getPrescriptionsItems();
-	const doctors = await getDoctors();
-	const pets = await getPets();
+	const prescriptions = getPrescriptionsPaginated(page, MAX_PAGE_SIZE, filter);
 
 	return (
 		<PageContainer>
 			<PageHeader>
 				<PageHeaderContent>
-					<PageTitle>Modelos de Receitas</PageTitle>
+					<PageTitle>Receitas</PageTitle>
 				</PageHeaderContent>
 			</PageHeader>
 
 			<PageContent>
 				<PageDescription>
-					Listagem e cadastro de modelos de receita para serem utilizados
+					Consulte as receitas emitidas e acesse o documento do paciente.
 				</PageDescription>
+
 				<Suspense
 					fallback={
 						<>
@@ -56,16 +53,9 @@ const PrescriptionsTemplatePage = async ({
 						</>
 					}
 				>
-					<PrescriptionsListClient
-						prescriptionItems={prescriptionItems}
-						prescriptions={dataPromise}
-						doctors={doctors}
-						pets={pets}
-					/>
+					<PrescriptionsListClient prescriptions={prescriptions} />
 				</Suspense>
 			</PageContent>
 		</PageContainer>
 	);
-};
-
-export default PrescriptionsTemplatePage;
+}

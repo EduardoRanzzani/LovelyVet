@@ -1,5 +1,7 @@
-import { relations, sql } from 'drizzle-orm';
+import type { ClinicalDocumentSnapshot } from '@/api/schema/clinical-documents.schema';
+import type { PrescriptionDocumentData } from '@/api/schema/prescription-document.schema';
 import { USER_ROLES } from '@/lib/security/roles';
+import { relations, sql } from 'drizzle-orm';
 import {
 	boolean,
 	check,
@@ -17,7 +19,6 @@ import {
 	uniqueIndex,
 	uuid,
 } from 'drizzle-orm/pg-core';
-import type { PrescriptionDocumentData } from '@/api/schema/prescription-document.schema';
 
 const bytea = customType<{
 	data: Buffer;
@@ -62,7 +63,6 @@ export const vaccineNextDoseTypeEnum = pgEnum('vaccine_next_dose_type', [
 	'annual',
 	'none',
 ]);
-import type { ClinicalDocumentSnapshot } from '@/api/schema/clinical-documents.schema';
 
 // --- TABLES ---
 
@@ -450,20 +450,6 @@ export const prescriptionItemsTable = pgTable('prescription_items', {
 		.notNull(),
 });
 
-// Vínculo entre uma receita e seus itens (Many-to-Many)
-export const prescriptionMedicineItemsTable = pgTable(
-	'prescription_medicine_items',
-	{
-		id: uuid('id').primaryKey().defaultRandom(),
-		prescriptionId: uuid('prescription_id')
-			.notNull()
-			.references(() => prescriptionsTable.id, { onDelete: 'cascade' }),
-		prescriptionItemId: uuid('prescription_item_id')
-			.notNull()
-			.references(() => prescriptionItemsTable.id, { onDelete: 'cascade' }),
-	},
-);
-
 // Plantões
 export const shiftsTable = pgTable('shifts', {
 	id: uuid('id').primaryKey().defaultRandom(),
@@ -760,7 +746,7 @@ export const appointmentItemsRelations = relations(
 
 export const prescriptionsRelations = relations(
 	prescriptionsTable,
-	({ one, many }) => ({
+	({ one }) => ({
 		pet: one(petsTable, {
 			fields: [prescriptionsTable.petId],
 			references: [petsTable.id],
@@ -773,7 +759,6 @@ export const prescriptionsRelations = relations(
 			fields: [prescriptionsTable.appointmentId],
 			references: [appointmentsTable.id],
 		}),
-		medicineItems: many(prescriptionMedicineItemsTable),
 		signature: one(prescriptionSignaturesTable, {
 			fields: [prescriptionsTable.id],
 			references: [prescriptionSignaturesTable.prescriptionId],
@@ -791,27 +776,6 @@ export const prescriptionSignaturesRelations = relations(
 		signedByUser: one(usersTable, {
 			fields: [prescriptionSignaturesTable.signedByUserId],
 			references: [usersTable.id],
-		}),
-	}),
-);
-
-export const prescriptionItemsRelations = relations(
-	prescriptionItemsTable,
-	({ many }) => ({
-		prescriptionMedicineItems: many(prescriptionMedicineItemsTable),
-	}),
-);
-
-export const prescriptionMedicineItemsRelations = relations(
-	prescriptionMedicineItemsTable,
-	({ one }) => ({
-		prescription: one(prescriptionsTable, {
-			fields: [prescriptionMedicineItemsTable.prescriptionId],
-			references: [prescriptionsTable.id],
-		}),
-		prescriptionItem: one(prescriptionItemsTable, {
-			fields: [prescriptionMedicineItemsTable.prescriptionItemId],
-			references: [prescriptionItemsTable.id],
 		}),
 	}),
 );

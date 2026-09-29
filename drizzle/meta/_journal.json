@@ -288,6 +288,13 @@
       "when": 1790086016740,
       "tag": "0040_lush_the_hand",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1790664563145,
+      "tag": "0041_remove-legacy-prescription-medicine-items",
+      "breakpoints": true
     }
   ]
 }
