@@ -40,6 +40,7 @@ import {
 	createPrescriptionSchema,
 	PrescriptionsWithRelations,
 } from '../schema/prescriptions.schema';
+import { requireAccessibleAppointment } from '@/lib/security/appointment-access';
 
 /**
  * Renderiza os medicamentos de um único bloco da receita.
@@ -208,18 +209,33 @@ export const createPrescription = actionClient
 	.schema(createPrescriptionSchema)
 	.action(async ({ parsedInput }) => {
 		const context = await requireAuthContext();
-
 		const doctorId = resolveClinicalDoctorId(context, parsedInput.doctorId);
 
+		await assertCanAccessPet(context, parsedInput.petId);
+
+		if (parsedInput.appointmentId) {
+			const appointment = await requireAccessibleAppointment(
+				context,
+				parsedInput.appointmentId,
+			);
+
+			if (appointment.petId !== parsedInput.petId) {
+				throw new Error('Agendamento não pertence ao paciente');
+			}
+		}
+
+		const prescriptionItemsIds = [...new Set(parsedInput.prescriptionItemsIds)];
+
 		const prescriptionItems = await db.query.prescriptionItemsTable.findMany({
-			where: inArray(
-				prescriptionItemsTable.id,
-				parsedInput.prescriptionItemsIds,
-			),
+			where: inArray(prescriptionItemsTable.id, prescriptionItemsIds),
 		});
 
 		if (prescriptionItems.length === 0) {
 			throw new Error('Nenhum item de receita encontrado');
+		}
+
+		if (prescriptionItems.length !== prescriptionItemsIds.length) {
+			throw new Error('Um ou mais itens de receita são inválidos');
 		}
 
 		const content = parsedInput.customContent
