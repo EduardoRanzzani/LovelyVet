@@ -13,6 +13,8 @@ import {
 import { DoctorOption } from '@/api/schema/doctors.schema';
 import { formatPetTutorNames, PetOption } from '@/api/schema/pets.schema';
 import { ServicesWithRelations } from '@/api/schema/services.schema';
+import { normalizeAppointmentStart } from '@/lib/scheduling/appointment-time';
+import { getNextAppointmentSlot } from '@/lib/scheduling/appointment-time';
 import DateTimePickerForm from '@/components/form/datetimepicker-form';
 import InputForm from '@/components/form/input-form';
 import MoneyInputForm from '@/components/form/money-input-form';
@@ -77,7 +79,7 @@ const AppointmentFormClient = ({
 			doctorId: appointment?.doctorId || REGINA_DOCTOR_ID,
 			scheduledAt: appointment?.scheduledAt
 				? new Date(appointment.scheduledAt)
-				: new Date(),
+				: getNextAppointmentSlot(),
 			status: appointment?.status || 'pending',
 			totalPriceInCents:
 				appointment?.totalPriceInCents !== undefined
@@ -113,20 +115,50 @@ const AppointmentFormClient = ({
 	});
 
 	const formSubmit = (data: CreateAppointmentSchema) => {
-		if (currentAvailableTimes) {
-			const selectedTime = format(data.scheduledAt, 'HH:mm');
+		// Permite atualizar observações e outros campos
+		// sem precisar selecionar novamente o horário.
+		const unchangedSchedule =
+			appointment &&
+			data.doctorId === appointment.doctorId &&
+			getServicesKey(data.services) ===
+				getServicesKey(appointment.items.map((item) => item.serviceId)) &&
+			normalizeAppointmentStart(data.scheduledAt).getTime() ===
+				normalizeAppointmentStart(new Date(appointment.scheduledAt)).getTime();
 
-			if (!currentAvailableTimes.includes(selectedTime)) {
-				form.setError('scheduledAt', {
-					type: 'manual',
-					message: 'O horário selecionado não está mais disponível.',
-				});
-				return;
-			}
+		// Não permite salvar enquanto a disponibilidade
+		// não tiver sido consultada, exceto quando a agenda
+		// não foi alterada em um agendamento existente.
+		if (currentAvailableTimes === undefined && !unchangedSchedule) {
+			form.setError('scheduledAt', {
+				type: 'manual',
+				message: 'Aguarde a verificação da disponibilidade antes de salvar.',
+			});
+
+			return;
+		}
+
+		// Normaliza a data antes de validar e enviar.
+		const scheduledAt = normalizeAppointmentStart(data.scheduledAt);
+
+		const selectedTime = format(scheduledAt, 'HH:mm');
+
+		// Confirma que o horário selecionado está
+		// entre os horários retornados pelo backend.
+		if (
+			currentAvailableTimes &&
+			!currentAvailableTimes.includes(selectedTime)
+		) {
+			form.setError('scheduledAt', {
+				type: 'manual',
+				message: 'O horário selecionado não está mais disponível.',
+			});
+
+			return;
 		}
 
 		upsertAppointmentAction.execute({
 			...data,
+			scheduledAt,
 			id: appointment?.id,
 			status: appointment?.status ?? 'pending',
 		});
@@ -352,6 +384,7 @@ const AppointmentFormClient = ({
 								error={form.formState.errors.scheduledAt?.message}
 								availableTimes={currentAvailableTimes}
 								availabilityLoading={availabilityAction.isPending}
+								availabilityRequired
 								onOpenWithDate={(date) => {
 									if (!date) return;
 

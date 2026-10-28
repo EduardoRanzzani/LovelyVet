@@ -1,5 +1,6 @@
 'use client';
 
+import { normalizeAppointmentStart } from '@/lib/scheduling/appointment-time';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Label } from '@/components/ui/label';
@@ -33,6 +34,7 @@ interface DateTimePickerFormProps<T extends FieldValues> {
 	className?: string;
 	availableTimes?: string[];
 	availabilityLoading?: boolean;
+	availabilityRequired?: boolean;
 	onDateChange?: (date: Date) => void;
 	onOpenWithDate?: (date: Date | null) => void;
 	onValueChange?: (date: Date) => void;
@@ -49,6 +51,7 @@ const DateTimePickerForm = <T extends FieldValues>({
 	className,
 	availableTimes,
 	availabilityLoading = false,
+	availabilityRequired = false,
 	onDateChange,
 	onOpenWithDate,
 	onValueChange,
@@ -79,7 +82,7 @@ const DateTimePickerForm = <T extends FieldValues>({
 
 					const isTimeAvailable = (hour: string, minute: string) => {
 						if (availableTimes === undefined) {
-							return true;
+							return !availabilityRequired;
 						}
 
 						return availableTimes.includes(`${hour}:${minute}`);
@@ -87,7 +90,7 @@ const DateTimePickerForm = <T extends FieldValues>({
 
 					const hasAvailableTimeInHour = (hour: string) => {
 						if (availableTimes === undefined) {
-							return true;
+							return !availabilityRequired;
 						}
 
 						return minutes.some((minute) => isTimeAvailable(hour, minute));
@@ -107,7 +110,7 @@ const DateTimePickerForm = <T extends FieldValues>({
 					) => {
 						const baseDate = selectedDate || new Date();
 
-						const newDate = new Date(baseDate);
+						const newDate = normalizeAppointmentStart(baseDate);
 
 						if (type === 'hour') {
 							newDate.setHours(parseInt(timeValue, 10));
@@ -191,7 +194,7 @@ const DateTimePickerForm = <T extends FieldValues>({
 									onSelect={(date: Date | undefined) => {
 										if (!date) return;
 
-										const newDate = new Date(date);
+										const newDate = normalizeAppointmentStart(date);
 
 										if (selectedDate) {
 											newDate.setHours(selectedDate.getHours());
@@ -217,7 +220,11 @@ const DateTimePickerForm = <T extends FieldValues>({
 											value={
 												selectedDate ? format(selectedDate, 'HH') : undefined
 											}
-											disabled={disabled || availabilityLoading}
+											disabled={
+												disabled ||
+												availabilityLoading ||
+												(availabilityRequired && availableTimes === undefined)
+											}
 											onValueChange={(value) => handleTimeChange('hour', value)}
 										>
 											<SelectTrigger className='h-8 flex-1 text-xs'>
@@ -243,7 +250,11 @@ const DateTimePickerForm = <T extends FieldValues>({
 											value={
 												selectedDate ? format(selectedDate, 'mm') : undefined
 											}
-											disabled={disabled || availabilityLoading}
+											disabled={
+												disabled ||
+												availabilityLoading ||
+												(availabilityRequired && availableTimes === undefined)
+											}
 											onValueChange={(value) =>
 												handleTimeChange('minute', value)
 											}
@@ -273,6 +284,15 @@ const DateTimePickerForm = <T extends FieldValues>({
 										</Select>
 									</div>
 								</div>
+
+								{availabilityRequired &&
+									!availabilityLoading &&
+									availableTimes === undefined && (
+										<p className='border-t px-3 py-2 text-xs text-muted-foreground'>
+											Selecione o veterinário e os serviços para consultar os
+											horários.
+										</p>
+									)}
 
 								{availabilityLoading && (
 									<div className='flex items-center gap-2 border-t px-3 py-2 text-xs text-muted-foreground'>
@@ -304,7 +324,11 @@ const DateTimePickerForm = <T extends FieldValues>({
 										type='button'
 										size='sm'
 										className='h-8 w-full text-xs'
-										disabled={availabilityLoading || !selectedTimeIsAvailable}
+										disabled={
+											availabilityLoading ||
+											!selectedTimeIsAvailable ||
+											(availabilityRequired && availableTimes === undefined)
+										}
 										onClick={() => setIsOpen(false)}
 									>
 										Confirmar

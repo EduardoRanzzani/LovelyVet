@@ -13,6 +13,7 @@ import { toCents } from '@/lib/money/currency';
 import { actionClient } from '@/lib/next-safe-action';
 import { buildAvailableStarts } from '@/lib/scheduling/availability';
 import { assertIntervalWithinDoctorWorkingHours } from '@/lib/scheduling/doctor-working-hours';
+import { normalizeAppointmentStart } from '@/lib/scheduling/appointment-time';
 import {
 	buildAppointmentAccessCondition,
 	requireAccessibleAppointment,
@@ -407,6 +408,9 @@ export const upsertAppointment = actionClient
 
 		const doctorId = resolveRequestedDoctorId(context, data.doctorId);
 
+		// Remove segundos e milissegundos antes de validar conflitos.
+		const scheduledAt = normalizeAppointmentStart(data.scheduledAt);
+
 		/*
 		 * BOLA:
 		 * customer só pode criar/alterar
@@ -498,7 +502,7 @@ export const upsertAppointment = actionClient
 					throw new Error('A duração total do atendimento é inválida');
 				}
 
-				const endsAt = addMinutes(data.scheduledAt, totalDurationMinutes);
+				const endsAt = addMinutes(scheduledAt, totalDurationMinutes);
 
 				const doctor = await tx.query.doctorsTable.findFirst({
 					columns: {
@@ -517,7 +521,7 @@ export const upsertAppointment = actionClient
 
 				assertIntervalWithinDoctorWorkingHours(
 					{
-						start: data.scheduledAt,
+						start: scheduledAt,
 						end: endsAt,
 					},
 					doctor,
@@ -557,7 +561,7 @@ export const upsertAppointment = actionClient
 				const appointmentData = {
 					petId: data.petId,
 					doctorId,
-					scheduledAt: data.scheduledAt,
+					scheduledAt,
 					endsAt,
 					status,
 					notes: data.notes,
@@ -592,7 +596,7 @@ export const upsertAppointment = actionClient
 					where: and(
 						eq(appointmentsTable.doctorId, doctorId),
 						lt(appointmentsTable.scheduledAt, endsAt),
-						gt(appointmentsTable.endsAt, data.scheduledAt),
+						gt(appointmentsTable.endsAt, scheduledAt),
 						notInArray(appointmentsTable.status, ['cancelled', 'no_show']),
 						id ? ne(appointmentsTable.id, id) : undefined,
 					),
@@ -618,7 +622,7 @@ export const upsertAppointment = actionClient
 					where: and(
 						eq(shiftsTable.doctorId, doctorId),
 						lt(shiftsTable.startTime, endsAt),
-						gt(shiftsTable.endTime, data.scheduledAt),
+						gt(shiftsTable.endTime, scheduledAt),
 					),
 				});
 
@@ -643,7 +647,7 @@ export const upsertAppointment = actionClient
 						where: and(
 							eq(calendarEventsTable.doctorId, doctorId),
 							lt(calendarEventsTable.startTime, endsAt),
-							gt(calendarEventsTable.endTime, data.scheduledAt),
+							gt(calendarEventsTable.endTime, scheduledAt),
 						),
 					});
 
