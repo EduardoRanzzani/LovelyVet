@@ -69,9 +69,13 @@ const DashboardCards = ({
 	const router = useRouter();
 
 	const monthParam = searchParams.get('month');
-	const currentMonth = monthParam
-		? setMonth(new Date(), monthNames.indexOf(monthParam.toLowerCase()))
-		: new Date();
+
+	const monthIndex = monthParam
+		? monthNames.indexOf(monthParam.toLowerCase())
+		: -1;
+
+	const currentMonth =
+		monthIndex >= 0 ? setMonth(new Date(), monthIndex) : new Date();
 
 	const nonPaidShifts = shifts.filter((shift) => !shift.isPaid);
 	const nonPaidAppointments = appointments.filter((appointment) => {
@@ -203,19 +207,20 @@ const DashboardCards = ({
 	};
 
 	return (
-		<div className='flex flex-col gap-4 border rounded-lg p-4'>
-			<div className='flex items-center justify-between p-4 border-b bg-muted/10'>
-				<h2 className='text-lg font-bold capitalize'>
+		<div className='flex flex-col gap-4 rounded-lg border p-3 sm:p-4'>
+			<div className='flex flex-col gap-3 border-b bg-muted/10 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4'>
+				<h2 className='text-base font-bold capitalize sm:text-lg'>
 					{format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
 				</h2>
-				<div className='flex gap-2'>
+				<div className='flex items-center justify-end gap-2'>
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<Button
 								variant='outline'
 								size='icon'
-								className='h-8 w-8'
+								className='h-11 w-11'
 								onClick={() => setShowValues((prev) => !prev)}
+								aria-label={showValues ? 'Ocultar valores' : 'Mostrar valores'}
 							>
 								{showValues ? (
 									<EyeIcon className='w-4 h-4' />
@@ -232,8 +237,9 @@ const DashboardCards = ({
 					<Button
 						variant='outline'
 						size='icon'
-						className='h-8 w-8'
+						className='h-11 w-11'
 						onClick={() => onMonthChange(subMonths(currentMonth, 1))}
+						aria-label='Mês anterior'
 					>
 						<ChevronLeft className='w-4 h-4' />
 					</Button>
@@ -241,15 +247,16 @@ const DashboardCards = ({
 					<Button
 						variant='outline'
 						size='icon'
-						className='h-8 w-8'
+						className='h-11 w-11'
 						onClick={() => onMonthChange(addMonths(currentMonth, 1))}
+						aria-label='Próximo mês'
 					>
 						<ChevronRight className='w-4 h-4' />
 					</Button>
 				</div>
 			</div>
 
-			<div className='flex flex-col lg:flex-row w-full gap-4'>
+			<div className='grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3'>
 				<Card className='flex-1'>
 					<CardHeader className='border-b text-center'>
 						<CardTitle>Total de Plantões</CardTitle>
@@ -334,7 +341,7 @@ const DashboardCards = ({
 				</Card>
 			</div>
 
-			<div className='flex flex-col lg:flex-row w-full gap-4'>
+			<div className='grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3'>
 				<Card className='flex-1'>
 					<CardHeader className='border-b text-center'>
 						<CardTitle>Total de Agendamentos</CardTitle>
@@ -378,7 +385,7 @@ const DashboardCards = ({
 				</Card>
 			</div>
 
-			<div className='flex flex-col lg:flex-row w-full gap-4'>
+			<div className='grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3'>
 				<Card className='flex-1'>
 					<CardHeader className='border-b text-center'>
 						<CardTitle>Total de Pets Criados</CardTitle>
@@ -393,11 +400,11 @@ const DashboardCards = ({
 									<DialogTitle>Pets Cadastrados</DialogTitle>
 									<div className='flex flex-col gap-4 overflow-scroll max-h-100'>
 										{createdPets.length > 0 ? (
-											// adicionar sort por data de criação para mostrar os mais recentes primeiro
 											createdPets
+												.slice()
 												.sort(
 													(a, b) =>
-														b.createdAt.getDate() - a.createdAt.getDate(),
+														b.createdAt.getTime() - a.createdAt.getTime(),
 												)
 												.map((pet) => (
 													<div
@@ -454,9 +461,10 @@ const DashboardCards = ({
 									<div className='flex flex-col gap-4 overflow-scroll max-h-100'>
 										{createdCustomers.length > 0 ? (
 											createdCustomers
+												.slice()
 												.sort(
 													(a, b) =>
-														b.createdAt.getDate() - a.createdAt.getDate(),
+														b.createdAt.getTime() - a.createdAt.getTime(),
 												)
 												.map((customer) => (
 													<div
