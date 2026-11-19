@@ -16,6 +16,10 @@ export const prescriptionDocumentGroupSchema = z.object({
 		.min(1, 'Adicione pelo menos um medicamento'),
 });
 
+export const prescriptionOrientationBlockSchema = z.object({
+	content: z.string().trim().min(1, 'Preencha as orientações'),
+});
+
 /*
  * groups é o formato atual.
  *
@@ -36,7 +40,9 @@ export const prescriptionDocumentDataSchema = z.object({
 		sex: z.string(),
 	}),
 	isControlled: z.boolean().optional(),
+	generalOrientations: z.string().max(2000).optional(),
 	groups: z.array(prescriptionDocumentGroupSchema).optional(),
+	orientationBlocks: z.array(prescriptionOrientationBlockSchema).optional(),
 	// Formato legado
 	administrationRoute: z.string().optional(),
 	items: z.array(prescriptionDocumentItemSchema).optional(),
@@ -50,6 +56,10 @@ export type PrescriptionDocumentGroup = z.infer<
 	typeof prescriptionDocumentGroupSchema
 >;
 
+export type PrescriptionOrientationBlock = z.infer<
+	typeof prescriptionOrientationBlockSchema
+>;
+
 export type PrescriptionDocumentData = z.infer<
 	typeof prescriptionDocumentDataSchema
 >;
@@ -58,9 +68,12 @@ export const savePrescriptionDocumentSchema = z.object({
 	petId: z.uuid(),
 	tutorId: z.uuid(),
 	doctorId: z.uuid(),
-
 	isControlled: z.boolean().default(false),
-
+	orientationBlocks: z.array(prescriptionOrientationBlockSchema).default([]),
+	generalOrientations: z
+		.string()
+		.max(2000, 'As orientações devem ter no máximo 2.000 caracteres')
+		.optional(),
 	groups: z
 		.array(prescriptionDocumentGroupSchema)
 		.min(1, 'Adicione pelo menos um modo de uso'),

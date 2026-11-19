@@ -375,6 +375,33 @@ describe('prescriptions actions', () => {
 				}),
 			);
 		});
+
+		it('salva múltiplos blocos de orientações no snapshot e HTML', async () => {
+			mockDocumentLookups();
+
+			const orientationBlocks = [
+				{ content: '<p>Manter repouso.</p>' },
+				{ content: '<p>Retornar em 7 dias.</p>' },
+			];
+
+			await savePrescriptionDocument({
+				...documentInput,
+				orientationBlocks,
+			});
+
+			expect(mocks.insertValues).toHaveBeenCalledWith(
+				expect.objectContaining({
+					documentData: expect.objectContaining({
+						orientationBlocks,
+					}),
+					content: expect.stringContaining('Retornar em 7 dias.'),
+				}),
+			);
+
+			expect(mocks.sanitizeRichTextHtml).toHaveBeenCalledWith(
+				'<p>Manter repouso.</p>',
+			);
+		});
 	});
 
 	describe('updatePrescriptionDocument', () => {
@@ -525,6 +552,35 @@ describe('prescriptions actions', () => {
 			);
 
 			expect(mocks.dbUpdate).not.toHaveBeenCalled();
+		});
+
+		it('atualiza os blocos de orientações da receita', async () => {
+			mocks.dbSelect
+				.mockReturnValueOnce(createLimitChain([existingPrescription]))
+				.mockReturnValueOnce(
+					createLimitChain([
+						{
+							id: TUTOR_ID,
+							name: 'Maria Silva',
+						},
+					]),
+				);
+
+			const orientationBlocks = [{ content: '<p>Novas orientações.</p>' }];
+
+			await updatePrescriptionDocument({
+				...updateInput,
+				orientationBlocks,
+			});
+
+			expect(mocks.updateSet).toHaveBeenCalledWith(
+				expect.objectContaining({
+					documentData: expect.objectContaining({
+						orientationBlocks,
+					}),
+					content: expect.stringContaining('Novas orientações.'),
+				}),
+			);
 		});
 	});
 

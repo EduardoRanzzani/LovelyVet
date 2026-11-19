@@ -113,6 +113,7 @@ export default function DocumentPdfDownloadButton(
 							date,
 						}}
 						groups={normalizePrescriptionGroups(props.documentData)}
+						orientationBlocks={props.documentData.orientationBlocks ?? []}
 						isControlled={props.documentData.isControlled ?? false}
 					/>
 				) : (

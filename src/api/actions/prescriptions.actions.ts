@@ -32,6 +32,7 @@ import { revalidatePath } from 'next/cache';
 import { MAX_PAGE_SIZE, PaginatedData } from '../config/consts';
 import {
 	type PrescriptionDocumentGroup,
+	type PrescriptionOrientationBlock,
 	savePrescriptionDocumentSchema,
 	updatePrescriptionDocumentSchema,
 } from '../schema/prescription-document.schema';
@@ -108,39 +109,60 @@ const buildPrescriptionItemsContent = (
  */
 const buildPrescriptionContent = (
 	groups: PrescriptionDocumentGroup[],
+	orientationBlocks: PrescriptionOrientationBlock[] = [],
 ): string => {
 	const content = groups
 		.map((group) => {
 			const items = buildPrescriptionItemsContent(group.items);
 
 			return `
-				<section style="margin-bottom: 24px;">
-					<h3
-						style="
-							margin: 0 0 12px;
-							text-align: center;
-							font-size: 14px;
-							font-weight: bold;
-							text-transform: uppercase;
-						"
-					>
-						${escapeHtml(group.administrationRoute)}
-					</h3>
-
-					${items}
-				</section>
-			`;
+        <section style="margin-bottom: 24px;">
+          <h3
+            style="
+              margin: 0 0 12px;
+              text-align: center;
+              font-size: 14px;
+              font-weight: bold;
+              text-transform: uppercase;
+            "
+          >
+            ${escapeHtml(group.administrationRoute)}
+          </h3>
+          ${items}
+        </section>
+      `;
 		})
 		.join('');
 
+	const orientationContent = orientationBlocks
+		.map(
+			(block, index) => `
+        <section style="margin-bottom: 24px;">
+          <h3 style="margin: 0 0 12px; text-align: center; font-size: 14px; font-weight: bold;">
+            ${
+							orientationBlocks.length > 1
+								? `ORIENTAÇÕES ${index + 1}`
+								: 'ORIENTAÇÕES'
+						}
+          </h3>
+
+          <div style="font-size: 13px; line-height: 1.3;">
+            ${sanitizeRichTextHtml(block.content)}
+          </div>
+        </section>
+      `,
+		)
+		.join('');
+
 	return `
-		<div
-			class="prescription-content"
-			style="display: flex; flex-direction: column; gap: 4px;"
-		>
-			${content}
-		</div>
-	`;
+    <div
+      class="prescription-content"
+      style="display: flex; flex-direction: column; gap: 4px;"
+    >
+      ${content}
+      ${orientationContent}
+    </div>
+  `;
 };
 
 /**
@@ -292,6 +314,12 @@ export const savePrescriptionDocument = actionClient
 			}),
 		);
 
+		const orientationBlocks = (parsedInput.orientationBlocks ?? []).map(
+			(block) => ({
+				content: sanitizeRichTextHtml(block.content),
+			}),
+		);
+
 		/*
 		 * Snapshot histórico.
 		 *
@@ -315,10 +343,12 @@ export const savePrescriptionDocument = actionClient
 
 			isControlled: parsedInput.isControlled,
 
+			...(orientationBlocks.length > 0 ? { orientationBlocks } : {}),
+
 			groups,
 		};
 
-		const content = buildPrescriptionContent(groups);
+		const content = buildPrescriptionContent(groups, orientationBlocks);
 
 		const [prescription] = await db
 			.insert(prescriptionsTable)
@@ -429,6 +459,12 @@ export const updatePrescriptionDocument = actionClient
 			}),
 		);
 
+		const orientationBlocks = (parsedInput.orientationBlocks ?? []).map(
+			(block) => ({
+				content: sanitizeRichTextHtml(block.content),
+			}),
+		);
+
 		/*
 		 * Mantemos o snapshot do paciente da emissão original.
 		 *
@@ -449,10 +485,12 @@ export const updatePrescriptionDocument = actionClient
 
 			isControlled: parsedInput.isControlled,
 
+			...(orientationBlocks.length > 0 ? { orientationBlocks } : {}),
+
 			groups,
 		};
 
-		const content = buildPrescriptionContent(groups);
+		const content = buildPrescriptionContent(groups, orientationBlocks);
 
 		await db
 			.update(prescriptionsTable)

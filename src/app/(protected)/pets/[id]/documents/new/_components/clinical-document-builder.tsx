@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PrescriptionBuilder, {
 	type PrescriptionDraftGroup,
+	type PrescriptionDraftOrientationBlock,
 } from './prescription-builder';
 import { normalizePrescriptionGroups } from '@/lib/prescriptions/normalize-prescription-groups';
 import PrescriptionPreview, {
@@ -126,6 +127,7 @@ export default function ClinicalDocumentBuilder({
 	);
 	const selectedTutor = tutors.find((tutor) => tutor.id === selectedTutorId);
 	const selectedTutorName = selectedTutor?.name ?? '-';
+
 	const [prescriptionGroups, setPrescriptionGroups] = useState<
 		PrescriptionDraftGroup[]
 	>(() => {
@@ -140,7 +142,22 @@ export default function ClinicalDocumentBuilder({
 			},
 		];
 	});
+
+	const [prescriptionOrientationBlocks, setPrescriptionOrientationBlocks] =
+		useState<PrescriptionDraftOrientationBlock[]>(
+			initialPrescription?.orientationBlocks ?? [],
+		);
+
+	const orientationBlocksValid = prescriptionOrientationBlocks.every(
+		(block) =>
+			block.content
+				.replace(/<[^>]*>/g, '')
+				.replace(/&nbsp;/gi, ' ')
+				.trim().length > 0,
+	);
+
 	const isPrescriptionValid =
+		orientationBlocksValid &&
 		prescriptionGroups.length > 0 &&
 		prescriptionGroups.every(
 			(group) =>
@@ -210,6 +227,7 @@ export default function ClinicalDocumentBuilder({
 			doctorId: REGINA_DOCTOR_ID,
 			isControlled,
 			groups: prescriptionGroups,
+			orientationBlocks: prescriptionOrientationBlocks,
 		};
 
 		try {
@@ -508,38 +526,36 @@ export default function ClinicalDocumentBuilder({
 											</div>
 										</div>
 
-										{canSignPrescription &&
-											!isPrescriptionSigned && (
-												<div className='flex items-start gap-3'>
-													<Checkbox
-														id='sign-digitally'
-														checked={signDigitally}
-														onCheckedChange={(checked) =>
-															setSignDigitally(checked === true)
-														}
-													/>
+										{canSignPrescription && !isPrescriptionSigned && (
+											<div className='flex items-start gap-3'>
+												<Checkbox
+													id='sign-digitally'
+													checked={signDigitally}
+													onCheckedChange={(checked) =>
+														setSignDigitally(checked === true)
+													}
+												/>
 
-													<div className='space-y-1'>
-														<Label htmlFor='sign-digitally'>
-															Assinar digitalmente ao salvar
-														</Label>
+												<div className='space-y-1'>
+													<Label htmlFor='sign-digitally'>
+														Assinar digitalmente ao salvar
+													</Label>
 
-														<p className='text-xs text-muted-foreground'>
-															{signingAsAdministrator
-																? 'A assinatura será aplicada com o certificado digital da Dra. Regina. A operação ficará registrada no seu usuário administrador e, após assinada, a receita ficará imutável.'
-																: 'A assinatura será aplicada com seu certificado digital e, após assinada, a receita ficará imutável.'}
-														</p>
-													</div>
+													<p className='text-xs text-muted-foreground'>
+														{signingAsAdministrator
+															? 'A assinatura será aplicada com o certificado digital da Dra. Regina. A operação ficará registrada no seu usuário administrador e, após assinada, a receita ficará imutável.'
+															: 'A assinatura será aplicada com seu certificado digital e, após assinada, a receita ficará imutável.'}
+													</p>
 												</div>
-											)}
+											</div>
+										)}
 
-										{!canSignPrescription &&
-											!isPrescriptionSigned && (
-												<p className='text-xs text-muted-foreground'>
-													A assinatura digital só pode ser realizada pela conta
-													da veterinária proprietária do certificado.
-												</p>
-											)}
+										{!canSignPrescription && !isPrescriptionSigned && (
+											<p className='text-xs text-muted-foreground'>
+												A assinatura digital só pode ser realizada pela conta da
+												veterinária proprietária do certificado.
+											</p>
+										)}
 
 										{isPrescriptionSigned && signature && (
 											<div className='flex flex-col gap-2 p-3 border rounded-md bg-background'>
@@ -594,6 +610,12 @@ export default function ClinicalDocumentBuilder({
 													: []
 											}
 											onGroupsChange={setPrescriptionGroups}
+											initialOrientationBlocks={
+												initialPrescription?.orientationBlocks ?? []
+											}
+											onOrientationBlocksChange={
+												setPrescriptionOrientationBlocks
+											}
 										/>
 									)}
 								</div>
@@ -614,6 +636,7 @@ export default function ClinicalDocumentBuilder({
 										patient={patient}
 										tutorName={selectedTutorName}
 										groups={prescriptionGroups}
+										orientationBlocks={prescriptionOrientationBlocks}
 										isControlled={isControlled}
 									/>
 								</div>

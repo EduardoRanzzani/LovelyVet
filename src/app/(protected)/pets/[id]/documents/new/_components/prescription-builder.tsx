@@ -43,18 +43,29 @@ export interface PrescriptionDraftGroup {
 	items: PrescriptionDraftItem[];
 }
 
+export interface PrescriptionDraftOrientationBlock {
+	content: string;
+}
+
 interface PrescriptionDraft {
 	groups: PrescriptionDraftGroup[];
+	orientationBlocks: PrescriptionDraftOrientationBlock[];
 }
 
 interface PrescriptionBuilderProps {
 	initialGroups?: PrescriptionDraftGroup[];
+	initialOrientationBlocks?: PrescriptionDraftOrientationBlock[];
 	onGroupsChange?: (groups: PrescriptionDraftGroup[]) => void;
+	onOrientationBlocksChange?: (
+		blocks: PrescriptionDraftOrientationBlock[],
+	) => void;
 }
 
 export default function PrescriptionBuilder({
 	initialGroups = [],
+	initialOrientationBlocks = [],
 	onGroupsChange,
+	onOrientationBlocksChange,
 }: PrescriptionBuilderProps) {
 	const [catalog, setCatalog] = useState<PrescriptionItemsWithRelations[]>([]);
 
@@ -62,15 +73,11 @@ export default function PrescriptionBuilder({
 
 	const form = useForm<PrescriptionDraft>({
 		defaultValues: {
+			orientationBlocks: initialOrientationBlocks,
 			groups:
 				initialGroups.length > 0
 					? initialGroups
-					: [
-							{
-								administrationRoute: '',
-								items: [],
-							},
-						],
+					: [{ administrationRoute: '', items: [] }],
 		},
 	});
 
@@ -83,6 +90,20 @@ export default function PrescriptionBuilder({
 		name: 'groups',
 	});
 
+	const {
+		fields: orientationFields,
+		append: appendOrientationBlock,
+		remove: removeOrientationBlock,
+	} = useFieldArray({
+		control: form.control,
+		name: 'orientationBlocks',
+	});
+
+	const orientationBlocks = useWatch({
+		control: form.control,
+		name: 'orientationBlocks',
+	});
+
 	const groups = useWatch({
 		control: form.control,
 		name: 'groups',
@@ -91,6 +112,10 @@ export default function PrescriptionBuilder({
 	useEffect(() => {
 		onGroupsChange?.(groups ?? []);
 	}, [groups, onGroupsChange]);
+
+	useEffect(() => {
+		onOrientationBlocksChange?.(orientationBlocks ?? []);
+	}, [orientationBlocks, onOrientationBlocksChange]);
 
 	useEffect(() => {
 		const loadCatalog = async () => {
@@ -109,6 +134,12 @@ export default function PrescriptionBuilder({
 
 		void loadCatalog();
 	}, []);
+
+	const handleAddOrientationBlock = () => {
+		appendOrientationBlock({
+			content: '',
+		});
+	};
 
 	const handleAddGroup = () => {
 		appendGroup({
@@ -142,6 +173,47 @@ export default function PrescriptionBuilder({
 			>
 				<PlusIcon className='size-4' />
 				Adicionar modo de uso
+			</Button>
+
+			<div className='space-y-4'>
+				{orientationFields.map((field, index) => (
+					<section
+						key={field.id}
+						className='rounded-xl border bg-card p-3 sm:p-5'
+					>
+						<div className='mb-4 flex items-center justify-between gap-3'>
+							<h4 className='font-semibold'>Orientações {index + 1}</h4>
+
+							<Button
+								type='button'
+								variant='ghost'
+								size='sm'
+								onClick={() => removeOrientationBlock(index)}
+								className='text-destructive hover:text-destructive'
+							>
+								<Trash2Icon className='size-4' />
+								Remover bloco
+							</Button>
+						</div>
+
+						<TextEditorForm
+							name={`orientationBlocks.${index}.content` as const}
+							control={form.control}
+							label='Texto das orientações'
+							placeholder='Descreva os cuidados e recomendações...'
+						/>
+					</section>
+				))}
+			</div>
+
+			<Button
+				type='button'
+				variant='outline'
+				onClick={handleAddOrientationBlock}
+				className='w-full'
+			>
+				<PlusIcon className='size-4' />
+				Adicionar orientações
 			</Button>
 		</div>
 	);

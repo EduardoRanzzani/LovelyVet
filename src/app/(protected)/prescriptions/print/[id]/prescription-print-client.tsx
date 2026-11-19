@@ -91,6 +91,7 @@ export default function PrescriptionPrintClient({
 						date,
 					}}
 					groups={normalizePrescriptionGroups(documentData)}
+					orientationBlocks={documentData.orientationBlocks ?? []}
 				/>
 			</A4DocumentPreview>
 		</div>

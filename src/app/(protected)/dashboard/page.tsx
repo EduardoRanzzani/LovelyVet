@@ -1,4 +1,5 @@
 import { getAppointments } from '@/api/actions/appointments.actions';
+import { getCreatedCustomers } from '@/api/actions/customers.actions';
 import { getCreatedPets } from '@/api/actions/pets.actions';
 import { getShifts } from '@/api/actions/shifts.actions';
 import {
@@ -13,11 +14,12 @@ import { db } from '@/db';
 import { customersTable } from '@/db/schema';
 import { findUserByClerkUserId } from '@/lib/security/user-identity';
 import { auth } from '@clerk/nextjs/server';
-import { format } from 'date-fns';
 import { eq } from 'drizzle-orm';
+import type { ReactNode } from 'react';
 import OnboardingCustomerFormDialog from '../customers/_component/onboarding-customer-form';
 import DashboardCards from './_components/dashboard-cards';
-import { getCreatedCustomers } from '@/api/actions/customers.actions';
+import DoctorDashboard from './_components/doctor-dashboard';
+
 interface DashboardPageProps {
 	searchParams: Promise<{ month?: string }>;
 }
@@ -27,8 +29,9 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
 
 	const { userId, isAuthenticated } = await auth();
 
-	if (!isAuthenticated || !userId)
+	if (!isAuthenticated || !userId) {
 		return <div>Redirecionando para login...</div>;
+	}
 
 	const existingUser = await findUserByClerkUserId(userId);
 
@@ -48,23 +51,42 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
 		);
 	}
 
-	const existingCustomer = await db.query.customersTable.findFirst({
-		where: eq(customersTable.userId, existingUser.id),
-	});
+	let dashboardContent: ReactNode = null;
+	let needsToCreateCustomer = false;
 
-	const needsToCreateCustomer =
-		existingUser.role === 'customer' && !existingCustomer;
+	if (existingUser.role === 'admin') {
+		const [shifts, appointments, createdPets, createdCustomers] =
+			await Promise.all([
+				getShifts(params.month, false),
+				getAppointments(params.month, false),
+				getCreatedPets(params.month),
+				getCreatedCustomers(params.month),
+			]);
 
-	const monthName = params.month || format(new Date(), 'MMMM').toLowerCase();
-	const dashboardData =
-		existingUser.role !== 'customer'
-			? await Promise.all([
-					getShifts(monthName, false),
-					getAppointments(monthName, false),
-					getCreatedPets(monthName),
-					getCreatedCustomers(monthName),
-				])
-			: null;
+		dashboardContent = (
+			<DashboardCards
+				shifts={shifts}
+				appointments={appointments}
+				createdPets={createdPets}
+				createdCustomers={createdCustomers}
+			/>
+		);
+	} else if (existingUser.role === 'doctor') {
+		const [shifts, appointments] = await Promise.all([
+			getShifts(params.month, false),
+			getAppointments(params.month, false),
+		]);
+
+		dashboardContent = (
+			<DoctorDashboard shifts={shifts} appointments={appointments} />
+		);
+	} else if (existingUser.role === 'customer') {
+		const existingCustomer = await db.query.customersTable.findFirst({
+			where: eq(customersTable.userId, existingUser.id),
+		});
+
+		needsToCreateCustomer = !existingCustomer;
+	}
 
 	return (
 		<PageContainer>
@@ -77,14 +99,7 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
 			<PageContent>
 				<PageDescription>Olá, {existingUser.name}!</PageDescription>
 
-				{dashboardData && (
-					<DashboardCards
-						shifts={dashboardData[0]}
-						appointments={dashboardData[1]}
-						createdPets={dashboardData[2]}
-						createdCustomers={dashboardData[3]}
-					/>
-				)}
+				{dashboardContent}
 
 				{needsToCreateCustomer && (
 					<OnboardingCustomerFormDialog isOpen={needsToCreateCustomer} />

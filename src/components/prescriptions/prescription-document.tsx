@@ -1,6 +1,9 @@
 'use client';
 
-import type { PrescriptionDocumentGroup } from '@/api/schema/prescription-document.schema';
+import type {
+	PrescriptionDocumentGroup,
+	PrescriptionOrientationBlock,
+} from '@/api/schema/prescription-document.schema';
 import { WhatsappIcon } from '@/components/icons/icon-whatsapp';
 import { sanitizeRichTextHtml } from '@/lib/security/html';
 import Image from 'next/image';
@@ -20,6 +23,7 @@ export interface PrescriptionDocumentPatient {
 interface PrescriptionDocumentProps {
 	patient: PrescriptionDocumentPatient;
 	groups: PrescriptionDocumentGroup[];
+	orientationBlocks?: PrescriptionOrientationBlock[];
 	printRef?: Ref<HTMLDivElement>;
 	isControlled?: boolean;
 }
@@ -27,6 +31,7 @@ interface PrescriptionDocumentProps {
 export default function PrescriptionDocument({
 	patient,
 	groups,
+	orientationBlocks = [],
 	printRef,
 	isControlled = false,
 }: PrescriptionDocumentProps) {
@@ -168,6 +173,23 @@ export default function PrescriptionDocument({
 								</section>
 							))
 						)}
+
+						{orientationBlocks.map((block, index) => (
+							<section key={index}>
+								<h3 className='mb-4 text-center text-[13px] font-semibold uppercase'>
+									{orientationBlocks.length > 1
+										? `Orientações ${index + 1}`
+										: 'Orientações'}
+								</h3>
+
+								<div
+									className='text-[11px] leading-5'
+									dangerouslySetInnerHTML={{
+										__html: sanitizeRichTextHtml(block.content),
+									}}
+								/>
+							</section>
+						))}
 					</div>
 				</main>
 

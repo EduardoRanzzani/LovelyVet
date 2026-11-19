@@ -963,6 +963,58 @@ export async function generatePrescriptionPdf({
 		y -= 12;
 	}
 
+	const orientationBlocks = documentData.orientationBlocks ?? [];
+
+	for (const [index, block] of orientationBlocks.entries()) {
+		if (y < contentBottom + 45) {
+			startNewPage();
+		}
+
+		const title =
+			orientationBlocks.length > 1 ? `ORIENTAÇÕES ${index + 1}` : 'ORIENTAÇÕES';
+
+		drawCenteredText(page, title, y, boldFont, 9.75);
+
+		y -= 25;
+
+		const lines = layoutRichText(
+			block.content,
+			resources,
+			BODY_FONT_SIZE,
+			CONTENT_WIDTH,
+		);
+
+		for (const line of lines) {
+			if (y < contentBottom + BODY_LINE_HEIGHT) {
+				startNewPage();
+			}
+
+			let x = MARGIN_X;
+
+			if (line.alignment === 'center') {
+				x += (CONTENT_WIDTH - line.width) / 2;
+			} else if (line.alignment === 'right') {
+				x += CONTENT_WIDTH - line.width;
+			}
+
+			for (const fragment of line.fragments) {
+				page.drawText(fragment.text, {
+					x,
+					y,
+					font: fragment.font,
+					size: BODY_FONT_SIZE,
+					color: rgb(0, 0, 0),
+				});
+
+				x += fragment.width;
+			}
+
+			y -= BODY_LINE_HEIGHT;
+		}
+
+		y -= 12;
+	}
+
 	pdf.setCreator('LovelyVet');
 	pdf.setProducer('LovelyVet');
 	pdf.setTitle(`Receita - ${documentData.patient.name}`);
