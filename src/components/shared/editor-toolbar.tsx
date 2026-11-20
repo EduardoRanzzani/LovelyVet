@@ -1,23 +1,27 @@
 import { Editor, useEditorState } from '@tiptap/react';
 import {
 	AlignCenterIcon,
+	AlignJustifyIcon,
 	AlignLeftIcon,
 	AlignRightIcon,
 	BoldIcon,
 	ItalicIcon,
 	ListIcon,
 	ListOrderedIcon,
+	MinusIcon,
+	PlusIcon,
+	Redo2Icon,
+	RotateCcwIcon,
+	Undo2Icon,
 } from 'lucide-react';
 import { ToolbarButton } from '../form/text-editor-form';
+
+const FONT_SIZES = [10, 12, 14, 16, 18, 20, 22, 24];
 
 const EditorToolbar = ({ editor }: { editor: Editor }) => {
 	const state = useEditorState({
 		editor,
 		selector: ({ editor }) => ({
-			h1: editor.isActive('heading', { level: 1 }),
-			h2: editor.isActive('heading', { level: 2 }),
-			paragraph: editor.isActive('paragraph'),
-
 			bold: editor.isActive('bold'),
 			italic: editor.isActive('italic'),
 
@@ -27,89 +31,150 @@ const EditorToolbar = ({ editor }: { editor: Editor }) => {
 			alignLeft: editor.isActive({ textAlign: 'left' }),
 			alignCenter: editor.isActive({ textAlign: 'center' }),
 			alignRight: editor.isActive({ textAlign: 'right' }),
+			alignJustify: editor.isActive({ textAlign: 'justify' }),
+
+			fontSize: editor.getAttributes('textStyle').fontSize as
+				| string
+				| undefined,
+
+			canUndo: editor.can().undo(),
+			canRedo: editor.can().redo(),
 		}),
 	});
 
+	const currentSize = Number.parseInt(state.fontSize ?? '14px', 10);
+
+	const changeFontSize = (direction: 'increase' | 'decrease') => {
+		const nextSize =
+			direction === 'increase'
+				? FONT_SIZES.find((size) => size > currentSize)
+				: [...FONT_SIZES].reverse().find((size) => size < currentSize);
+
+		if (!nextSize) return;
+
+		editor.chain().focus().setFontSize(`${nextSize}px`).run();
+	};
+
 	return (
-		<div className='flex flex-wrap items-center gap-0.5 border-b bg-zinc-50 p-1 dark:bg-zinc-900'>
-			{/* HEADINGS */}
-			{/* <ToolbarButton
-				onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-				active={state.h1}
+		<div className='flex flex-wrap items-center gap-1 border-b bg-muted/50 p-2'>
+			{/* Desfazer / Refazer */}
+			<ToolbarButton
+				title='Desfazer'
+				onClick={() => editor.chain().focus().undo().run()}
+				disabled={!state.canUndo}
 			>
-				<Heading1Icon className='h-4 w-4' />
+				<Undo2Icon className='size-4' />
 			</ToolbarButton>
 
 			<ToolbarButton
-				onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-				active={state.h2}
+				title='Refazer'
+				onClick={() => editor.chain().focus().redo().run()}
+				disabled={!state.canRedo}
 			>
-				<Heading2Icon className='h-4 w-4' />
+				<Redo2Icon className='size-4' />
+			</ToolbarButton>
+
+			<div className='mx-1 h-5 w-px bg-border' />
+
+			{/* Tamanho da fonte */}
+			<ToolbarButton
+				title='Diminuir fonte'
+				disabled={currentSize <= FONT_SIZES[0]}
+				onClick={() => changeFontSize('decrease')}
+			>
+				<MinusIcon className='size-4' />
+			</ToolbarButton>
+
+			<span className='min-w-12 text-center text-xs font-medium tabular-nums'>
+				{currentSize}px
+			</span>
+
+			<ToolbarButton
+				title='Aumentar fonte'
+				disabled={currentSize >= FONT_SIZES[FONT_SIZES.length - 1]}
+				onClick={() => changeFontSize('increase')}
+			>
+				<PlusIcon className='size-4' />
 			</ToolbarButton>
 
 			<ToolbarButton
-				onClick={() => editor.chain().focus().setParagraph().run()}
-				active={state.paragraph}
+				title='Restaurar tamanho padrão'
+				onClick={() => editor.chain().focus().unsetFontSize().run()}
 			>
-				<TypeIcon className='h-4 w-4' />
-			</ToolbarButton> */}
+				<RotateCcwIcon className='size-4' />
+			</ToolbarButton>
 
-			{/* <div className='mx-1 h-4 w-px bg-zinc-300 dark:bg-zinc-700' /> */}
+			<div className='mx-1 h-5 w-px bg-border' />
 
-			{/* FORMATAÇÃO */}
+			{/* Formatação */}
 			<ToolbarButton
-				onClick={() => editor.chain().focus().toggleBold().run()}
+				title='Negrito'
 				active={state.bold}
+				onClick={() => editor.chain().focus().toggleBold().run()}
 			>
-				<BoldIcon className='h-4 w-4' />
+				<BoldIcon className='size-4' />
 			</ToolbarButton>
 
 			<ToolbarButton
-				onClick={() => editor.chain().focus().toggleItalic().run()}
+				title='Itálico'
 				active={state.italic}
+				onClick={() => editor.chain().focus().toggleItalic().run()}
 			>
-				<ItalicIcon className='h-4 w-4' />
+				<ItalicIcon className='size-4' />
 			</ToolbarButton>
 
-			<div className='mx-1 h-4 w-px bg-zinc-300 dark:bg-zinc-700' />
+			<div className='mx-1 h-5 w-px bg-border' />
 
-			{/* LISTAS */}
+			{/* Listas */}
 			<ToolbarButton
-				onClick={() => editor.chain().focus().toggleBulletList().run()}
+				title='Lista com marcadores'
 				active={state.bulletList}
+				onClick={() => editor.chain().focus().toggleBulletList().run()}
 			>
-				<ListIcon className='h-4 w-4' />
+				<ListIcon className='size-4' />
 			</ToolbarButton>
 
 			<ToolbarButton
-				onClick={() => editor.chain().focus().toggleOrderedList().run()}
+				title='Lista numerada'
 				active={state.orderedList}
+				onClick={() => editor.chain().focus().toggleOrderedList().run()}
 			>
-				<ListOrderedIcon className='h-4 w-4' />
+				<ListOrderedIcon className='size-4' />
 			</ToolbarButton>
 
-			<div className='mx-1 h-4 w-px bg-zinc-300 dark:bg-zinc-700' />
+			<div className='mx-1 h-5 w-px bg-border' />
 
-			{/* ALINHAMENTO */}
+			{/* Alinhamento */}
 			<ToolbarButton
-				onClick={() => editor.chain().focus().setTextAlign('left').run()}
+				title='Alinhar à esquerda'
 				active={state.alignLeft}
+				onClick={() => editor.chain().focus().setTextAlign('left').run()}
 			>
-				<AlignLeftIcon className='h-4 w-4' />
+				<AlignLeftIcon className='size-4' />
 			</ToolbarButton>
 
 			<ToolbarButton
-				onClick={() => editor.chain().focus().setTextAlign('center').run()}
+				title='Centralizar'
 				active={state.alignCenter}
+				onClick={() => editor.chain().focus().setTextAlign('center').run()}
 			>
-				<AlignCenterIcon className='h-4 w-4' />
+				<AlignCenterIcon className='size-4' />
 			</ToolbarButton>
 
 			<ToolbarButton
-				onClick={() => editor.chain().focus().setTextAlign('right').run()}
+				title='Alinhar à direita'
 				active={state.alignRight}
+				onClick={() => editor.chain().focus().setTextAlign('right').run()}
 			>
-				<AlignRightIcon className='h-4 w-4' />
+				<AlignRightIcon className='size-4' />
+			</ToolbarButton>
+
+			<ToolbarButton
+				title='Justificar texto'
+				active={state.alignJustify}
+				onClick={() => editor.chain().focus().setTextAlign('justify').run()}
+			>
+				<AlignJustifyIcon className='size-4' />
 			</ToolbarButton>
 		</div>
 	);

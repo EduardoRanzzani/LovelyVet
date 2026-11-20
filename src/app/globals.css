@@ -192,21 +192,80 @@
 	.prose ul {
 		list-style-type: disc !important;
 		padding-left: 1.5rem !important;
-		color: black;
 	}
+
 	.prose ol {
 		list-style-type: decimal !important;
 		padding-left: 1.5rem !important;
-		color: black;
 	}
 }
 
 .ProseMirror {
 	word-break: break-word;
-	white-space: pre-wrap;
+	white-space: normal;
 	width: 100%;
 }
 
 .tiptap {
 	width: 100%;
+}
+
+@layer components {
+	/* Editor, prévia e receita impressa */
+	.rich-text-content {
+		overflow-wrap: anywhere;
+		word-break: normal;
+	}
+
+	.rich-text-content p {
+		margin: 0;
+		min-height: 1lh;
+	}
+
+	.rich-text-content ul,
+	.rich-text-content ol {
+		margin: 0.25em 0;
+		padding-left: 1.75em;
+		list-style-position: outside;
+	}
+
+	.rich-text-content ul {
+		list-style-type: disc;
+	}
+
+	.rich-text-content ol {
+		list-style-type: decimal;
+	}
+
+	.rich-text-content li {
+		padding-left: 0.15em;
+	}
+
+	.rich-text-content li::marker {
+		color: currentColor !important;
+	}
+
+	.rich-text-content li > p {
+		margin: 0;
+	}
+
+	/* Evita espaço adicional nas listas aninhadas */
+	.rich-text-content li > ul,
+	.rich-text-content li > ol {
+		margin: 0;
+	}
+
+	/* Placeholder do Tiptap */
+	.rich-text-content p.is-editor-empty:first-child::before {
+		content: attr(data-placeholder);
+		color: var(--muted-foreground);
+		float: left;
+		height: 0;
+		pointer-events: none;
+	}
+
+	/* Compatibilidade do justificado no Firefox */
+	.rich-text-content [style*='text-align: justify'] {
+		white-space: normal;
+	}
 }

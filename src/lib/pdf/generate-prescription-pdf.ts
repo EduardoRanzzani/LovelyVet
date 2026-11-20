@@ -120,12 +120,15 @@ interface StyledTextFragment {
 	text: string;
 	font: PDFFont;
 	width: number;
+	fontSize: number;
 }
 
 interface StyledTextLine {
 	fragments: StyledTextFragment[];
 	width: number;
 	alignment: RichTextAlignment;
+	lineHeight: number;
+	isLastInParagraph: boolean;
 }
 
 const getRichTextFont = (
@@ -139,6 +142,10 @@ const getRichTextFont = (
 	return resources.font;
 };
 
+/**
+ * Calcula quebras de linha considerando o tamanho real de cada fragmento.
+ * Também quebra palavras sem espaços para que elas não invadam a margem.
+ */
 const layoutRichText = (
 	html: string,
 	resources: PageResources,
@@ -150,95 +157,132 @@ const layoutRichText = (
 	for (const paragraph of parseRichTextHtml(html)) {
 		let fragments: StyledTextFragment[] = [];
 		let lineWidth = 0;
+		let largestFont = fontSize;
 		let pendingSpace = false;
 
-		const finishLine = () => {
-			if (fragments.length > 0) {
+		const flushLine = (isLastInParagraph: boolean, force = false) => {
+			if (fragments.length > 0 || force) {
 				lines.push({
 					fragments,
 					width: lineWidth,
 					alignment: paragraph.alignment,
+					lineHeight: Math.max(BODY_LINE_HEIGHT, largestFont * 1.4),
+					isLastInParagraph,
 				});
 			}
+
 			fragments = [];
 			lineWidth = 0;
+			largestFont = fontSize;
 			pendingSpace = false;
+		};
+
+		const appendFragment = (text: string, font: PDFFont, size: number) => {
+			if (!text) return;
+			const width = font.widthOfTextAtSize(text, size);
+			fragments.push({ text, font, width, fontSize: size });
+			lineWidth += width;
+			largestFont = Math.max(largestFont, size);
 		};
 
 		for (const run of paragraph.runs) {
 			const font = getRichTextFont(resources, run.bold, run.italic);
+			const size = run.fontSize ? run.fontSize * 0.75 : fontSize;
 
-			for (const part of run.text.split(/(\s+)/).filter(Boolean)) {
-				if (part.includes('\n')) {
-					finishLine();
+			for (const token of run.text.split(/(\n|[ \t]+)/).filter(Boolean)) {
+				if (token === '\n') {
+					flushLine(true, true);
 					continue;
 				}
 
-				if (/^\s+$/.test(part)) {
+				if (/^[ \t]+$/.test(token)) {
 					pendingSpace = fragments.length > 0;
 					continue;
 				}
 
-				const prefix = pendingSpace ? ' ' : '';
-				let text = `${prefix}${part}`;
-				let width = font.widthOfTextAtSize(text, fontSize);
+				const prefix = pendingSpace && fragments.length > 0 ? ' ' : '';
+				let word = `${prefix}${token}`;
+				pendingSpace = false;
 
-				if (fragments.length > 0 && lineWidth + width > maxWidth) {
-					finishLine();
-					text = part;
-					width = font.widthOfTextAtSize(text, fontSize);
+				if (
+					fragments.length > 0 &&
+					lineWidth + font.widthOfTextAtSize(word, size) > maxWidth
+				) {
+					flushLine(false);
+					word = token;
 				}
 
-				fragments.push({ text, font, width });
-				lineWidth += width;
-				pendingSpace = false;
+				if (font.widthOfTextAtSize(word, size) <= maxWidth - lineWidth) {
+					appendFragment(word, font, size);
+					continue;
+				}
+
+				// Palavra maior que uma linha: dividir por caracteres Unicode.
+				let chunk = '';
+				for (const character of word) {
+					const candidate = chunk + character;
+					const candidateWidth = font.widthOfTextAtSize(candidate, size);
+
+					if (chunk && candidateWidth > maxWidth - lineWidth) {
+						appendFragment(chunk, font, size);
+						flushLine(false);
+						chunk = character;
+					} else {
+						chunk = candidate;
+					}
+				}
+
+				appendFragment(chunk, font, size);
 			}
 		}
 
-		finishLine();
+		// Inclusive <p><br></p>, que deve ocupar uma linha vazia.
+		flushLine(true, true);
 	}
 
 	return lines;
 };
 
-const drawRichText = ({
-	page,
-	html,
-	y,
-	resources,
-}: {
-	page: PDFPage;
-	html: string;
-	y: number;
-	resources: PageResources;
-}): number => {
-	const lines = layoutRichText(html, resources, BODY_FONT_SIZE, CONTENT_WIDTH);
-	let lineY = y;
+/**
+ * Desenha linhas justificadas distribuindo o espaço entre palavras,
+ * sem esticar a última linha de cada parágrafo.
+ */
+const drawStyledLine = (page: PDFPage, line: StyledTextLine, y: number) => {
+	let x = MARGIN_X;
 
-	for (const line of lines) {
-		let x = MARGIN_X;
-
-		if (line.alignment === 'center') {
-			x += (CONTENT_WIDTH - line.width) / 2;
-		} else if (line.alignment === 'right') {
-			x += CONTENT_WIDTH - line.width;
-		}
-
-		for (const fragment of line.fragments) {
-			page.drawText(fragment.text, {
-				x,
-				y: lineY,
-				font: fragment.font,
-				size: BODY_FONT_SIZE,
-				color: rgb(0, 0, 0),
-			});
-			x += fragment.width;
-		}
-
-		lineY -= BODY_LINE_HEIGHT;
+	if (line.alignment === 'center') {
+		x += Math.max(0, (CONTENT_WIDTH - line.width) / 2);
+	} else if (line.alignment === 'right') {
+		x += Math.max(0, CONTENT_WIDTH - line.width);
 	}
 
-	return Math.max(lines.length, 1) * BODY_LINE_HEIGHT;
+	const gaps = line.fragments.filter((fragment) =>
+		fragment.text.startsWith(' '),
+	).length;
+
+	const extraSpace =
+		line.alignment === 'justify' &&
+		!line.isLastInParagraph &&
+		gaps >= 2 &&
+		line.width >= CONTENT_WIDTH * 0.6
+			? Math.max(0, (CONTENT_WIDTH - line.width) / gaps)
+			: 0;
+
+	for (const fragment of line.fragments) {
+		if (extraSpace && fragment.text.startsWith(' ')) {
+			x += extraSpace;
+		}
+
+		page.drawText(fragment.text, {
+			x,
+			y,
+			font: fragment.font,
+			size: fragment.fontSize,
+			color: rgb(0, 0, 0),
+		});
+
+		x += fragment.width;
+	}
 };
 
 const drawCenteredText = (
@@ -718,13 +762,12 @@ const createPrescriptionPage = (
 	return page;
 };
 
-const drawMedication = ({
+const drawMedicationHeader = ({
 	page,
 	y,
 	name,
 	pharmacy,
 	quantity,
-	orientations,
 	resources,
 }: {
 	page: PDFPage;
@@ -732,9 +775,8 @@ const drawMedication = ({
 	name: string;
 	pharmacy: string;
 	quantity: string;
-	orientations: string;
 	resources: PageResources;
-}): number => {
+}) => {
 	const rightColumnWidth = 72;
 	const pharmacyMaxWidth = 150;
 
@@ -835,15 +877,6 @@ const drawMedication = ({
 			color: rgb(0, 0, 0),
 		});
 	}
-
-	const richTextHeight = drawRichText({
-		page,
-		html: orientations,
-		y: y - 16,
-		resources,
-	});
-
-	return 16 + richTextHeight + 10;
 };
 
 export async function generatePrescriptionPdf({
@@ -922,101 +955,99 @@ export async function generatePrescriptionPdf({
 	};
 
 	for (const group of groups) {
-		if (y < contentBottom + 45) {
-			startNewPage();
-		}
-
 		const route = group.administrationRoute.trim().toUpperCase();
 
-		drawCenteredText(page, route, y, boldFont, 9.75);
+		const drawRoute = () => {
+			drawCenteredText(
+				page,
+				fitText(route, boldFont, 9.75, CONTENT_WIDTH),
+				y,
+				boldFont,
+				9.75,
+			);
+			y -= 25;
+		};
 
-		y -= 25;
+		if (y < contentBottom + 45) startNewPage();
+		drawRoute();
 
-		for (let itemIndex = 0; itemIndex < group.items.length; itemIndex += 1) {
-			const item = group.items[itemIndex];
-			const orientationLines = layoutRichText(
+		for (const item of group.items) {
+			const lines = layoutRichText(
 				item.orientations,
 				resources,
 				BODY_FONT_SIZE,
 				CONTENT_WIDTH,
 			);
+			const firstLineHeight = lines[0]?.lineHeight ?? BODY_LINE_HEIGHT;
 
-			const estimatedHeight =
-				16 + Math.max(orientationLines.length, 1) * BODY_LINE_HEIGHT + 10;
-			if (y - estimatedHeight < contentBottom) {
+			// Reservar espaço para o cabeçalho do medicamento e sua primeira linha.
+			if (y < contentBottom + 16 + firstLineHeight) {
 				startNewPage();
-				drawCenteredText(page, route, y, boldFont, 9.75);
-				y -= 25;
+				drawRoute();
 			}
 
-			const usedHeight = drawMedication({
-				page,
-				y,
-				name: item.name,
-				pharmacy: item.pharmacy,
-				quantity: item.quantity,
-				orientations: item.orientations,
-				resources,
-			});
-			y -= usedHeight;
+			const drawItemHeader = () => {
+				drawMedicationHeader({
+					page,
+					y,
+					name: item.name,
+					pharmacy: item.pharmacy,
+					quantity: item.quantity,
+					resources,
+				});
+				y -= 16;
+			};
+
+			drawItemHeader();
+
+			for (const line of lines) {
+				// Agora medicamentos longos também podem continuar em outra página.
+				if (y < contentBottom + line.lineHeight) {
+					startNewPage();
+					drawRoute();
+					drawItemHeader();
+				}
+
+				drawStyledLine(page, line, y);
+				y -= line.lineHeight;
+			}
+
+			y -= 10;
 		}
+
 		y -= 12;
 	}
 
-	const orientationBlocks = documentData.orientationBlocks ?? [];
-
-	for (const block of orientationBlocks) {
-		if (y < contentBottom + 45) {
-			startNewPage();
-		}
-
+	for (const block of documentData.orientationBlocks ?? []) {
 		const title = (block.title?.trim() || 'Orientações').toLocaleUpperCase(
 			'pt-BR',
 		);
-
-		drawCenteredText(
-			page,
-			fitText(title, boldFont, 9.75, CONTENT_WIDTH),
-			y,
-			boldFont,
-			9.75,
-		);
-
-		y -= 25;
-
+		const fittedTitle = fitText(title, boldFont, 9.75, CONTENT_WIDTH);
 		const lines = layoutRichText(
 			block.content,
 			resources,
 			BODY_FONT_SIZE,
 			CONTENT_WIDTH,
 		);
+		const firstLineHeight = lines[0]?.lineHeight ?? BODY_LINE_HEIGHT;
+
+		if (y < contentBottom + 25 + firstLineHeight) startNewPage();
+
+		const drawBlockTitle = () => {
+			drawCenteredText(page, fittedTitle, y, boldFont, 9.75);
+			y -= 25;
+		};
+
+		drawBlockTitle();
 
 		for (const line of lines) {
-			if (y < contentBottom + BODY_LINE_HEIGHT) {
+			if (y < contentBottom + line.lineHeight) {
 				startNewPage();
+				drawBlockTitle();
 			}
 
-			let x = MARGIN_X;
-
-			if (line.alignment === 'center') {
-				x += (CONTENT_WIDTH - line.width) / 2;
-			} else if (line.alignment === 'right') {
-				x += CONTENT_WIDTH - line.width;
-			}
-
-			for (const fragment of line.fragments) {
-				page.drawText(fragment.text, {
-					x,
-					y,
-					font: fragment.font,
-					size: BODY_FONT_SIZE,
-					color: rgb(0, 0, 0),
-				});
-
-				x += fragment.width;
-			}
-
-			y -= BODY_LINE_HEIGHT;
+			drawStyledLine(page, line, y);
+			y -= line.lineHeight;
 		}
 
 		y -= 12;

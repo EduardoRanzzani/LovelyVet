@@ -160,7 +160,7 @@ export default function PrescriptionDocument({
 												</div>
 
 												<div
-													className='text-[11px] leading-5'
+													className='rich-text-content text-[11px] leading-5'
 													dangerouslySetInnerHTML={{
 														__html: sanitizeRichTextHtml(
 															item.orientations || '',
@@ -181,7 +181,7 @@ export default function PrescriptionDocument({
 								</h3>
 
 								<div
-									className='text-[11px] leading-5'
+									className='rich-text-content text-[11px] leading-5'
 									dangerouslySetInnerHTML={{
 										__html: sanitizeRichTextHtml(block.content),
 									}}

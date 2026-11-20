@@ -76,18 +76,11 @@ const buildPrescriptionItemsContent = (
 						</span>
 					</div>
 
-					<div
-						class="orientations-box"
-						style="font-size: 13px; line-height: 1.3; margin-top: 2px;"
+					<div 
+						class="orientations-box rich-text-content" 
+						style="font-size: 13px; line-height: 1.5; margin-top: 2px;"
 					>
-						<style>
-							.orientations-box p {
-								margin: 0 !important;
-								padding: 0 !important;
-							}
-						</style>
-
-						${sanitizeRichTextHtml(item.orientations)}
+  						${sanitizeRichTextHtml(item.orientations)}
 					</div>
 				</div>`,
 		)
@@ -142,9 +135,12 @@ const buildPrescriptionContent = (
            ${escapeHtml(block.title?.trim() || 'Orientações')}
           </h3>
 
-          <div style="font-size: 13px; line-height: 1.3;">
-            ${sanitizeRichTextHtml(block.content)}
-          </div>
+          <div
+  				class="rich-text-content"
+  				style="font-size: 13px; line-height: 1.5;"
+			>
+  				${sanitizeRichTextHtml(block.content)}
+			</div>
         </section>
       `,
 		)

@@ -23,7 +23,7 @@ export default function RichTextClinicalDocument({
 		<ClinicalDocumentSheet patient={patient} title={title} printRef={printRef}>
 			{content.trim() ? (
 				<div
-					className='prose prose-sm max-w-none text-[12px] leading-6 text-black'
+					className='rich-text-content max-w-none text-[12px] leading-6 text-black'
 					dangerouslySetInnerHTML={{
 						__html: sanitizeRichTextHtml(content),
 					}}
