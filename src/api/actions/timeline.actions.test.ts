@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { PgDialect } from 'drizzle-orm/pg-core';
 import {
 	careRemindersTable,
 	clinicalDocumentsTable,
@@ -144,7 +145,7 @@ describe('deleteTimelineItem', () => {
 		expect(mocks.dbDelete).not.toHaveBeenCalled();
 	});
 
-	it('deletes vaccine and its pending reminder atomically', async () => {
+	it('deletes vaccine and linked reminders regardless of status', async () => {
 		mocks.vaccineFindFirst.mockResolvedValue({
 			id: ITEM_ID,
 			petId: PET_ID,
@@ -167,10 +168,23 @@ describe('deleteTimelineItem', () => {
 
 		expect(mocks.deleteWhere).toHaveBeenCalledTimes(2);
 
+		const [reminderCondition] = mocks.deleteWhere.mock.calls[0];
+
+		const query = new PgDialect().sqlToQuery(reminderCondition);
+
+		expect(query.sql).toContain('source_vaccine_id');
+		expect(query.sql).toContain('pet_id');
+
+		// Nenhum filtro por status: remove pendentes,
+		// concluídos e cancelados vinculados à vacina.
+		expect(query.sql).not.toContain('"status"');
+
+		expect(query.params).toContain(ITEM_ID);
+		expect(query.params).toContain(PET_ID);
+
 		expect(mocks.revalidatePath).toHaveBeenCalledWith(`/pets/${PET_ID}`);
 
 		expect(mocks.revalidatePath).toHaveBeenCalledWith('/agenda');
-
 		expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard');
 	});
 

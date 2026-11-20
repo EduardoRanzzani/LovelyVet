@@ -1,6 +1,9 @@
 'use client';
 
-import { getCalendarEventDetails } from '@/api/actions/calendar-events.actions';
+import {
+	deleteCalendarEvent,
+	getCalendarEventDetails,
+} from '@/api/actions/calendar-events.actions';
 import { monthNames } from '@/api/config/consts';
 import type {
 	CalendarCareReminderEntry,
@@ -8,7 +11,9 @@ import type {
 } from '@/api/schema/calendar.schema';
 import type { DoctorsWithRelations } from '@/api/schema/doctors.schema';
 import { CustomCalendar } from '@/components/ui/custom-calendar';
+import DeleteAlertButton from '@/components/list/delete-alert-dialog';
 import { Dialog } from '@/components/ui/dialog';
+import LoadingDialog from '@/components/ui/loading';
 import {
 	Select,
 	SelectContent,
@@ -16,12 +21,20 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
+import { getCalendarEntryTimeLabel } from '@/lib/agenda/calendar-entry-time';
 import { getCareReminderStatusUI } from '@/lib/agenda/care-reminder-status';
+import {
+	getMobileCalendarIndicatorClass,
+	getMobileCalendarVisibleCount,
+} from '@/lib/agenda/mobile-calendar-indicators';
+import {
+	isNightShift,
+	startsOnCalendarDay,
+} from '@/lib/agenda/shift-calendar-presentation';
+import { cn } from '@/lib/utils';
 import {
 	eachDayOfInterval,
 	endOfDay,
-	format,
 	isSameDay,
 	isWithinInterval,
 	parseISO,
@@ -32,7 +45,9 @@ import {
 	CalendarClockIcon,
 	ClockIcon,
 	HospitalIcon,
+	MoonIcon,
 	StethoscopeIcon,
+	SunIcon,
 } from 'lucide-react';
 import { useAction } from 'next-safe-action/hooks';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -41,7 +56,6 @@ import { toast } from 'sonner';
 import CalendarEventForm, {
 	type PersonalCalendarEventDetails,
 } from './calendar-event-form';
-import LoadingDialog from '@/components/ui/loading';
 import CareReminderDialog from './care-reminder-dialog';
 
 interface AgendaCalendarClientProps {
@@ -104,6 +118,18 @@ const AgendaCalendarClient = ({
 		onError: ({ error }) => {
 			toast.error(
 				error.serverError ?? 'Não foi possível carregar o compromisso.',
+			);
+		},
+	});
+
+	const deleteEventAction = useAction(deleteCalendarEvent, {
+		onSuccess: () => {
+			toast.success('Compromisso excluído com sucesso.');
+			router.refresh();
+		},
+		onError: ({ error }) => {
+			toast.error(
+				error.serverError ?? 'Não foi possível excluir o compromisso.',
 			);
 		},
 	});
@@ -215,7 +241,17 @@ const AgendaCalendarClient = ({
 				return <StethoscopeIcon className='size-3' />;
 
 			case 'shift':
-				return <HospitalIcon className='size-3' />;
+				return (
+					<span className='inline-flex shrink-0 items-center gap-1'>
+						{isNightShift(entry.startAt) ? (
+							<MoonIcon className='size-3' />
+						) : (
+							<SunIcon className='size-3' />
+						)}
+
+						<HospitalIcon className='size-3' />
+					</span>
+				);
 
 			case 'personal':
 				return <CalendarClockIcon className='size-3' />;
@@ -226,20 +262,21 @@ const AgendaCalendarClient = ({
 	};
 
 	const renderEntry = (entry: CalendarEntry, date: Date) => {
-		const isStart =
-			entry.kind !== 'care_reminder' &&
-			isSameDay(new Date(entry.startAt), date);
-
 		const reminderUI =
 			entry.kind === 'care_reminder'
 				? getCareReminderStatusUI(entry.status)
 				: null;
 
+		const isShiftStart =
+			entry.kind === 'shift' && isSameDay(new Date(entry.startAt), date);
+
 		const className =
 			entry.kind === 'appointment'
 				? 'border-primary/50 bg-primary/10'
 				: entry.kind === 'shift'
-					? 'border-amber-500/50 bg-amber-500/10'
+					? isNightShift(entry.startAt)
+						? 'bg-blue-950 text-blue-200 border-indigo-600 hover:bg-blue-950/90'
+						: 'bg-amber-100 text-amber-900 border-amber-400 hover:bg-amber-100/90'
 					: entry.kind === 'personal'
 						? 'border-violet-500/50 bg-violet-500/10'
 						: (reminderUI?.cardClassName ?? '');
@@ -262,6 +299,7 @@ const AgendaCalendarClient = ({
 				className={cn(
 					'rounded-md border-l-2 p-2 text-xs md:p-1.5 md:text-[10px]',
 					className,
+					entry.kind === 'shift' && !isShiftStart && 'opacity-70 border-dashed',
 					(entry.kind === 'personal' || entry.kind === 'care_reminder') &&
 						'cursor-pointer transition-opacity hover:opacity-80 active:opacity-60',
 					entry.kind === 'appointment' && !entry.blocksSchedule && 'opacity-50',
@@ -278,6 +316,23 @@ const AgendaCalendarClient = ({
 					>
 						{entry.title}
 					</span>
+
+					{entry.kind === 'personal' && (
+						<div
+							className='ml-auto shrink-0'
+							onClick={(event) => event.stopPropagation()}
+						>
+							<DeleteAlertButton
+								tooltip='Excluir compromisso'
+								disabled={deleteEventAction.isPending}
+								action={() =>
+									deleteEventAction.execute({
+										id: entry.id,
+									})
+								}
+							/>
+						</div>
+					)}
 				</div>
 
 				{entry.kind === 'care_reminder' ? (
@@ -296,10 +351,22 @@ const AgendaCalendarClient = ({
 						</span>
 					</div>
 				) : (
-					<div className='mt-1 flex items-center gap-1 text-muted-foreground'>
+					<div
+						className={cn(
+							'mt-1 flex items-center gap-1 text-[11px]',
+							entry.kind === 'shift'
+								? isNightShift(entry.startAt)
+									? 'text-blue-200'
+									: 'text-amber-800'
+								: 'text-muted-foreground',
+						)}
+					>
 						<ClockIcon className='size-3' />
-
-						{isStart ? format(new Date(entry.startAt), 'HH:mm') : 'Continuação'}
+						{getCalendarEntryTimeLabel(
+							new Date(entry.startAt),
+							entry.endAt ? new Date(entry.endAt) : null,
+							date,
+						)}
 					</div>
 				)}
 			</div>
@@ -332,17 +399,66 @@ const AgendaCalendarClient = ({
 	};
 
 	const renderMobileHeader = (date: Date, isCurrentMonth: boolean) => {
-		const dayEntries = getEntriesForDay(date);
+		const dayEntries = getEntriesForDay(date).filter(
+			(entry) =>
+				entry.kind !== 'shift' || startsOnCalendarDay(entry.startAt, date),
+		);
+
+		const { visible, remaining } = getMobileCalendarVisibleCount(
+			dayEntries.length,
+		);
 
 		return (
 			<div
-				className={cn('flex flex-wrap gap-1', !isCurrentMonth && 'opacity-30')}
+				className={cn(
+					'flex w-full min-w-0 flex-wrap items-center gap-0.5',
+					!isCurrentMonth && 'opacity-30',
+				)}
 			>
-				{dayEntries.slice(0, 4).map((entry) => (
-					<span key={`${entry.kind}-${entry.id}`}>
-						{renderEntryIcon(entry)}
+				{dayEntries.slice(0, visible).map((entry) => {
+					const isShift = entry.kind === 'shift';
+
+					const nightShift = isShift && isNightShift(entry.startAt);
+
+					return (
+						<span
+							key={`${entry.kind}-${entry.id}`}
+							title={entry.title}
+							className={cn(
+								'inline-flex min-h-5 items-center justify-center rounded-sm border-l-2 p-1',
+								isShift ? 'w-full gap-1.5' : 'size-5 shrink-0',
+								isShift
+									? nightShift
+										? 'border-indigo-600 bg-blue-950 text-blue-200'
+										: 'border-amber-400 bg-amber-100 text-amber-900'
+									: getMobileCalendarIndicatorClass(entry),
+							)}
+						>
+							{isShift ? (
+								<>
+									{nightShift ? (
+										<MoonIcon className='size-3 shrink-0' />
+									) : (
+										<SunIcon className='size-3 shrink-0' />
+									)}
+
+									<HospitalIcon className='size-3 shrink-0' />
+								</>
+							) : (
+								renderEntryIcon(entry)
+							)}
+						</span>
+					);
+				})}
+
+				{remaining > 0 && (
+					<span
+						className='flex min-h-5 items-center rounded-sm bg-muted px-1 text-[9px] font-semibold text-foreground'
+						aria-label={`Mais ${remaining} eventos neste dia`}
+					>
+						+{remaining}
 					</span>
-				))}
+				)}
 			</div>
 		);
 	};

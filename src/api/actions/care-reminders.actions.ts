@@ -79,3 +79,56 @@ export const updateCareReminderStatus = actionClient
 		revalidatePath(`/pets/${reminder.petId}`);
 		return updatedReminder;
 	});
+
+const deleteFinalizedCareReminderSchema = z.object({
+	id: z.string().uuid(),
+});
+
+export const deleteFinalizedCareReminder = actionClient
+	.schema(deleteFinalizedCareReminderSchema)
+	.action(async ({ parsedInput }) => {
+		const context = await requireAuthContext();
+		requireStaff(context);
+
+		const reminder = await db.query.careRemindersTable.findFirst({
+			where: eq(careRemindersTable.id, parsedInput.id),
+		});
+
+		if (!reminder) {
+			throw new Error('Lembrete não encontrado.');
+		}
+
+		if (context.role === 'doctor' && reminder.doctorId !== context.doctorId) {
+			throw new Error('Você não possui permissão para excluir este lembrete.');
+		}
+
+		if (reminder.status === 'pending') {
+			throw new Error(
+				'Lembretes pendentes não podem ser excluídos por esta ação.',
+			);
+		}
+
+		const [deletedReminder] = await db
+			.delete(careRemindersTable)
+			.where(
+				and(
+					eq(careRemindersTable.id, reminder.id),
+					eq(careRemindersTable.status, reminder.status),
+				),
+			)
+			.returning({
+				id: careRemindersTable.id,
+			});
+
+		if (!deletedReminder) {
+			throw new Error(
+				'O lembrete foi alterado ou excluído por outra operação.',
+			);
+		}
+
+		revalidatePath('/agenda');
+		revalidatePath(`/pets/${reminder.petId}`);
+		revalidatePath('/dashboard');
+
+		return { success: true };
+	});

@@ -33,7 +33,14 @@ const DeleteAlertButton = ({
 			<Tooltip>
 				<TooltipTrigger asChild>
 					<AlertDialogTrigger asChild>
-						<Button variant='destructive' size={'icon'} disabled={disabled}>
+						<Button
+							type='button'
+							variant='destructive'
+							size='icon'
+							disabled={disabled}
+							className='size-9 min-h-11 min-w-11 md:min-h-9 md:min-w-9'
+							aria-label={tooltip}
+						>
 							{icon}
 						</Button>
 					</AlertDialogTrigger>

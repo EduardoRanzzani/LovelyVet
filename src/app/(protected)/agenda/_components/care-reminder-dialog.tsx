@@ -1,8 +1,22 @@
 'use client';
 
-import { updateCareReminderStatus } from '@/api/actions/care-reminders.actions';
+import {
+	deleteFinalizedCareReminder,
+	updateCareReminderStatus,
+} from '@/api/actions/care-reminders.actions';
 import type { CalendarCareReminderEntry } from '@/api/schema/calendar.schema';
-import { Button } from '@/components/ui/button';
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
 	DialogContent,
 	DialogDescription,
@@ -14,7 +28,13 @@ import LoadingDialog from '@/components/ui/loading';
 import { getCareReminderStatusUI } from '@/lib/agenda/care-reminder-status';
 import { cn } from '@/lib/utils';
 import { getVaccineReminderUrl } from '@/lib/vaccines/vaccine-reminder-url';
-import { CheckCircle2Icon, SyringeIcon } from 'lucide-react';
+import {
+	BanIcon,
+	CheckCircle2Icon,
+	CheckIcon,
+	SyringeIcon,
+	Trash2Icon,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAction } from 'next-safe-action/hooks';
@@ -62,6 +82,16 @@ const CareReminderDialog = ({
 			toast.error(
 				error.serverError ?? 'Não foi possível atualizar o lembrete.',
 			);
+		},
+	});
+
+	const deleteAction = useAction(deleteFinalizedCareReminder, {
+		onSuccess: () => {
+			toast.success('Lembrete excluído com sucesso.');
+			onSuccess?.();
+		},
+		onError: ({ error }) => {
+			toast.error(error.serverError ?? 'Não foi possível excluir o lembrete.');
 		},
 	});
 
@@ -173,7 +203,7 @@ const CareReminderDialog = ({
 				)}
 			</div>
 
-			{action.isPending && <LoadingDialog />}
+			{(action.isPending || deleteAction.isPending) && <LoadingDialog />}
 
 			{isPending && (
 				<DialogFooter className='flex-col gap-2 sm:flex-row'>
@@ -202,6 +232,64 @@ const CareReminderDialog = ({
 							Concluir
 						</Button>
 					)}
+				</DialogFooter>
+			)}
+
+			{!isPending && (
+				<DialogFooter className='mt-2'>
+					<AlertDialog>
+						<AlertDialogTrigger asChild>
+							<Button
+								type='button'
+								variant='destructive'
+								disabled={deleteAction.isPending}
+								className='min-h-11 w-full sm:w-auto'
+							>
+								<Trash2Icon className='size-4' />
+								Excluir lembrete
+							</Button>
+						</AlertDialogTrigger>
+
+						<AlertDialogContent>
+							<AlertDialogHeader>
+								<AlertDialogTitle>Excluir este lembrete?</AlertDialogTitle>
+
+								<AlertDialogDescription>
+									O lembrete será removido definitivamente da agenda. Esta ação
+									não poderá ser desfeita. O histórico clínico e as vacinas
+									registradas do paciente serão preservados.
+								</AlertDialogDescription>
+							</AlertDialogHeader>
+
+							<AlertDialogFooter className='grid grid-cols-2 gap-3 sm:space-x-0'>
+								<AlertDialogCancel
+									className={cn(
+										buttonVariants({
+											variant: 'destructive',
+											size: 'default',
+										}),
+										'mt-0 w-full hover:bg-destructive/90 hover:text-white',
+									)}
+								>
+									<BanIcon className='mr-2 size-4' />
+									Cancelar
+								</AlertDialogCancel>
+
+								<AlertDialogAction
+									disabled={deleteAction.isPending}
+									onClick={() =>
+										deleteAction.execute({
+											id: reminder.id,
+										})
+									}
+									className='w-full'
+								>
+									<CheckIcon className='mr-2 size-4' />
+									Confirmar
+								</AlertDialogAction>
+							</AlertDialogFooter>
+						</AlertDialogContent>
+					</AlertDialog>
 				</DialogFooter>
 			)}
 		</DialogContent>

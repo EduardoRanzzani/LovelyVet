@@ -39,15 +39,20 @@ export const deleteTimelineItem = actionClient
 						throw new Error('Vacina não encontrada');
 					}
 
-					// Remove somente o lembrete pendente
-					// originado pela vacina excluída.
+					/*
+					 * Remove os lembretes originados pela vacina excluída,
+					 * independentemente de estarem pendentes, concluídos
+					 * ou cancelados.
+					 *
+					 * A operação permanece na mesma transação da
+					 * exclusão do registro de vacinação.
+					 */
 					await tx
 						.delete(careRemindersTable)
 						.where(
 							and(
 								eq(careRemindersTable.sourceVaccineId, id),
 								eq(careRemindersTable.petId, petId),
-								eq(careRemindersTable.status, 'pending'),
 							),
 						);
 
