@@ -2,6 +2,7 @@
 
 import { db } from '@/db';
 import {
+	careRemindersTable,
 	clinicalDocumentsTable,
 	petNotesTable,
 	petWeightsTable,
@@ -26,17 +27,38 @@ export const deleteTimelineItem = actionClient
 
 		switch (type) {
 			case 'vaccine': {
-				const vaccine = await db.query.vaccinesTable.findFirst({
-					where: and(eq(vaccinesTable.id, id), eq(vaccinesTable.petId, petId)),
+				await db.transaction(async (tx) => {
+					const vaccine = await tx.query.vaccinesTable.findFirst({
+						where: and(
+							eq(vaccinesTable.id, id),
+							eq(vaccinesTable.petId, petId),
+						),
+					});
+
+					if (!vaccine) {
+						throw new Error('Vacina não encontrada');
+					}
+
+					// Remove somente o lembrete pendente
+					// originado pela vacina excluída.
+					await tx
+						.delete(careRemindersTable)
+						.where(
+							and(
+								eq(careRemindersTable.sourceVaccineId, id),
+								eq(careRemindersTable.petId, petId),
+								eq(careRemindersTable.status, 'pending'),
+							),
+						);
+
+					// A exclusão da vacina ocorre na mesma
+					// transação da exclusão do lembrete.
+					await tx
+						.delete(vaccinesTable)
+						.where(
+							and(eq(vaccinesTable.id, id), eq(vaccinesTable.petId, petId)),
+						);
 				});
-
-				if (!vaccine) {
-					throw new Error('Vacina não encontrada');
-				}
-
-				await db
-					.delete(vaccinesTable)
-					.where(and(eq(vaccinesTable.id, id), eq(vaccinesTable.petId, petId)));
 
 				break;
 			}
@@ -133,4 +155,6 @@ export const deleteTimelineItem = actionClient
 		}
 
 		revalidatePath(`/pets/${petId}`);
+		revalidatePath('/agenda');
+		revalidatePath('/dashboard');
 	});

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+	careRemindersTable,
 	clinicalDocumentsTable,
 	petNotesTable,
 	petWeightsTable,
@@ -15,6 +16,8 @@ const mocks = vi.hoisted(() => ({
 	clinicalDocumentFindFirst: vi.fn(),
 	deleteWhere: vi.fn(),
 	dbDelete: vi.fn(),
+	transaction: vi.fn(),
+	transactionDelete: vi.fn(),
 	requireAuthContext: vi.fn(),
 	requireStaff: vi.fn(),
 	assertPrescriptionIsUnsigned: vi.fn(),
@@ -41,6 +44,7 @@ vi.mock('@/db', () => ({
 			},
 		},
 		delete: mocks.dbDelete,
+		transaction: mocks.transaction,
 	},
 }));
 
@@ -95,6 +99,32 @@ describe('deleteTimelineItem', () => {
 		mocks.dbDelete.mockReturnValue({
 			where: mocks.deleteWhere,
 		});
+
+		mocks.transactionDelete.mockImplementation(() => ({
+			where: mocks.deleteWhere,
+		}));
+
+		mocks.transaction.mockImplementation(
+			async (
+				callback: (tx: {
+					query: {
+						vaccinesTable: {
+							findFirst: typeof mocks.vaccineFindFirst;
+						};
+					};
+					delete: typeof mocks.transactionDelete;
+				}) => Promise<unknown>,
+			) => {
+				return callback({
+					query: {
+						vaccinesTable: {
+							findFirst: mocks.vaccineFindFirst,
+						},
+					},
+					delete: mocks.transactionDelete,
+				});
+			},
+		);
 	});
 
 	it('requires staff before deleting timeline item', async () => {
@@ -114,7 +144,7 @@ describe('deleteTimelineItem', () => {
 		expect(mocks.dbDelete).not.toHaveBeenCalled();
 	});
 
-	it('deletes vaccine from pet timeline', async () => {
+	it('deletes vaccine and its pending reminder atomically', async () => {
 		mocks.vaccineFindFirst.mockResolvedValue({
 			id: ITEM_ID,
 			petId: PET_ID,
@@ -126,10 +156,22 @@ describe('deleteTimelineItem', () => {
 			type: 'vaccine',
 		});
 
-		expect(mocks.vaccineFindFirst).toHaveBeenCalledTimes(1);
-		expect(mocks.dbDelete).toHaveBeenCalledWith(vaccinesTable);
-		expect(mocks.deleteWhere).toHaveBeenCalledTimes(1);
+		expect(mocks.transaction).toHaveBeenCalledTimes(1);
+
+		expect(mocks.transactionDelete).toHaveBeenNthCalledWith(
+			1,
+			careRemindersTable,
+		);
+
+		expect(mocks.transactionDelete).toHaveBeenNthCalledWith(2, vaccinesTable);
+
+		expect(mocks.deleteWhere).toHaveBeenCalledTimes(2);
+
 		expect(mocks.revalidatePath).toHaveBeenCalledWith(`/pets/${PET_ID}`);
+
+		expect(mocks.revalidatePath).toHaveBeenCalledWith('/agenda');
+
+		expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard');
 	});
 
 	it('rejects vaccine that does not belong to pet', async () => {
@@ -143,7 +185,7 @@ describe('deleteTimelineItem', () => {
 			}),
 		).rejects.toThrow('Vacina não encontrada');
 
-		expect(mocks.dbDelete).not.toHaveBeenCalled();
+		expect(mocks.transactionDelete).not.toHaveBeenCalled();
 	});
 
 	it('deletes weight from pet timeline', async () => {

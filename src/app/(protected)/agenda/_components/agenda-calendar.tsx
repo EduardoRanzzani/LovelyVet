@@ -17,6 +17,7 @@ import {
 	SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { getCareReminderStatusUI } from '@/lib/agenda/care-reminder-status';
 import {
 	eachDayOfInterval,
 	endOfDay,
@@ -229,6 +230,11 @@ const AgendaCalendarClient = ({
 			entry.kind !== 'care_reminder' &&
 			isSameDay(new Date(entry.startAt), date);
 
+		const reminderUI =
+			entry.kind === 'care_reminder'
+				? getCareReminderStatusUI(entry.status)
+				: null;
+
 		const className =
 			entry.kind === 'appointment'
 				? 'border-primary/50 bg-primary/10'
@@ -236,7 +242,7 @@ const AgendaCalendarClient = ({
 					? 'border-amber-500/50 bg-amber-500/10'
 					: entry.kind === 'personal'
 						? 'border-violet-500/50 bg-violet-500/10'
-						: 'border-emerald-500/50 bg-emerald-500/10';
+						: (reminderUI?.cardClassName ?? '');
 
 		return (
 			<div
@@ -246,7 +252,6 @@ const AgendaCalendarClient = ({
 
 					if (entry.kind === 'personal') {
 						handleEditPersonalEvent(entry.id);
-
 						return;
 					}
 
@@ -255,22 +260,40 @@ const AgendaCalendarClient = ({
 					}
 				}}
 				className={cn(
-					'rounded-sm border-l-2 p-1.5 text-[10px]',
+					'rounded-md border-l-2 p-2 text-xs md:p-1.5 md:text-[10px]',
 					className,
 					(entry.kind === 'personal' || entry.kind === 'care_reminder') &&
-						'cursor-pointer hover:opacity-80',
+						'cursor-pointer transition-opacity hover:opacity-80 active:opacity-60',
 					entry.kind === 'appointment' && !entry.blocksSchedule && 'opacity-50',
 				)}
 			>
-				<div className='flex items-center gap-1 font-semibold'>
-					{renderEntryIcon(entry)}
+				<div className='flex min-w-0 items-start gap-1.5 font-semibold'>
+					<span className='mt-0.5 shrink-0'>{renderEntryIcon(entry)}</span>
 
-					<span className='truncate'>{entry.title}</span>
+					<span
+						className={cn(
+							'min-w-0 flex-1 wrap-break-word',
+							reminderUI?.titleClassName,
+						)}
+					>
+						{entry.title}
+					</span>
 				</div>
 
 				{entry.kind === 'care_reminder' ? (
-					<div className='mt-1 truncate text-muted-foreground'>
-						{entry.pet.name}
+					<div className='mt-1 flex min-w-0 flex-col gap-1'>
+						<span className='wrap-break-word text-muted-foreground'>
+							{entry.pet.name}
+						</span>
+
+						<span
+							className={cn(
+								'w-fit max-w-full rounded border px-1.5 py-0.5 text-[10px] font-medium',
+								reminderUI?.badgeClassName,
+							)}
+						>
+							{reminderUI?.label}
+						</span>
 					</div>
 				) : (
 					<div className='mt-1 flex items-center gap-1 text-muted-foreground'>

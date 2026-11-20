@@ -9,7 +9,7 @@ import { assertVaccineBelongsToPet } from '@/lib/vaccines/vaccine-integrity';
 import { revalidatePath } from 'next/cache';
 import { createVaccineSchema } from '../schema/vaccine.schema';
 import { addDays, addYears, format } from 'date-fns';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 export const insertVaccine = actionClient
 	.schema(createVaccineSchema)
@@ -38,7 +38,65 @@ export const insertVaccine = actionClient
 				break;
 		}
 
+		if (parsedInput.id && parsedInput.reminderId) {
+			throw new Error(
+				'Não é permitido editar uma vacina ao concluir um lembrete.',
+			);
+		}
+
 		await db.transaction(async (tx) => {
+			if (parsedInput.reminderId) {
+				const reminder = await tx.query.careRemindersTable.findFirst({
+					where: eq(careRemindersTable.id, parsedInput.reminderId),
+				});
+
+				if (!reminder) {
+					throw new Error('Lembrete não encontrado.');
+				}
+
+				if (
+					reminder.type !== 'vaccine' ||
+					reminder.petId !== parsedInput.petId ||
+					!reminder.sourceVaccineId
+				) {
+					throw new Error(
+						'O lembrete não corresponde à vacinação deste paciente.',
+					);
+				}
+
+				if (context.role === 'doctor' && reminder.doctorId !== doctorId) {
+					throw new Error(
+						'Você não possui permissão para concluir este lembrete.',
+					);
+				}
+
+				if (reminder.status !== 'pending') {
+					throw new Error('Este lembrete já foi finalizado.');
+				}
+
+				const [completedReminder] = await tx
+					.update(careRemindersTable)
+					.set({
+						status: 'completed',
+						completedAt: new Date(),
+						updatedAt: new Date(),
+					})
+					.where(
+						and(
+							eq(careRemindersTable.id, reminder.id),
+							eq(careRemindersTable.petId, parsedInput.petId),
+							eq(careRemindersTable.status, 'pending'),
+						),
+					)
+					.returning({ id: careRemindersTable.id });
+
+				if (!completedReminder) {
+					throw new Error(
+						'Este lembrete já foi finalizado por outra operação.',
+					);
+				}
+			}
+
 			if (parsedInput.id) {
 				const existingVaccine = await tx.query.vaccinesTable.findFirst({
 					columns: { id: true, petId: true },
@@ -142,4 +200,5 @@ export const insertVaccine = actionClient
 
 		revalidatePath(`/pets/${parsedInput.petId}`);
 		revalidatePath('/agenda');
+		revalidatePath('/dashboard');
 	});

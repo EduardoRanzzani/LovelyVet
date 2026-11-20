@@ -9,6 +9,9 @@ import DatePickerForm from '@/components/form/datepicker-form';
 import InputForm from '@/components/form/input-form';
 import SelectForm from '@/components/form/select-form';
 import { Button } from '@/components/ui/button';
+import { buildVaccineSubmitPayload } from '@/lib/vaccines/vaccine-submit-payload';
+import type { FieldErrors } from 'react-hook-form';
+import { z } from 'zod';
 import {
 	Dialog,
 	DialogClose,
@@ -24,6 +27,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { BanIcon, Loader2Icon, SaveIcon, SyringeIcon } from 'lucide-react';
 import { useAction } from 'next-safe-action/hooks';
 import { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 
@@ -33,14 +37,21 @@ interface DialogVaccineProps {
 }
 
 const DialogVaccine = ({ petId, doctors }: DialogVaccineProps) => {
-	const [open, setOpen] = useState<boolean>(false);
+	const router = useRouter();
+	const searchParams = useSearchParams();
+
+	const reminderId = searchParams.get('vaccineReminder');
+	const vaccineName = searchParams.get('vaccineName');
+
+	const [open, setOpen] = useState<boolean>(() => Boolean(reminderId));
 
 	const form = useForm({
 		resolver: zodResolver(createVaccineSchema),
 		shouldUnregister: true,
 		defaultValues: {
 			petId,
-			name: '',
+			reminderId: reminderId ?? undefined,
+			name: vaccineName ?? '',
 			applicationDate: new Date(),
 			nextDoseType: 'booster' as const,
 			daysToNextDose: undefined,
@@ -57,9 +68,20 @@ const DialogVaccine = ({ petId, doctors }: DialogVaccineProps) => {
 
 	const insertVaccineAction = useAction(insertVaccine, {
 		onSuccess: () => {
-			toast.success('Registro de vacinação salvo com sucesso!');
+			toast.success(
+				reminderId
+					? 'Vacinação registrada e lembrete concluído com sucesso!'
+					: 'Registro de vacinação salvo com sucesso!',
+			);
+
 			setOpen(false);
 			form.reset();
+
+			if (reminderId) {
+				router.replace(`/pets/${petId}`);
+			}
+
+			router.refresh();
 		},
 		onError: ({ error }) => {
 			toast.error(
@@ -76,7 +98,22 @@ const DialogVaccine = ({ petId, doctors }: DialogVaccineProps) => {
 	};
 
 	const onSubmit = (data: CreateVaccineSchema) => {
-		insertVaccineAction.execute(data);
+		console.log('Formulário de vacina validado. Enviando action.');
+		insertVaccineAction.execute(buildVaccineSubmitPayload(data, reminderId));
+	};
+
+	const onInvalid = (
+		errors: FieldErrors<z.input<typeof createVaccineSchema>>,
+	) => {
+		console.error('Erros de validação da vacina:', errors);
+
+		const firstError = Object.values(errors).find((error) => error?.message);
+
+		toast.error(
+			typeof firstError?.message === 'string'
+				? firstError.message
+				: 'Verifique os campos obrigatórios da vacina.',
+		);
 	};
 
 	return (
@@ -94,16 +131,22 @@ const DialogVaccine = ({ petId, doctors }: DialogVaccineProps) => {
 				className='max-w-md'
 			>
 				<DialogHeader>
-					<DialogTitle>Nova Vacina</DialogTitle>
+					<DialogTitle>
+						{reminderId ? 'Concluir vacinação' : 'Nova Vacina'}
+					</DialogTitle>
+
 					<DialogDescription>
-						Informe os dados da vacina aplicada e a data de retorno
+						{reminderId
+							? 'Confirme os dados da aplicação para concluir o lembrete e programar o próximo reforço.'
+							: 'Informe os dados da vacina aplicada e a data de retorno'}
 					</DialogDescription>
 				</DialogHeader>
 
 				<Form {...form}>
 					<form
 						id='vaccineForm'
-						onSubmit={form.handleSubmit(onSubmit)}
+						noValidate
+						onSubmit={form.handleSubmit(onSubmit, onInvalid)}
 						className='space-y-4'
 					>
 						<input type='hidden' {...form.register('petId')} />

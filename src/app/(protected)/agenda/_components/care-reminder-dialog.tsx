@@ -11,7 +11,12 @@ import {
 	DialogTitle,
 } from '@/components/ui/dialog';
 import LoadingDialog from '@/components/ui/loading';
-import { CheckCircle2Icon, XCircleIcon } from 'lucide-react';
+import { getCareReminderStatusUI } from '@/lib/agenda/care-reminder-status';
+import { cn } from '@/lib/utils';
+import { getVaccineReminderUrl } from '@/lib/vaccines/vaccine-reminder-url';
+import { CheckCircle2Icon, SyringeIcon } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAction } from 'next-safe-action/hooks';
 import { toast } from 'sonner';
 
@@ -24,17 +29,35 @@ const CareReminderDialog = ({
 	reminder,
 	onSuccess,
 }: CareReminderDialogProps) => {
-	const action = useAction(updateCareReminderStatus, {
-		onSuccess: ({ input }) => {
-			toast.success(
-				input.status === 'completed'
-					? 'Lembrete concluído com sucesso.'
-					: 'Lembrete cancelado.',
-			);
+	const router = useRouter();
 
+	const reminderUI = getCareReminderStatusUI(reminder.status);
+
+	const isPending = reminder.status === 'pending';
+
+	const isVaccine = reminder.title.startsWith('Vacina:');
+
+	const procedureName = isVaccine ? 'Vacinação' : 'Cuidado agendado';
+
+	const procedureDetail = isVaccine
+		? reminder.title.replace(/^Vacina:\s*/, '').trim()
+		: reminder.title;
+
+	const isVaccineReminder = isPending && reminder.title.startsWith('Vacina: ');
+
+	const handleCompleteVaccine = () => {
+		const vaccineName = reminder.title.replace(/^Vacina:\s*/, '').trim();
+
+		router.push(
+			getVaccineReminderUrl(reminder.pet.id, reminder.id, vaccineName),
+		);
+	};
+
+	const action = useAction(updateCareReminderStatus, {
+		onSuccess: () => {
+			toast.success('Lembrete concluído com sucesso.');
 			onSuccess?.();
 		},
-
 		onError: ({ error }) => {
 			toast.error(
 				error.serverError ?? 'Não foi possível atualizar o lembrete.',
@@ -43,64 +66,144 @@ const CareReminderDialog = ({
 	});
 
 	return (
-		<DialogContent>
-			<DialogHeader>
-				<DialogTitle>{reminder.title}</DialogTitle>
+		<DialogContent className='max-h-[90dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto sm:max-w-lg'>
+			<DialogHeader className='space-y-3 text-left'>
+				<div className='flex flex-col items-start gap-2 pr-6'>
+					<span
+						className={cn(
+							'inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold',
+							reminderUI.badgeClassName,
+						)}
+					>
+						{reminderUI.label}
+					</span>
+
+					<DialogTitle
+						className={cn(
+							'text-lg leading-snug wrap-break-word',
+							reminderUI.titleClassName,
+						)}
+					>
+						{reminder.title}
+					</DialogTitle>
+				</div>
 
 				<DialogDescription>
-					Lembrete de cuidado do pet <strong>{reminder.pet.name}</strong>.
+					Acompanhamento de cuidados do paciente.
 				</DialogDescription>
 			</DialogHeader>
 
-			<div className='flex flex-col gap-2 text-sm'>
-				<div>
-					<span className='font-medium'>Pet:</span> {reminder.pet.name}
+			<div className='space-y-4 py-2 text-sm'>
+				<div className='rounded-lg border p-3'>
+					<p className='mb-1 text-xs font-medium text-muted-foreground'>
+						Paciente
+					</p>
+
+					<Link
+						href={`/pets/${encodeURIComponent(reminder.pet.id)}`}
+						className='inline-flex min-h-11 items-center font-semibold text-foreground underline decoration-current underline-offset-4 transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
+					>
+						{reminder.pet.name}
+					</Link>
 				</div>
 
-				<div>
-					<span className='font-medium'>Data:</span>{' '}
-					{reminder.dueDate.split('-').reverse().join('/')}
+				<div className='rounded-lg border p-3'>
+					<p className='mb-1 text-xs font-medium text-muted-foreground'>
+						Data agendada
+					</p>
+
+					<p className='font-medium'>
+						{reminder.dueDate.split('-').reverse().join('/')}
+					</p>
 				</div>
 
-				<p className='text-muted-foreground'>
-					Concluir este lembrete não cria automaticamente outra dose. Um novo
-					lembrete será criado quando a próxima aplicação da vacina for
-					registrada.
-				</p>
+				<div className='rounded-lg border p-3'>
+					<p className='mb-2 text-xs font-medium text-muted-foreground'>
+						Procedimento
+					</p>
+
+					<div className='flex flex-col gap-1'>
+						<p className='font-semibold text-foreground'>{procedureName}</p>
+
+						<p className='wrap-break-word text-sm text-foreground'>
+							{procedureDetail}
+						</p>
+					</div>
+
+					<p className='mt-2 text-xs leading-relaxed text-muted-foreground'>
+						{reminder.status === 'completed'
+							? 'Lembrete concluído. Consulte o histórico do paciente para conferir o registro clínico da aplicação.'
+							: reminder.status === 'cancelled'
+								? 'Procedimento cancelado.'
+								: 'Procedimento previsto para esta data.'}
+					</p>
+				</div>
+
+				{reminder.status === 'completed' && (
+					<div
+						role='status'
+						className='rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm'
+					>
+						<div className='flex items-start gap-2'>
+							<CheckCircle2Icon className='mt-0.5 size-4 shrink-0 text-emerald-600' />
+
+							<p>
+								Lembrete concluído. O registro permanece disponível na agenda
+								para consulta.
+							</p>
+						</div>
+					</div>
+				)}
+
+				{reminder.status === 'cancelled' && (
+					<div
+						role='status'
+						className='rounded-lg border bg-muted/50 p-3 text-sm text-muted-foreground'
+					>
+						Este lembrete foi cancelado. O cancelamento não representa uma
+						vacinação realizada.
+					</div>
+				)}
+
+				{isVaccineReminder && (
+					<p className='text-sm leading-relaxed text-muted-foreground'>
+						Confirme os dados da aplicação para concluir esta vacinação. Se
+						houver reforço, um novo lembrete será agendado automaticamente.
+					</p>
+				)}
 			</div>
 
 			{action.isPending && <LoadingDialog />}
 
-			<DialogFooter className='gap-2'>
-				<Button
-					type='button'
-					variant='destructive'
-					disabled={action.isPending}
-					onClick={() =>
-						action.execute({
-							id: reminder.id,
-							status: 'cancelled',
-						})
-					}
-				>
-					<XCircleIcon />
-					Cancelar lembrete
-				</Button>
-
-				<Button
-					type='button'
-					disabled={action.isPending}
-					onClick={() =>
-						action.execute({
-							id: reminder.id,
-							status: 'completed',
-						})
-					}
-				>
-					<CheckCircle2Icon />
-					Concluir
-				</Button>
-			</DialogFooter>
+			{isPending && (
+				<DialogFooter className='flex-col gap-2 sm:flex-row'>
+					{isVaccineReminder ? (
+						<Button
+							type='button'
+							className='min-h-11 w-full bg-vaccine hover:bg-vaccine/80'
+							onClick={handleCompleteVaccine}
+						>
+							<SyringeIcon className='size-4' />
+							Concluir vacinação
+						</Button>
+					) : (
+						<Button
+							type='button'
+							className='min-h-11 w-full'
+							disabled={action.isPending}
+							onClick={() =>
+								action.execute({
+									id: reminder.id,
+									status: 'completed',
+								})
+							}
+						>
+							<CheckCircle2Icon className='size-4' />
+							Concluir
+						</Button>
+					)}
+				</DialogFooter>
+			)}
 		</DialogContent>
 	);
 };

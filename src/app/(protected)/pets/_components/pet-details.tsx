@@ -31,6 +31,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { UserRole } from '@/lib/security/roles';
+import { formatVaccineNextDose } from '@/lib/vaccines/format-next-dose';
 import { format, formatDate } from 'date-fns';
 import {
 	CalendarIcon,
@@ -286,7 +287,7 @@ const PetDetailsClient = ({
 					</p>
 					<p className='flex min-w-0 flex-wrap gap-1 sm:gap-2'>
 						<span className='font-bold'>Próxima dose:</span>
-						{formatDate(v.nextDoseDate!, 'dd/MM/yyyy')}
+						{formatVaccineNextDose(v.nextDoseDate)}
 					</p>
 				</div>
 			),

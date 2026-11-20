@@ -154,22 +154,10 @@ export const getCalendarEntries = async (
 					scopedDoctorId
 						? eq(careRemindersTable.doctorId, scopedDoctorId)
 						: undefined,
-
-					eq(careRemindersTable.status, 'pending'),
-
 					gte(careRemindersTable.dueDate, startDate),
-
 					lte(careRemindersTable.dueDate, endDate),
 				),
-
-				with: {
-					pet: {
-						columns: {
-							id: true,
-							name: true,
-						},
-					},
-				},
+				with: { pet: { columns: { id: true, name: true } } },
 			}),
 		]);
 
