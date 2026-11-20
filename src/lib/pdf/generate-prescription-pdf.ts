@@ -965,15 +965,22 @@ export async function generatePrescriptionPdf({
 
 	const orientationBlocks = documentData.orientationBlocks ?? [];
 
-	for (const [index, block] of orientationBlocks.entries()) {
+	for (const block of orientationBlocks) {
 		if (y < contentBottom + 45) {
 			startNewPage();
 		}
 
-		const title =
-			orientationBlocks.length > 1 ? `ORIENTAÇÕES ${index + 1}` : 'ORIENTAÇÕES';
+		const title = (block.title?.trim() || 'Orientações').toLocaleUpperCase(
+			'pt-BR',
+		);
 
-		drawCenteredText(page, title, y, boldFont, 9.75);
+		drawCenteredText(
+			page,
+			fitText(title, boldFont, 9.75, CONTENT_WIDTH),
+			y,
+			boldFont,
+			9.75,
+		);
 
 		y -= 25;
 

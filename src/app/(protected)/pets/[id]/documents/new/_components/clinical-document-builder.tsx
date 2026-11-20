@@ -145,11 +145,17 @@ export default function ClinicalDocumentBuilder({
 
 	const [prescriptionOrientationBlocks, setPrescriptionOrientationBlocks] =
 		useState<PrescriptionDraftOrientationBlock[]>(
-			initialPrescription?.orientationBlocks ?? [],
+			() =>
+				initialPrescription?.orientationBlocks?.map((block) => ({
+					title: block.title ?? '',
+					content: block.content,
+				})) ?? [],
 		);
 
 	const orientationBlocksValid = prescriptionOrientationBlocks.every(
 		(block) =>
+			block.title.trim().length > 0 &&
+			block.title.length <= 120 &&
 			block.content
 				.replace(/<[^>]*>/g, '')
 				.replace(/&nbsp;/gi, ' ')
@@ -611,7 +617,12 @@ export default function ClinicalDocumentBuilder({
 											}
 											onGroupsChange={setPrescriptionGroups}
 											initialOrientationBlocks={
-												initialPrescription?.orientationBlocks ?? []
+												initialPrescription?.orientationBlocks?.map(
+													(block) => ({
+														title: block.title ?? '',
+														content: block.content,
+													}),
+												) ?? []
 											}
 											onOrientationBlocksChange={
 												setPrescriptionOrientationBlocks

@@ -17,8 +17,20 @@ export const prescriptionDocumentGroupSchema = z.object({
 });
 
 export const prescriptionOrientationBlockSchema = z.object({
+	// Opcional para manter compatibilidade com receitas já salvas
+	title: z.string().trim().max(120).optional(),
+
 	content: z.string().trim().min(1, 'Preencha as orientações'),
 });
+
+export const editablePrescriptionOrientationBlockSchema =
+	prescriptionOrientationBlockSchema.extend({
+		title: z
+			.string()
+			.trim()
+			.min(1, 'Informe o título da orientação')
+			.max(120, 'O título deve ter no máximo 120 caracteres'),
+	});
 
 /*
  * groups é o formato atual.
@@ -69,7 +81,9 @@ export const savePrescriptionDocumentSchema = z.object({
 	tutorId: z.uuid(),
 	doctorId: z.uuid(),
 	isControlled: z.boolean().default(false),
-	orientationBlocks: z.array(prescriptionOrientationBlockSchema).default([]),
+	orientationBlocks: z
+		.array(editablePrescriptionOrientationBlockSchema)
+		.default([]),
 	generalOrientations: z
 		.string()
 		.max(2000, 'As orientações devem ter no máximo 2.000 caracteres')

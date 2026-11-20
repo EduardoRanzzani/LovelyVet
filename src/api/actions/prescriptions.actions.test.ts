@@ -321,6 +321,33 @@ describe('prescriptions actions', () => {
 			expect(mocks.revalidatePath).toHaveBeenCalledWith('/prescriptions');
 		});
 
+		it('salva o título personalizado das orientações', async () => {
+			mockDocumentLookups();
+
+			const orientationBlocks = [
+				{
+					title: 'Cuidados pós-operatórios',
+					content: '<p>Manter repouso.</p>',
+				},
+			];
+
+			await savePrescriptionDocument({
+				...documentInput,
+				orientationBlocks,
+			});
+
+			expect(mocks.insertValues).toHaveBeenCalledWith(
+				expect.objectContaining({
+					documentData: expect.objectContaining({
+						orientationBlocks,
+					}),
+					content: expect.stringContaining('Cuidados pós-operatórios'),
+				}),
+			);
+
+			expect(mocks.escapeHtml).toHaveBeenCalledWith('Cuidados pós-operatórios');
+		});
+
 		it('rejects tutor that does not belong to pet', async () => {
 			mocks.dbSelect.mockReturnValueOnce(createLimitChain([]));
 
@@ -380,8 +407,14 @@ describe('prescriptions actions', () => {
 			mockDocumentLookups();
 
 			const orientationBlocks = [
-				{ content: '<p>Manter repouso.</p>' },
-				{ content: '<p>Retornar em 7 dias.</p>' },
+				{
+					title: 'Cuidados gerais',
+					content: '<p>Manter repouso.</p>',
+				},
+				{
+					title: 'Retorno veterinário',
+					content: '<p>Retornar em 7 dias.</p>',
+				},
 			];
 
 			await savePrescriptionDocument({
@@ -482,6 +515,35 @@ describe('prescriptions actions', () => {
 			});
 		});
 
+		it('atualiza o título das orientações', async () => {
+			mocks.dbSelect
+				.mockReturnValueOnce(createLimitChain([existingPrescription]))
+				.mockReturnValueOnce(
+					createLimitChain([{ id: TUTOR_ID, name: 'Maria Silva' }]),
+				);
+
+			const orientationBlocks = [
+				{
+					title: 'Recomendações de repouso',
+					content: '<p>Evitar exercícios intensos.</p>',
+				},
+			];
+
+			await updatePrescriptionDocument({
+				...updateInput,
+				orientationBlocks,
+			});
+
+			expect(mocks.updateSet).toHaveBeenCalledWith(
+				expect.objectContaining({
+					documentData: expect.objectContaining({
+						orientationBlocks,
+					}),
+					content: expect.stringContaining('Recomendações de repouso'),
+				}),
+			);
+		});
+
 		it('rejects missing prescription', async () => {
 			mocks.dbSelect.mockReturnValueOnce(createLimitChain([]));
 
@@ -566,7 +628,12 @@ describe('prescriptions actions', () => {
 					]),
 				);
 
-			const orientationBlocks = [{ content: '<p>Novas orientações.</p>' }];
+			const orientationBlocks = [
+				{
+					title: 'Orientações de recuperação',
+					content: '<p>Novas orientações.</p>',
+				},
+			];
 
 			await updatePrescriptionDocument({
 				...updateInput,

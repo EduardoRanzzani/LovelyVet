@@ -177,9 +177,7 @@ export default function PrescriptionDocument({
 						{orientationBlocks.map((block, index) => (
 							<section key={index}>
 								<h3 className='mb-4 text-center text-[13px] font-semibold uppercase'>
-									{orientationBlocks.length > 1
-										? `Orientações ${index + 1}`
-										: 'Orientações'}
+									{block.title?.trim() || 'Orientações'}
 								</h3>
 
 								<div

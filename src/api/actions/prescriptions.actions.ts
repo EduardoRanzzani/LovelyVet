@@ -136,14 +136,10 @@ const buildPrescriptionContent = (
 
 	const orientationContent = orientationBlocks
 		.map(
-			(block, index) => `
+			(block) => `
         <section style="margin-bottom: 24px;">
           <h3 style="margin: 0 0 12px; text-align: center; font-size: 14px; font-weight: bold;">
-            ${
-							orientationBlocks.length > 1
-								? `ORIENTAÇÕES ${index + 1}`
-								: 'ORIENTAÇÕES'
-						}
+           ${escapeHtml(block.title?.trim() || 'Orientações')}
           </h3>
 
           <div style="font-size: 13px; line-height: 1.3;">
@@ -316,6 +312,7 @@ export const savePrescriptionDocument = actionClient
 
 		const orientationBlocks = (parsedInput.orientationBlocks ?? []).map(
 			(block) => ({
+				title: block.title.trim(),
 				content: sanitizeRichTextHtml(block.content),
 			}),
 		);
@@ -461,6 +458,7 @@ export const updatePrescriptionDocument = actionClient
 
 		const orientationBlocks = (parsedInput.orientationBlocks ?? []).map(
 			(block) => ({
+				title: block.title.trim(),
 				content: sanitizeRichTextHtml(block.content),
 			}),
 		);

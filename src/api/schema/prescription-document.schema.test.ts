@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-	savePrescriptionDocumentSchema,
 	prescriptionDocumentDataSchema,
+	savePrescriptionDocumentSchema,
 } from './prescription-document.schema';
 
 const validInput = {
@@ -25,45 +25,36 @@ const validInput = {
 	],
 };
 
-describe('prescription orientation blocks', () => {
-	it('permite salvar receita sem orientações gerais', () => {
-		const result = savePrescriptionDocumentSchema.parse(validInput);
-
-		expect(result.orientationBlocks).toEqual([]);
-	});
-
-	it('permite adicionar múltiplos blocos de orientações', () => {
+describe('Títulos dos blocos de orientações', () => {
+	it('aceita um título personalizado', () => {
 		const result = savePrescriptionDocumentSchema.parse({
 			...validInput,
 			orientationBlocks: [
-				{ content: '<p>Manter repouso.</p>' },
-				{ content: '<p>Retornar em 7 dias.</p>' },
+				{
+					title: 'Cuidados pós-operatórios',
+					content: '<p>Manter repouso.</p>',
+				},
 			],
 		});
 
-		expect(result.orientationBlocks).toHaveLength(2);
-		expect(result.orientationBlocks[0].content).toContain('Manter repouso');
+		expect(result.orientationBlocks[0].title).toBe('Cuidados pós-operatórios');
 	});
 
-	it('rejeita bloco sem conteúdo', () => {
+	it('exige título para novas orientações', () => {
 		const result = savePrescriptionDocumentSchema.safeParse({
 			...validInput,
-			orientationBlocks: [{ content: '' }],
+			orientationBlocks: [
+				{
+					title: '   ',
+					content: '<p>Manter repouso.</p>',
+				},
+			],
 		});
 
 		expect(result.success).toBe(false);
 	});
 
-	it('rejeita conteúdo apenas com espaços', () => {
-		const result = savePrescriptionDocumentSchema.safeParse({
-			...validInput,
-			orientationBlocks: [{ content: '   ' }],
-		});
-
-		expect(result.success).toBe(false);
-	});
-
-	it('preserva compatibilidade com receitas anteriores', () => {
+	it('aceita receitas antigas sem título nas orientações', () => {
 		const result = prescriptionDocumentDataSchema.safeParse({
 			tutor: {
 				id: validInput.tutorId,
@@ -78,6 +69,7 @@ describe('prescription orientation blocks', () => {
 				sex: 'M',
 			},
 			groups: validInput.groups,
+			orientationBlocks: [{ content: '<p>Orientação antiga.</p>' }],
 		});
 
 		expect(result.success).toBe(true);

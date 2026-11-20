@@ -2,6 +2,7 @@
 
 import { getPrescriptionsItems } from '@/api/actions/prescriptions-items.actions';
 import type { PrescriptionItemsWithRelations } from '@/api/schema/prescriptions-items.schema';
+import InputForm from '@/components/form/input-form';
 import TextEditorForm from '@/components/form/text-editor-form';
 import {
 	Accordion,
@@ -44,6 +45,7 @@ export interface PrescriptionDraftGroup {
 }
 
 export interface PrescriptionDraftOrientationBlock {
+	title: string;
 	content: string;
 }
 
@@ -137,6 +139,7 @@ export default function PrescriptionBuilder({
 
 	const handleAddOrientationBlock = () => {
 		appendOrientationBlock({
+			title: '',
 			content: '',
 		});
 	};
@@ -182,7 +185,10 @@ export default function PrescriptionBuilder({
 						className='rounded-xl border bg-card p-3 sm:p-5'
 					>
 						<div className='mb-4 flex items-center justify-between gap-3'>
-							<h4 className='font-semibold'>Orientações {index + 1}</h4>
+							<h4 className='min-w-0 truncate font-semibold'>
+								{orientationBlocks?.[index]?.title?.trim() ||
+									`Bloco de orientação ${index + 1}`}
+							</h4>
 
 							<Button
 								type='button'
@@ -194,6 +200,17 @@ export default function PrescriptionBuilder({
 								<Trash2Icon className='size-4' />
 								Remover bloco
 							</Button>
+						</div>
+
+						<div className='mb-4'>
+							<InputForm<PrescriptionDraft>
+								name={`orientationBlocks.${index}.title` as const}
+								register={form.register}
+								label='Título da orientação'
+								placeholder='Ex.: CUIDADOS PÓS-OPERATÓRIOS'
+								maxLength={120}
+								required
+							/>
 						</div>
 
 						<TextEditorForm
