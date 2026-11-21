@@ -10,6 +10,8 @@ import {
 	CardTitle,
 } from '@/components/ui/card';
 import Link from 'next/link';
+import { formatCurrencyFromCents } from '@/helpers/currency';
+import { getDoctorShiftSummary } from '@/lib/dashboard/doctor-shift-summary';
 
 interface DoctorDashboardProps {
 	appointments: AppointmentsWithRelations[];
@@ -26,6 +28,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat('pt-BR', {
 
 const DoctorDashboard = ({ appointments, shifts }: DoctorDashboardProps) => {
 	const now = new Date();
+	const shiftSummary = getDoctorShiftSummary(shifts, now);
 
 	const pendingAppointments = appointments.filter(
 		(appointment) => appointment.status === 'pending',
@@ -61,8 +64,8 @@ const DoctorDashboard = ({ appointments, shifts }: DoctorDashboardProps) => {
 			value: inProgressAppointments.length,
 		},
 		{
-			title: 'Plantões no mês',
-			value: shifts.length,
+			title: 'Plantões realizados',
+			value: shiftSummary.completedCount,
 		},
 	];
 
@@ -79,6 +82,118 @@ const DoctorDashboard = ({ appointments, shifts }: DoctorDashboardProps) => {
 					</Card>
 				))}
 			</div>
+
+			<Card>
+				<CardHeader className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+					<div className='space-y-1'>
+						<CardTitle>Controle de plantões</CardTitle>
+						<CardDescription>
+							Resumo financeiro dos plantões do período consultado.
+						</CardDescription>
+					</div>
+
+					<Button asChild variant='outline' size='sm'>
+						<Link href='/shifts'>Ver plantões</Link>
+					</Button>
+				</CardHeader>
+
+				<CardContent className='space-y-5'>
+					<div className='grid grid-cols-2 gap-3 lg:grid-cols-4'>
+						{[
+							{
+								title: 'Realizados',
+								value: String(shiftSummary.completedCount),
+							},
+							{
+								title: 'Próximos',
+								value: String(shiftSummary.upcomingCount),
+							},
+							{
+								title: 'Recebido',
+								value: formatCurrencyFromCents(shiftSummary.receivedInCents),
+							},
+							{
+								title: 'A receber',
+								value: formatCurrencyFromCents(shiftSummary.receivableInCents),
+							},
+						].map((item) => (
+							<div key={item.title} className='min-w-0 rounded-lg border p-3'>
+								<p className='text-xs text-muted-foreground'>{item.title}</p>
+								<p className='mt-2 wrap-break-word text-lg font-bold tabular-nums sm:text-xl'>
+									{item.value}
+								</p>
+							</div>
+						))}
+					</div>
+
+					<div className='space-y-1 rounded-lg bg-muted/40 p-3'>
+						<p className='text-sm font-semibold'>
+							Previsão de plantões futuros
+						</p>
+
+						<p className='text-xl font-bold tabular-nums'>
+							{formatCurrencyFromCents(shiftSummary.forecastInCents)}
+						</p>
+
+						<p className='text-xs text-muted-foreground'>
+							Inclui plantões futuros já pagos. Não deve ser somada diretamente
+							ao valor a receber.
+						</p>
+					</div>
+
+					{shiftSummary.missingAmountCount > 0 && (
+						<p className='text-xs text-amber-700 dark:text-amber-400'>
+							{shiftSummary.missingAmountCount} plantão(ões) sem valor
+							cadastrado. O resumo financeiro pode estar incompleto.
+						</p>
+					)}
+
+					<div className='space-y-3'>
+						<h3 className='font-semibold'>Próximos plantões</h3>
+
+						{shiftSummary.upcomingShifts.length === 0 ? (
+							<p className='rounded-lg border border-dashed p-4 text-sm text-muted-foreground'>
+								Nenhum plantão futuro neste período.
+							</p>
+						) : (
+							shiftSummary.upcomingShifts.slice(0, 5).map((shift) => (
+								<Link
+									key={shift.id}
+									href='/shifts'
+									className='flex min-h-16 flex-col gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:flex-row sm:items-center sm:justify-between'
+								>
+									<div className='min-w-0 space-y-1'>
+										<p className='wrap-break-word font-semibold'>
+											{shift.clinicName ?? 'Clínica não informada'}
+										</p>
+
+										<p className='text-xs text-muted-foreground'>
+											Entrada:{' '}
+											{dateTimeFormatter.format(new Date(shift.startTime))}
+										</p>
+
+										<p className='text-xs text-muted-foreground'>
+											Saída: {dateTimeFormatter.format(new Date(shift.endTime))}
+										</p>
+									</div>
+
+									<div className='shrink-0 sm:text-right'>
+										<p className='font-semibold tabular-nums'>
+											{shift.amountInCents === null
+												? 'Valor não informado'
+												: formatCurrencyFromCents(shift.amountInCents)}
+										</p>
+
+										<p className='text-xs text-muted-foreground'>
+											{shift.isPaid ? 'Pago' : 'Não pago'}
+										</p>
+									</div>
+								</Link>
+							))
+						)}
+					</div>
+				</CardContent>
+			</Card>
 
 			<Card>
 				<CardHeader className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
