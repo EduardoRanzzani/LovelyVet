@@ -8,6 +8,8 @@ import { monthNames } from '@/api/config/consts';
 import type {
 	CalendarCareReminderEntry,
 	CalendarEntry,
+	CalendarAppointmentEntry,
+	CalendarShiftEntry,
 } from '@/api/schema/calendar.schema';
 import type { DoctorsWithRelations } from '@/api/schema/doctors.schema';
 import { CustomCalendar } from '@/components/ui/custom-calendar';
@@ -57,6 +59,7 @@ import CalendarEventForm, {
 	type PersonalCalendarEventDetails,
 } from './calendar-event-form';
 import CareReminderDialog from './care-reminder-dialog';
+import AgendaEntryDetailsDialog from './agenda-entry-details-dialog';
 
 interface AgendaCalendarClientProps {
 	entriesPromise: Promise<CalendarEntry[]>;
@@ -84,6 +87,9 @@ const AgendaCalendarClient = ({
 	>();
 	const [selectedCareReminder, setSelectedCareReminder] = useState<
 		CalendarCareReminderEntry | undefined
+	>();
+	const [selectedAgendaEntry, setSelectedAgendaEntry] = useState<
+		CalendarAppointmentEntry | CalendarShiftEntry | undefined
 	>();
 	const monthParam = searchParams.get('month');
 	const yearParam = Number(searchParams.get('year'));
@@ -148,6 +154,7 @@ const AgendaCalendarClient = ({
 	};
 
 	const handleNewEvent = (date: Date) => {
+		setSelectedAgendaEntry(undefined);
 		setSelectedCareReminder(undefined);
 		setSelectedPersonalEvent(undefined);
 		setSelectedDate(date);
@@ -155,6 +162,7 @@ const AgendaCalendarClient = ({
 	};
 
 	const handleCareReminder = (reminder: CalendarCareReminderEntry) => {
+		setSelectedAgendaEntry(undefined);
 		setSelectedPersonalEvent(undefined);
 		setSelectedDate(null);
 		setSelectedCareReminder(reminder);
@@ -162,11 +170,13 @@ const AgendaCalendarClient = ({
 	};
 
 	const handleEditPersonalEvent = (id: string) => {
+		setSelectedAgendaEntry(undefined);
 		setSelectedCareReminder(undefined);
 		eventDetailsAction.execute({ id });
 	};
 
 	const handleFormSuccess = () => {
+		setSelectedAgendaEntry(undefined);
 		setIsFormOpen(false);
 		setSelectedDate(null);
 		setSelectedPersonalEvent(undefined);
@@ -294,14 +304,22 @@ const AgendaCalendarClient = ({
 
 					if (entry.kind === 'care_reminder') {
 						handleCareReminder(entry);
+						return;
+					}
+
+					if (entry.kind === 'appointment' || entry.kind === 'shift') {
+						setSelectedCareReminder(undefined);
+						setSelectedPersonalEvent(undefined);
+						setSelectedDate(null);
+						setSelectedAgendaEntry(entry);
+						setIsFormOpen(true);
 					}
 				}}
 				className={cn(
 					'rounded-md border-l-2 p-2 text-xs md:p-1.5 md:text-[10px]',
 					className,
 					entry.kind === 'shift' && !isShiftStart && 'opacity-70 border-dashed',
-					(entry.kind === 'personal' || entry.kind === 'care_reminder') &&
-						'cursor-pointer transition-opacity hover:opacity-80 active:opacity-60',
+					'cursor-pointer transition-opacity hover:opacity-80 active:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
 					entry.kind === 'appointment' && !entry.blocksSchedule && 'opacity-50',
 				)}
 			>
@@ -538,7 +556,11 @@ const AgendaCalendarClient = ({
 					/>
 				)}
 
-				{isFormOpen && !selectedCareReminder && (
+				{isFormOpen && selectedAgendaEntry && (
+					<AgendaEntryDetailsDialog entry={selectedAgendaEntry} />
+				)}
+
+				{isFormOpen && !selectedCareReminder && !selectedAgendaEntry && (
 					<CalendarEventForm
 						key={
 							selectedPersonalEvent?.id ??
