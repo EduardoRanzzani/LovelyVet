@@ -1,4 +1,4 @@
-import { getAppointmentsPaginated } from '@/api/actions/appointments.actions';
+import { getUnifiedAppointmentsPaginated } from '@/api/actions/unified-appointments.actions';
 import { getDoctorsForSelection } from '@/api/actions/doctors.actions';
 import { getPetsForSelection } from '@/api/actions/pets.actions';
 import { getServices } from '@/api/actions/services.actions';
@@ -32,7 +32,7 @@ const AppointmentsPage = async ({ searchParams }: AppointmentsPageProps) => {
 	const doctors = await getDoctorsForSelection();
 	const services = await getServices();
 
-	const dataPromise = getAppointmentsPaginated(page, MAX_PAGE_SIZE, filter);
+	const dataPromise = getUnifiedAppointmentsPaginated(page, MAX_PAGE_SIZE, filter);
 
 	return (
 		<PageContainer>
@@ -44,7 +44,7 @@ const AppointmentsPage = async ({ searchParams }: AppointmentsPageProps) => {
 
 			<PageContent>
 				<PageDescription>
-					Listagem de todos os agendamentos registrados no sistema
+					Agendamentos de serviços e retornos clínicos em um único lugar
 				</PageDescription>
 				<Suspense
 					fallback={

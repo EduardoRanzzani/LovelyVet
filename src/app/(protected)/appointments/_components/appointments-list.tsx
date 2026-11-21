@@ -8,6 +8,10 @@ import {
 } from '@/api/actions/appointments.actions';
 import { MAX_PAGE_SIZE, PaginatedData } from '@/api/config/consts';
 import { AppointmentListItem } from '@/api/schema/appointments.schema';
+import type { UnifiedAppointmentItem } from '@/lib/appointments/unified-appointments';
+import { parseISO, format } from 'date-fns';
+import Link from 'next/link';
+import { SyringeIcon, CalendarDaysIcon } from 'lucide-react';
 import { DoctorOption } from '@/api/schema/doctors.schema';
 import { formatPetTutorNames, PetOption } from '@/api/schema/pets.schema';
 import { ServicesWithRelations } from '@/api/schema/services.schema';
@@ -41,7 +45,7 @@ import AppointmentFormClient from './appointment-form';
 import BadgeStatus from './badge-status';
 
 interface AppointmentsListClientProps {
-	appointments: Promise<PaginatedData<AppointmentListItem>>;
+	appointments: Promise<PaginatedData<UnifiedAppointmentItem>>;
 	pets: PetOption[];
 	doctors: DoctorOption[];
 	services: ServicesWithRelations[];
@@ -148,12 +152,26 @@ const AppointmentsListClient = ({
 		{ header: 'Paciente', accessorKey: 'pet' },
 		{ header: 'Tutor(a)', accessorKey: 'tutor' },
 		{ header: 'Status', accessorKey: 'status' },
-		{ header: 'Serviço(s)', accessorKey: 'service' },
+		{ header: 'Serviço(s) / Procedimento', accessorKey: 'service' },
 		{ header: 'Valor', accessorKey: 'totalPriceInCents' },
 		{ header: 'Ações', accessorKey: 'actions' },
 	];
 
-	const renderRow = (appointment: AppointmentListItem) => {
+	const renderRow = (entry: UnifiedAppointmentItem) => {
+    if (entry.kind === 'care_reminder') {
+      return (
+        <TableRow key={`reminder-${entry.id}`}>
+          <TableCell>{format(parseISO(entry.dueDate), 'dd/MM/yyyy')} · Sem horário definido</TableCell>
+          <TableCell><Link className='font-medium underline underline-offset-4 hover:text-primary' href={`/pets/${encodeURIComponent(entry.pet.id)}`}>{entry.pet.name}</Link></TableCell>
+          <TableCell className='text-muted-foreground'>—</TableCell>
+          <TableCell><span className='rounded-md border border-amber-500/40 px-2 py-1 text-xs font-medium'>Retorno pendente</span></TableCell>
+          <TableCell><span className='flex items-center gap-2'><SyringeIcon className='size-4 shrink-0' />{entry.title}</span><span className='text-xs text-muted-foreground'>Veterinária: {entry.doctor.name}</span></TableCell>
+          <TableCell className='text-muted-foreground'>Não cobrado</TableCell>
+          <TableCell><Link className='text-sm font-semibold underline underline-offset-4 hover:text-primary' href={`/pets/${encodeURIComponent(entry.pet.id)}`}>Ver pet</Link></TableCell>
+        </TableRow>
+      );
+    }
+    const appointment: AppointmentListItem = entry;
 		return (
 			<TableRow key={appointment.id}>
 				<TableCell>
@@ -227,7 +245,23 @@ const AppointmentsListClient = ({
 		);
 	};
 
-	const renderMobile = (appointment: AppointmentListItem) => {
+	const renderMobile = (entry: UnifiedAppointmentItem) => {
+    if (entry.kind === 'care_reminder') {
+      return (
+        <article key={`reminder-${entry.id}`} className='flex min-w-0 flex-col gap-2 rounded-lg border p-3'>
+          <div className='flex flex-wrap items-center justify-between gap-2'>
+            <strong className='flex items-center gap-2 text-sm'><SyringeIcon className='size-4' />Retorno de vacinação</strong>
+            <span className='rounded-md border px-2 py-1 text-xs'>Pendente</span>
+          </div>
+          <Link href={`/pets/${encodeURIComponent(entry.pet.id)}`} className='min-h-11 inline-flex items-center font-semibold underline underline-offset-4'>{entry.pet.name}</Link>
+          <p className='break-words text-sm'>{entry.title}</p>
+          <p className='flex items-center gap-2 text-sm text-muted-foreground'><CalendarDaysIcon className='size-4' />{format(parseISO(entry.dueDate), 'dd/MM/yyyy')} · Sem horário definido</p>
+          <p className='text-xs text-muted-foreground'>Veterinária: {entry.doctor.name}</p>
+          <p className='text-xs text-muted-foreground'>Sem cobrança vinculada</p>
+        </article>
+      );
+    }
+    const appointment: AppointmentListItem = entry;
 		return (
 			<div key={appointment.id} className='flex flex-col gap-4'>
 				<div className='flex items-center justify-between'>
@@ -380,7 +414,7 @@ const AppointmentsListClient = ({
 				markAppointmentAsCompletedAction.isPending) && <LoadingDialog />}
 
 			<TableComponent
-				emptyMessage='Nenhum agendamento encontrado...'
+				emptyMessage='Nenhum agendamento ou retorno encontrado...'
 				columns={columns}
 				renderRow={renderRow}
 				renderMobile={renderMobile}
