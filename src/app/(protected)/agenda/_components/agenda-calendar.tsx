@@ -282,7 +282,7 @@ const AgendaCalendarClient = ({
 
 		const className =
 			entry.kind === 'appointment'
-				? 'border-primary/50 bg-primary/10'
+				? 'border-l-sky-600 bg-sky-100 text-sky-950 hover:bg-sky-200 dark:border-l-sky-400 dark:bg-sky-950 dark:text-sky-100 dark:hover:bg-sky-900'
 				: entry.kind === 'shift'
 					? isNightShift(entry.startAt)
 						? 'bg-blue-950 text-blue-200 border-indigo-600 hover:bg-blue-950/90'
@@ -320,7 +320,9 @@ const AgendaCalendarClient = ({
 					className,
 					entry.kind === 'shift' && !isShiftStart && 'opacity-70 border-dashed',
 					'cursor-pointer transition-opacity hover:opacity-80 active:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
-					entry.kind === 'appointment' && !entry.blocksSchedule && 'opacity-50',
+					entry.kind === 'appointment' &&
+						!entry.blocksSchedule &&
+						'border-dashed',
 				)}
 			>
 				<div className='flex min-w-0 items-start gap-1.5 font-semibold'>
@@ -376,7 +378,9 @@ const AgendaCalendarClient = ({
 								? isNightShift(entry.startAt)
 									? 'text-blue-200'
 									: 'text-amber-800'
-								: 'text-muted-foreground',
+								: entry.kind === 'appointment'
+									? 'text-sky-800 dark:text-sky-200'
+									: 'text-muted-foreground',
 						)}
 					>
 						<ClockIcon className='size-3' />
