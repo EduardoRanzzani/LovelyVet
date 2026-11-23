@@ -10,6 +10,16 @@ import MoneyInputForm from '@/components/form/money-input-form';
 import SelectForm from '@/components/form/select-form';
 import { Button } from '@/components/ui/button';
 import {
+	AlertDialog,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
 	DialogClose,
 	DialogContent,
 	DialogDescription,
@@ -21,7 +31,7 @@ import { formatCurrencyFromCents } from '@/helpers/currency';
 import type { BillingOverview } from '@/lib/finance/billing-queries';
 import { useAction } from 'next-safe-action/hooks';
 import { useRouter } from 'next/navigation';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 
@@ -49,6 +59,7 @@ export default function AppointmentBillingEditor({
 	onSuccess?: () => void;
 }) {
 	const router = useRouter();
+	const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
 	const tutors = appointment.pet.petTutors.filter(({ tutor }) =>
 		Boolean(tutor.id),
 	);
@@ -89,6 +100,7 @@ export default function AppointmentBillingEditor({
 	});
 	const cancel = useAction(cancelAppointmentCharge, {
 		onSuccess: () => {
+			setCancelDialogOpen(false);
 			toast.success('Cobrança cancelada');
 			refresh();
 		},
@@ -258,21 +270,62 @@ export default function AppointmentBillingEditor({
 						</div>
 					)}
 					{billing.status === 'pending' && (
-						<Button
-							variant='destructive'
-							type='button'
-							disabled={isPending}
-							onClick={() => {
-								if (
-									window.confirm(
-										'Cancelar esta cobrança sem pagamentos? O registro ficará no histórico.',
-									)
-								)
-									cancel.execute({ appointmentId: appointment.id });
+						<AlertDialog
+							open={cancelDialogOpen}
+							onOpenChange={(open) => {
+								if (!cancel.isPending) {
+									setCancelDialogOpen(open);
+								}
 							}}
 						>
-							Cancelar cobrança
-						</Button>
+							<AlertDialogTrigger asChild>
+								<Button
+									type='button'
+									variant='destructive'
+									disabled={isPending}
+								>
+									Cancelar cobrança
+								</Button>
+							</AlertDialogTrigger>
+
+							<AlertDialogContent>
+								<AlertDialogHeader>
+									<AlertDialogTitle>Cancelar cobrança?</AlertDialogTitle>
+
+									<AlertDialogDescription>
+										Esta operação cancelará a cobrança vinculada ao atendimento.
+										O registro permanecerá no histórico financeiro para
+										auditoria.
+									</AlertDialogDescription>
+								</AlertDialogHeader>
+
+								<p className='text-sm text-muted-foreground'>
+									Cobranças com pagamentos registrados não podem ser canceladas
+									por esta operação.
+								</p>
+
+								<AlertDialogFooter>
+									<AlertDialogCancel disabled={cancel.isPending}>
+										Voltar
+									</AlertDialogCancel>
+
+									<Button
+										type='button'
+										variant='destructive'
+										disabled={cancel.isPending}
+										onClick={() => {
+											cancel.execute({
+												appointmentId: appointment.id,
+											});
+										}}
+									>
+										{cancel.isPending
+											? 'Cancelando...'
+											: 'Confirmar cancelamento'}
+									</Button>
+								</AlertDialogFooter>
+							</AlertDialogContent>
+						</AlertDialog>
 					)}
 					{billing.status === 'void' && (
 						<p className='text-xs text-muted-foreground'>
