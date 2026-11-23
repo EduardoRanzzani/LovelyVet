@@ -3,6 +3,10 @@
 import { db } from '@/db';
 import {
 	appointmentChargesTable,
+	vaccinesTable,
+	medicalRecordsTable,
+	prescriptionsTable,
+	clinicalDocumentsTable,
 	appointmentItemsTable,
 	appointmentsTable,
 	calendarEventsTable,
@@ -754,9 +758,43 @@ export const deleteAppointment = actionClient
 			throw new Error('Agendamento não encontrado');
 		}
 
-		await db
-			.delete(appointmentsTable)
-			.where(eq(appointmentsTable.id, parsedInput.id));
+		// Uma exclusão não pode apagar o histórico clínico nem o financeiro.
+		// A trava impede que outra operação emita uma cobrança durante esta exclusão.
+		await db.transaction(async (tx) => {
+			await tx.execute(sql`SELECT id FROM appointments WHERE id = ${parsedInput.id} FOR UPDATE`);
+
+			const [charge, vaccine, record, prescription, document] = await Promise.all([
+				tx.query.appointmentChargesTable.findFirst({
+					where: eq(appointmentChargesTable.appointmentId, parsedInput.id),
+					columns: { id: true },
+				}),
+				tx.query.vaccinesTable.findFirst({
+					where: eq(vaccinesTable.appointmentId, parsedInput.id),
+					columns: { id: true },
+				}),
+				tx.query.medicalRecordsTable.findFirst({
+					where: eq(medicalRecordsTable.appointmentId, parsedInput.id),
+					columns: { id: true },
+				}),
+				tx.query.prescriptionsTable.findFirst({
+					where: eq(prescriptionsTable.appointmentId, parsedInput.id),
+					columns: { id: true },
+				}),
+				tx.query.clinicalDocumentsTable.findFirst({
+					where: eq(clinicalDocumentsTable.appointmentId, parsedInput.id),
+					columns: { id: true },
+				}),
+			]);
+
+			if (charge) {
+				throw new Error('Este atendimento possui histórico financeiro, mesmo que a cobrança esteja cancelada. A exclusão física não é permitida.');
+			}
+			if (vaccine || record || prescription || document) {
+				throw new Error('Este atendimento está vinculado ao histórico clínico do pet. Revise os registros clínicos antes de solicitar uma correção.');
+			}
+
+			await tx.delete(appointmentsTable).where(eq(appointmentsTable.id, parsedInput.id));
+		});
 
 		revalidatePath('/appointments');
 	});

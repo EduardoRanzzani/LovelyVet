@@ -87,11 +87,8 @@ const AppointmentsListClient = ({
 		onSuccess: () => {
 			toast.success('Agendamento deletado com sucesso!');
 		},
-		onError: (err) => {
-			console.error('Erro ao deletar agendamento:', err);
-			toast.error(
-				'Ocorreu um erro ao tentar deletar o agendamento. Tente novamente mais tarde.',
-			);
+		onError: ({ error }) => {
+			toast.error(error.serverError ?? 'Não foi possível excluir o atendimento. Verifique vínculos clínicos e financeiros.');
 		},
 	});
 
@@ -225,7 +222,7 @@ const AppointmentsListClient = ({
 							<DeleteAlertButton
 								disabled={Boolean(billingResolved[appointment.id])}
 								action={() => handleDelete(appointment.id)}
-								tooltip='Deletar agendamento'
+								tooltip={billingResolved[appointment.id] ? 'Atendimento com histórico financeiro não pode ser excluído' : 'Excluir atendimento sem vínculos clínicos ou financeiros'}
 							/>
 						</>
 					)}
@@ -307,7 +304,7 @@ const AppointmentsListClient = ({
 								<DeleteAlertButton
 									disabled={Boolean(billingResolved[appointment.id])}
 									action={() => handleDelete(appointment.id)}
-									tooltip='Deletar agendamento'
+									tooltip={billingResolved[appointment.id] ? 'Atendimento com histórico financeiro não pode ser excluído' : 'Excluir atendimento sem vínculos clínicos ou financeiros'}
 								/>
 							</>
 						)}

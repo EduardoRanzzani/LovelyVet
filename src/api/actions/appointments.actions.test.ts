@@ -22,6 +22,10 @@ const mocks = vi.hoisted(() => {
 			shiftsTable: { findFirst: vi.fn() },
 			calendarEventsTable: { findFirst: vi.fn() },
 			appointmentChargesTable: { findFirst: vi.fn() },
+			vaccinesTable: { findFirst: vi.fn() },
+			medicalRecordsTable: { findFirst: vi.fn() },
+			prescriptionsTable: { findFirst: vi.fn() },
+			clinicalDocumentsTable: { findFirst: vi.fn() },
 		},
 		execute: vi.fn(),
 		insert: txInsert,
@@ -186,6 +190,10 @@ describe('appointments actions', () => {
 		mocks.productItemsFindFirst.mockResolvedValue(undefined);
 		mocks.chargeFindFirst.mockResolvedValue(undefined);
 		mocks.tx.query.appointmentChargesTable.findFirst.mockResolvedValue(undefined);
+		mocks.tx.query.vaccinesTable.findFirst.mockResolvedValue(undefined);
+		mocks.tx.query.medicalRecordsTable.findFirst.mockResolvedValue(undefined);
+		mocks.tx.query.prescriptionsTable.findFirst.mockResolvedValue(undefined);
+		mocks.tx.query.clinicalDocumentsTable.findFirst.mockResolvedValue(undefined);
 		mocks.requireStaff.mockReturnValue(undefined);
 		mocks.assertCanAccessPet.mockResolvedValue(undefined);
 		mocks.requireAccessibleAppointment.mockResolvedValue({
@@ -456,9 +464,32 @@ describe('appointments actions', () => {
 				adminContext,
 				APPOINTMENT_ID,
 			);
-			expect(mocks.dbDelete).toHaveBeenCalledTimes(1);
-			expect(mocks.dbDeleteWhere).toHaveBeenCalledTimes(1);
+			expect(mocks.txDelete).toHaveBeenCalledTimes(1);
+			expect(mocks.txDeleteWhere).toHaveBeenCalledTimes(1);
 			expect(mocks.revalidatePath).toHaveBeenCalledWith('/appointments');
+		});
+
+		it('bloqueia exclusão quando há cobrança cancelada', async () => {
+			mocks.requireAuthContext.mockResolvedValue(adminContext);
+			mocks.tx.query.appointmentChargesTable.findFirst.mockResolvedValue({ id: 'charge-void' });
+			await expect(deleteAppointment({ id: APPOINTMENT_ID })).rejects.toThrow('histórico financeiro');
+			expect(mocks.txDelete).not.toHaveBeenCalled();
+		});
+
+		it('bloqueia exclusão de vacinação vinculada', async () => {
+			mocks.requireAuthContext.mockResolvedValue(doctorContext);
+			mocks.tx.query.vaccinesTable.findFirst.mockResolvedValue({ id: 'vaccine-1' });
+			await expect(deleteAppointment({ id: APPOINTMENT_ID })).rejects.toThrow('histórico clínico');
+			expect(mocks.txDelete).not.toHaveBeenCalled();
+		});
+
+		it('bloqueia exclusão de prontuário, receita e documento', async () => {
+			mocks.requireAuthContext.mockResolvedValue(adminContext);
+			for (const table of ['medicalRecordsTable', 'prescriptionsTable', 'clinicalDocumentsTable'] as const) {
+				mocks.tx.query[table].findFirst.mockResolvedValueOnce({ id: 'linked' });
+				await expect(deleteAppointment({ id: APPOINTMENT_ID })).rejects.toThrow('histórico clínico');
+			}
+			expect(mocks.txDelete).not.toHaveBeenCalled();
 		});
 
 		it('rejects when accessible appointment is not found', async () => {
