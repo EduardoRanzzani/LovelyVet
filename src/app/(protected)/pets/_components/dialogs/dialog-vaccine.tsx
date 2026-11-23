@@ -34,9 +34,10 @@ import { toast } from 'sonner';
 interface DialogVaccineProps {
 	petId: string;
 	doctors: DoctorsWithRelations[];
+	vaccineServices: { id: string; name: string; priceInCents: number; specieId: string | null }[];
 }
 
-const DialogVaccine = ({ petId, doctors }: DialogVaccineProps) => {
+const DialogVaccine = ({ petId, doctors, vaccineServices }: DialogVaccineProps) => {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 
@@ -52,6 +53,7 @@ const DialogVaccine = ({ petId, doctors }: DialogVaccineProps) => {
 			petId,
 			reminderId: reminderId ?? undefined,
 			name: vaccineName ?? '',
+			serviceId: undefined as string | undefined,
 			applicationDate: new Date(),
 			nextDoseType: 'booster' as const,
 			daysToNextDose: undefined,
@@ -60,6 +62,9 @@ const DialogVaccine = ({ petId, doctors }: DialogVaccineProps) => {
 			doctorId: REGINA_DOCTOR_ID,
 		},
 	});
+
+	const selectedServiceId = useWatch({ control: form.control, name: 'serviceId' });
+	const selectedService = vaccineServices.find((service) => service.id === selectedServiceId);
 
 	const nextDoseType = useWatch({
 		control: form.control,
@@ -151,13 +156,39 @@ const DialogVaccine = ({ petId, doctors }: DialogVaccineProps) => {
 					>
 						<input type='hidden' {...form.register('petId')} />
 
-						<InputForm
-							label='Nome da Vacina'
-							name='name'
-							placeholder='Ex: Raiva, V10, Gripe...'
-							register={form.register}
-							error={form.formState.errors.name?.message}
-						/>
+						{vaccineServices.length > 0 && (
+							<SelectForm
+								label='Vacina no catálogo de serviços'
+								name='serviceId'
+								control={form.control}
+								options={vaccineServices.map((service) => ({
+									value: service.id,
+									label: service.name,
+								}))}
+								onSelect={(value) => {
+									const service = vaccineServices.find((item) => item.id === value);
+									if (service) form.setValue('name', service.name, { shouldValidate: true });
+								}}
+								placeholder='Selecione a vacina aplicada'
+							/>
+						)}
+
+						{selectedService && (
+							<p className='rounded-md border p-2 text-sm text-muted-foreground'>
+								Preço de referência: {(selectedService.priceInCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.
+								O registro da vacina não cria cobrança automaticamente.
+							</p>
+						)}
+
+						{(
+							<InputForm
+								label='Nome da vacina (preenchido pelo catálogo)'
+								name='name'
+								placeholder='Ex: Raiva, V10, Gripe...'
+								register={form.register}
+								error={form.formState.errors.name?.message}
+							/>
+						)}
 
 						<div className='flex flex-col gap-4'>
 							<DatePickerForm

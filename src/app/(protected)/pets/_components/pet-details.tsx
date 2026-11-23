@@ -60,6 +60,7 @@ import TabTimeline from './tabs/tab-timeline';
 interface PetDetailsClientProps {
 	pet: PetsWithRelations;
 	doctors: DoctorsWithRelations[];
+	vaccineServices: { id: string; name: string; priceInCents: number; specieId: string | null }[];
 	speciesPromise: Promise<Species[]>;
 	breedsPromise: Promise<BreedsWithRelations[]>;
 	customersPromise: Promise<CustomersWithRelations[]>;
@@ -74,6 +75,7 @@ const isDeletableTimelineItemType = (
 const PetDetailsClient = ({
 	pet,
 	doctors,
+	vaccineServices,
 	speciesPromise,
 	breedsPromise,
 	customersPromise,
@@ -507,6 +509,7 @@ const PetDetailsClient = ({
 					<div className='min-w-0 rounded-md border bg-card p-2 sm:p-4'>
 						<TabHistory
 							doctors={doctors}
+							vaccineServices={vaccineServices}
 							historyEvents={historyEvents}
 							petId={pet.id}
 							canDelete={!isCustomer}

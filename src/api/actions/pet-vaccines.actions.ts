@@ -1,6 +1,6 @@
 'use server';
 import { db } from '@/db';
-import { careRemindersTable, vaccinesTable } from '@/db/schema';
+import { careRemindersTable, petsTable, servicesTable, vaccinesTable } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { resolveClinicalDoctorId } from '@/lib/security/clinical-access';
@@ -45,6 +45,27 @@ export const insertVaccine = actionClient
 		}
 
 		await db.transaction(async (tx) => {
+			let vaccineService: { id: string; name: string } | undefined;
+			if (parsedInput.serviceId) {
+				const service = await tx.query.servicesTable.findFirst({
+					columns: { id: true, name: true, isVaccine: true, specieId: true },
+					where: eq(servicesTable.id, parsedInput.serviceId),
+				});
+				if (!service?.isVaccine) {
+					throw new Error('Serviço de vacina inválido ou não encontrado.');
+				}
+				if (service.specieId) {
+					const targetPet = await tx.query.petsTable.findFirst({
+						where: eq(petsTable.id, parsedInput.petId),
+						with: { breed: true },
+					});
+					if (!targetPet || targetPet.breed.specieId !== service.specieId) {
+						throw new Error('Vacina não indicada para a espécie do paciente.');
+					}
+				}
+				vaccineService = { id: service.id, name: service.name };
+			}
+
 			if (parsedInput.reminderId) {
 				const reminder = await tx.query.careRemindersTable.findFirst({
 					where: eq(careRemindersTable.id, parsedInput.reminderId),
@@ -109,7 +130,8 @@ export const insertVaccine = actionClient
 			const values = {
 				...(parsedInput.id && { id: parsedInput.id }),
 				petId: parsedInput.petId,
-				name: parsedInput.name,
+				serviceId: vaccineService?.id ?? null,
+				name: vaccineService?.name ?? parsedInput.name,
 				applicationDate: parsedInput.applicationDate,
 				nextDoseDate,
 				nextDoseType: parsedInput.nextDoseType,
@@ -126,6 +148,7 @@ export const insertVaccine = actionClient
 					target: vaccinesTable.id,
 					set: {
 						name: values.name,
+						serviceId: values.serviceId,
 						applicationDate: values.applicationDate,
 						nextDoseDate: values.nextDoseDate,
 						nextDoseType: values.nextDoseType,
@@ -167,7 +190,7 @@ export const insertVaccine = actionClient
 				petId: parsedInput.petId,
 				doctorId,
 				type: 'vaccine' as const,
-				title: `Vacina: ${parsedInput.name}`,
+				title: `Vacina: ${values.name}`,
 				dueDate: format(nextDoseDate, 'yyyy-MM-dd'),
 				sourceVaccineId: vaccine.id,
 			};

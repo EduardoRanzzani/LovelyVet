@@ -15,6 +15,7 @@ import { Suspense } from 'react';
 import PetDetailsClient from '../_components/pet-details';
 import { PetDetailsSkeleton } from '../_components/pet-details-skeleton';
 import { getDoctors } from '@/api/actions/doctors.actions';
+import { getVaccineServices } from '@/api/actions/services.actions';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { hasRole } from '@/lib/security/authorization';
 import { connection } from 'next/server';
@@ -35,6 +36,11 @@ const PetDetailsPage = async ({ params }: PetDetailsPageProps) => {
 	if (!pet) notFound();
 
 	const doctors = canManagePets ? await getDoctors() : [];
+	const vaccineServices = canManagePets
+		? (await getVaccineServices()).filter(
+				(service) => !service.specieId || service.specieId === pet.breed.specieId,
+			)
+		: [];
 	const speciesPromise = getSpecies();
 	const breedsPromise = getBreeds();
 	const customersPromise = canManagePets ? getCustomers() : Promise.resolve([]);
@@ -60,6 +66,7 @@ const PetDetailsPage = async ({ params }: PetDetailsPageProps) => {
 					<PetDetailsClient
 						pet={pet}
 						doctors={doctors}
+						vaccineServices={vaccineServices}
 						speciesPromise={speciesPromise}
 						breedsPromise={breedsPromise}
 						customersPromise={customersPromise}

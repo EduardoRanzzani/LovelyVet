@@ -42,6 +42,7 @@ const ServiceFormClient = ({
 		shouldUnregister: true,
 		defaultValues: {
 			name: service?.name || '',
+			isVaccine: service?.isVaccine ?? false,
 			description: service?.description || '',
 			specieId: service?.specieId || '',
 			price:
@@ -94,6 +95,16 @@ const ServiceFormClient = ({
 							register={form.register}
 							name='name'
 							error={form.formState.errors.name?.message}
+						/>
+
+						<SelectForm
+							label='Tipo de serviço:'
+							name='isVaccine'
+							control={form.control}
+							options={[
+								{ value: false, label: 'Serviço geral' },
+								{ value: true, label: 'Vacinação' },
+							]}
 						/>
 
 						<SelectForm

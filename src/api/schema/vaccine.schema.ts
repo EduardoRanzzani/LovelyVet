@@ -28,6 +28,7 @@ export const createVaccineSchema = z
 	.object({
 		id: z.uuid().optional().nullable(),
 		reminderId: z.uuid().optional(),
+		serviceId: z.uuid().optional(),
 		petId: z.uuid({ message: 'Favor informar o pet' }),
 		name: z
 			.string({ message: 'Favor informar o nome da vacina' })

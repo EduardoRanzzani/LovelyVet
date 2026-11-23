@@ -9,6 +9,7 @@ export const createServiceSchema = z.object({
 	id: z.uuid().optional().nullable(),
 	name: z.string().nonempty({ message: 'Nome é obrigatório' }),
 	description: z.string().optional().nullable(),
+	isVaccine: z.boolean().optional(),
 	specieId: z.string().optional().nullable(),
 	price: z
 		.number({ message: 'Preço é obrigatório' })

@@ -262,6 +262,7 @@ export const servicesTable = pgTable('services', {
 	name: text('name').notNull(),
 	description: text('description'),
 	priceInCents: integer('price_in_cents').notNull(),
+	isVaccine: boolean('is_vaccine').default(false).notNull(),
 	durationMinutes: integer('duration_minutes').default(30).notNull(),
 	specieId: uuid('specie_id').references(() => speciesTable.id),
 	createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -510,6 +511,9 @@ export const calendarEventsTable = pgTable(
 // Vacinas
 export const vaccinesTable = pgTable('vaccines', {
 	id: uuid('id').primaryKey().defaultRandom(),
+	serviceId: uuid('service_id').references(() => servicesTable.id, {
+		onDelete: 'set null',
+	}),
 	petId: uuid('pet_id')
 		.notNull()
 		.references(() => petsTable.id),

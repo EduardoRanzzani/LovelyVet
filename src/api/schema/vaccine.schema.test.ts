@@ -91,4 +91,12 @@ describe('createVaccineSchema', () => {
 
 		expect(result.success).toBe(false);
 	});
+	it('rejeita serviceId que não é UUID', () => {
+		const result = createVaccineSchema.safeParse({
+			...validVaccine,
+			serviceId: 'invalido',
+		});
+		expect(result.success).toBe(false);
+	});
+
 });

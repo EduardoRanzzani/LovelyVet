@@ -295,6 +295,13 @@
       "when": 1790664563145,
       "tag": "0041_remove-legacy-prescription-medicine-items",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1795442038235,
+      "tag": "0042_vaccine-service-catalog",
+      "breakpoints": true
     }
   ]
 }

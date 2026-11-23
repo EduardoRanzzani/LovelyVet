@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
 	transaction: vi.fn(),
 	reminderFindFirst: vi.fn(),
 	vaccineFindFirst: vi.fn(),
+	serviceFindFirst: vi.fn(),
+	petFindFirst: vi.fn(),
 	update: vi.fn(),
 	updateSet: vi.fn(),
 	updateWhere: vi.fn(),
@@ -90,6 +92,7 @@ describe('insertVaccine com lembrete', () => {
 		mocks.updateReturning.mockResolvedValue([{ id: REMINDER_ID }]);
 		mocks.insertReturning.mockResolvedValue([{ id: VACCINE_ID }]);
 		mocks.vaccineFindFirst.mockResolvedValue(undefined);
+		mocks.serviceFindFirst.mockResolvedValue(undefined);
 
 		mocks.update.mockReturnValue({ set: mocks.updateSet });
 		mocks.updateSet.mockReturnValue({
@@ -118,6 +121,8 @@ describe('insertVaccine com lembrete', () => {
 					vaccinesTable: {
 						findFirst: mocks.vaccineFindFirst,
 					},
+					servicesTable: { findFirst: mocks.serviceFindFirst },
+					petsTable: { findFirst: mocks.petFindFirst },
 				},
 				update: mocks.update,
 				insert: mocks.insert,
@@ -199,4 +204,57 @@ describe('insertVaccine com lembrete', () => {
 
 		expect(mocks.transaction).not.toHaveBeenCalled();
 	});
+
+	it('impede associar um serviço que não é vacina', async () => {
+		mocks.serviceFindFirst.mockResolvedValue({
+			id: '55555555-5555-4555-8555-555555555555',
+			name: 'Consulta',
+			isVaccine: false,
+		});
+		await expect(insertVaccine({
+			...input,
+			serviceId: '55555555-5555-4555-8555-555555555555',
+		})).rejects.toThrow('Serviço de vacina inválido ou não encontrado.');
+		expect(mocks.insert).not.toHaveBeenCalled();
+	});
+
+	it('usa o nome oficial do serviço escolhido', async () => {
+		mocks.serviceFindFirst.mockResolvedValue({
+			id: '55555555-5555-4555-8555-555555555555',
+			name: 'Vacina V10',
+			isVaccine: true,
+		});
+		mocks.reminderFindFirst
+			.mockResolvedValueOnce(pendingReminder)
+			.mockResolvedValueOnce(undefined);
+		await insertVaccine({
+			...input,
+			name: 'Nome adulterado',
+			serviceId: '55555555-5555-4555-8555-555555555555',
+		});
+		expect(mocks.insertValues).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: 'Vacina V10',
+				serviceId: '55555555-5555-4555-8555-555555555555',
+			}),
+		);
+	});
+
+	it('rejeita vacina de espécie diferente da espécie do pet', async () => {
+		mocks.serviceFindFirst.mockResolvedValue({
+			id: '55555555-5555-4555-8555-555555555555',
+			name: 'Vacina felina',
+			isVaccine: true,
+			specieId: '66666666-6666-4666-8666-666666666666',
+		});
+		mocks.petFindFirst.mockResolvedValue({
+			breed: { specieId: '77777777-7777-4777-8777-777777777777' },
+		});
+		await expect(insertVaccine({
+			...input,
+			serviceId: '55555555-5555-4555-8555-555555555555',
+		})).rejects.toThrow('Vacina não indicada para a espécie do paciente.');
+		expect(mocks.insert).not.toHaveBeenCalled();
+	});
+
 });

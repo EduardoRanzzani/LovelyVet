@@ -87,6 +87,7 @@ export const upsertService = actionClient
 				description: parsedInput.description,
 				specieId,
 				priceInCents,
+				isVaccine: parsedInput.isVaccine ?? false,
 			})
 			.onConflictDoUpdate({
 				target: servicesTable.id,
@@ -95,6 +96,7 @@ export const upsertService = actionClient
 					description: parsedInput.description,
 					specieId,
 					priceInCents,
+					isVaccine: parsedInput.isVaccine ?? false,
 					updatedAt: new Date(),
 				},
 			});
@@ -118,3 +120,20 @@ export const deleteService = actionClient
 
 		revalidatePath('/services');
 	});
+
+/** Catálogo de vacinas para o formulário clínico; somente equipe autenticada. */
+export const getVaccineServices = async () => {
+	const context = await requireAuthContext();
+	requireStaff(context);
+
+	return db.query.servicesTable.findMany({
+		columns: {
+			id: true,
+			name: true,
+			priceInCents: true,
+			specieId: true,
+		},
+		where: eq(servicesTable.isVaccine, true),
+		orderBy: asc(servicesTable.name),
+	});
+};

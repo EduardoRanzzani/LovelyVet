@@ -17,6 +17,7 @@ import Link from 'next/link';
 
 interface TabHistoryProps {
 	doctors: DoctorsWithRelations[];
+	vaccineServices: { id: string; name: string; priceInCents: number; specieId: string | null }[];
 	historyEvents: TimelineItem[];
 	petId: string;
 	canDelete: boolean;
@@ -25,6 +26,7 @@ interface TabHistoryProps {
 
 const TabHistory = ({
 	doctors,
+	vaccineServices,
 	historyEvents,
 	petId,
 	canDelete,
@@ -50,7 +52,7 @@ const TabHistory = ({
 						<FlaskConicalIcon /> Exame
 					</Button>
 
-					<DialogVaccine petId={petId} doctors={doctors} />
+					<DialogVaccine petId={petId} doctors={doctors} vaccineServices={vaccineServices} />
 
 					<Button
 						asChild
