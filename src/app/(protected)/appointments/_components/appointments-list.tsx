@@ -6,428 +6,407 @@ import {
 	markAppointmentAsCompleted,
 	markAsConfirmed,
 } from '@/api/actions/appointments.actions';
-import { MAX_PAGE_SIZE, PaginatedData } from '@/api/config/consts';
+import type { AppointmentListItem } from '@/api/schema/appointments.schema';
+import type { ClinicalReminderListItem } from '@/api/schema/clinical-reminders.schema';
+import type { DoctorOption } from '@/api/schema/doctors.schema';
+import { formatPetTutorNames, type PetOption } from '@/api/schema/pets.schema';
+import type { ServicesWithRelations } from '@/api/schema/services.schema';
+import { MAX_PAGE_SIZE, type PaginatedData } from '@/api/config/consts';
 import type { BillingOverview } from '@/lib/finance/billing-queries';
-import { AppointmentListItem } from '@/api/schema/appointments.schema';
-import type { UnifiedAppointmentItem } from '@/lib/appointments/unified-appointments';
-import { parseISO, format } from 'date-fns';
-import Link from 'next/link';
-import { SyringeIcon, CalendarDaysIcon } from 'lucide-react';
-import { DoctorOption } from '@/api/schema/doctors.schema';
-import { formatPetTutorNames, PetOption } from '@/api/schema/pets.schema';
-import { ServicesWithRelations } from '@/api/schema/services.schema';
+import {
+	isStaff,
+	summarizeAppointmentItems,
+} from '@/lib/appointments/appointment-list-presentation';
+import type { UserRole } from '@/lib/security/roles';
+import { formatCurrencyFromCents } from '@/helpers/currency';
 import AddButton from '@/components/list/add-button';
 import ConfirmAlertButton from '@/components/list/confirm-alert-dialog';
 import DeleteAlertButton from '@/components/list/delete-alert-dialog';
 import EditButton from '@/components/list/edit-button';
 import SearchInput from '@/components/list/search-input';
-import TableComponent from '@/components/list/table-component';
+import Pagination from '@/components/list/table-pagination';
 import LoadingDialog from '@/components/ui/loading';
-import { Separator } from '@/components/ui/separator';
-import { TableCell, TableRow } from '@/components/ui/table';
-import { formatCurrencyFromCents } from '@/helpers/currency';
-import { handleNavigation } from '@/lib/utils';
-import type { UserRole } from '@/lib/security/roles';
+import { Button } from '@/components/ui/button';
 import {
-	ArrowRightIcon,
-	BanIcon,
-	ClockIcon,
-	DollarSignIcon,
-	DotIcon,
-	PawPrintIcon,
-	StethoscopeIcon,
-	UserRoundIcon,
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '@/components/ui/select';
+import {
+	CalendarDays,
+	Bell,
+	MoreHorizontal,
+	Syringe,
+	PawPrint,
+	Wallet,
+	Clock3,
+	Ban,
 } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 import { useAction } from 'next-safe-action/hooks';
-import { useSearchParams } from 'next/navigation';
-import { use } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { use, useState } from 'react';
 import { toast } from 'sonner';
 import AppointmentFormClient from './appointment-form';
 import AppointmentItemsEditor from './appointment-items-editor';
 import AppointmentBillingEditor from './appointment-billing-editor';
 import BadgeStatus from './badge-status';
 
-interface AppointmentsListClientProps {
-	appointments: Promise<PaginatedData<UnifiedAppointmentItem>>;
+type ProductOption = {
+	id: string;
+	name: string;
+	priceInCents: number;
+	active: boolean;
+};
+type Props = {
+	appointments: Promise<PaginatedData<AppointmentListItem>>;
+	reminders: Promise<PaginatedData<ClinicalReminderListItem>>;
 	billing: Promise<Record<string, BillingOverview>>;
 	pets: PetOption[];
 	doctors: DoctorOption[];
 	services: ServicesWithRelations[];
-	products: { id: string; name: string; priceInCents: number; active: boolean }[];
+	products: ProductOption[];
 	viewerRole: UserRole;
-}
+};
 
-const AppointmentsListClient = ({
-	appointments,
+/** Ações secundárias permanecem montadas fora de menus descartáveis: os dialogs não fecham por desmontagem. */
+function AppointmentActions({
+	appointment,
 	billing,
 	pets,
 	doctors,
 	services,
 	products,
 	viewerRole,
-}: AppointmentsListClientProps) => {
-	const appointmentsResolved = use(appointments);
-	const billingResolved = use(billing);
-	const searchParams = useSearchParams();
-	const profile = viewerRole;
-
-	const handlePageChange = (page: number) => {
-		const params = new URLSearchParams(searchParams.toString());
-		params.set('page', page.toString());
-		handleNavigation(params);
-	};
-
-	const handleDelete = (appointmentId: string) => {
-		deleteAppointmentAction.execute({
-			id: appointmentId,
-		});
-	};
-
-	const deleteAppointmentAction = useAction(deleteAppointment, {
-		onSuccess: () => {
-			toast.success('Agendamento deletado com sucesso!');
-		},
-		onError: ({ error }) => {
-			toast.error(error.serverError ?? 'Não foi possível excluir o atendimento. Verifique vínculos clínicos e financeiros.');
-		},
-	});
-
-	const handleConfirmAppointment = (appointmentId: string) => {
-		markAsConfirmedAction.execute({
-			id: appointmentId,
-		});
-	};
-
-	const handleCompleteAppointment = (appointmentId: string) => {
-		markAppointmentAsCompletedAction.execute({
-			id: appointmentId,
-		});
-	};
-
-	const markAsConfirmedAction = useAction(markAsConfirmed, {
-		onSuccess: () => {
-			toast.success('Agendamento confirmado com sucesso!');
-		},
-		onError: (err) => {
-			console.error('Erro confirmar agendamento:', err);
-			toast.error(
-				'Ocorreu um erro ao tentar confirmar o agendamento. Tente novamente mais tarde.',
-			);
-		},
-	});
-
-	const markAppointmentAsCompletedAction = useAction(
-		markAppointmentAsCompleted,
-		{
-			onSuccess: () => {
-				toast.success('Agendamento concluído com sucesso!');
-			},
-			onError: (err) => {
-				console.error('Erro concluir agendamento:', err);
-				toast.error(
-					'Ocorreu um erro ao tentar marcar o agendamento como concluído. Tente novamente mais tarde.',
-				);
-			},
-		},
-	);
-
-	const handleCancelAppointment = (appointmentId: string) => {
-		markAppointmentAsCancelledAction.execute({
-			id: appointmentId,
-		});
-	};
-
-	const markAppointmentAsCancelledAction = useAction(
-		markAppointmentAsCancelled,
-		{
-			onSuccess: () => {
-				toast.success('Agendamento cancelado com sucesso!');
-			},
-			onError: (err) => {
-				console.error('Erro cancelar agendamento:', err);
-				toast.error(
-					'Ocorreu um erro ao tentar cancelar o agendamento. Tente novamente mais tarde.',
-				);
-			},
-		},
-	);
-
-	const columns = [
-		{ header: 'Data e hora', accessorKey: 'scheduledAt' },
-		{ header: 'Paciente', accessorKey: 'pet' },
-		{ header: 'Tutor(a)', accessorKey: 'tutor' },
-		{ header: 'Status', accessorKey: 'status' },
-		{ header: 'Serviço(s) / Procedimento', accessorKey: 'service' },
-		{ header: 'Valor', accessorKey: 'totalPriceInCents' },
-		{ header: 'Ações', accessorKey: 'actions' },
-	];
-
-	const renderRow = (entry: UnifiedAppointmentItem) => {
-    if (entry.kind === 'care_reminder') {
-      return (
-        <TableRow key={`reminder-${entry.id}`}>
-          <TableCell>{format(parseISO(entry.dueDate), 'dd/MM/yyyy')} · Sem horário definido</TableCell>
-          <TableCell><Link className='font-medium underline underline-offset-4 hover:text-primary' href={`/pets/${encodeURIComponent(entry.pet.id)}`}>{entry.pet.name}</Link></TableCell>
-          <TableCell className='text-muted-foreground'>—</TableCell>
-          <TableCell><span className='rounded-md border border-amber-500/40 px-2 py-1 text-xs font-medium'>Retorno pendente</span></TableCell>
-          <TableCell><span className='flex items-center gap-2'><SyringeIcon className='size-4 shrink-0' />{entry.title}</span><span className='text-xs text-muted-foreground'>Veterinária: {entry.doctor.name}</span></TableCell>
-          <TableCell className='text-muted-foreground'>Não cobrado</TableCell>
-          <TableCell><Link className='text-sm font-semibold underline underline-offset-4 hover:text-primary' href={`/pets/${encodeURIComponent(entry.pet.id)}`}>Ver pet</Link></TableCell>
-        </TableRow>
-      );
-    }
-    const appointment: AppointmentListItem = entry;
-		return (
-			<TableRow key={appointment.id}>
-				<TableCell>
-					{appointment.scheduledAt.toLocaleDateString('pt-BR')} às{' '}
-					{appointment.scheduledAt.toLocaleTimeString('pt-BR', {
-						hour: '2-digit',
-						minute: '2-digit',
-					})}
-				</TableCell>
-				<TableCell>{appointment.pet.name}</TableCell>
-				<TableCell>{formatPetTutorNames(appointment.pet)}</TableCell>
-				<TableCell>
-					<BadgeStatus appointment={appointment} />
-				</TableCell>
-				<TableCell>
-					<div className='flex flex-col gap-1'>
-						{appointment.items.map((item) => (
-							<div className='flex gap-2' key={item.serviceId}>
-								<DotIcon className='w-4 h-4' />
-								<p className='text-sm leading-tight'>
-									{item.service.name} (x{item.quantity}) -{' '}
-									{formatCurrencyFromCents(item.priceAtTimeInCents * item.quantity - item.discountInCents)}
-								</p>
-							</div>
-						))}
-{appointment.productItems?.map((item) => <p key={item.id} className='text-sm'>Produto: {item.product.name} (x{item.quantity}) — {formatCurrencyFromCents(item.priceAtTimeInCents * item.quantity - item.discountInCents)}</p>)}
-					</div>
-				</TableCell>
-				<TableCell>
-					{formatCurrencyFromCents(appointment.totalPriceInCents)}
-					{billingResolved[appointment.id] && <p className='text-xs text-muted-foreground'>Cobrança: {({ pending: 'pendente', partial: 'parcial', paid: 'paga', void: 'cancelada' } as const)[billingResolved[appointment.id].status]}</p>}
-				</TableCell>
-				<TableCell className='w-20 space-x-2'>
-					{(profile === 'admin' || profile === 'doctor') && (
+	onDelete,
+	onConfirm,
+	onComplete,
+	onCancel,
+}: {
+	appointment: AppointmentListItem;
+	billing?: BillingOverview;
+	pets: PetOption[];
+	doctors: DoctorOption[];
+	services: ServicesWithRelations[];
+	products: ProductOption[];
+	viewerRole: UserRole;
+	onDelete: (id: string) => void;
+	onConfirm: (id: string) => void;
+	onComplete: (id: string) => void;
+	onCancel: (id: string) => void;
+}) {
+	const [expanded, setExpanded] = useState(false);
+	const staff = isStaff(viewerRole);
+	const billed = Boolean(billing);
+	return (
+		<div className='flex flex-col items-end gap-2'>
+			<div className='flex items-center gap-1.5'>
+				{staff && appointment.status === 'completed' && (
+					<EditButton
+						tooltip='Financeiro: cobrança e pagamentos'
+						text='Financeiro'
+						size='default'
+						renderForm={(close) => (
+							<AppointmentBillingEditor
+								appointment={appointment}
+								billing={billing}
+								onSuccess={close}
+							/>
+						)}
+					/>
+				)}
+				<EditButton
+					tooltip='Editar agendamento'
+					disabled={
+						appointment.status !== 'pending' ||
+						Boolean(appointment.productItems?.length)
+					}
+					renderForm={(close) => (
+						<AppointmentFormClient
+							appointment={appointment}
+							pets={pets}
+							doctors={doctors}
+							services={services}
+							viewerRole={viewerRole}
+							onSuccess={close}
+						/>
+					)}
+				/>
+				<Button
+					type='button'
+					size='icon'
+					variant='outline'
+					aria-label={
+						expanded ? 'Ocultar outras ações' : 'Mostrar outras ações'
+					}
+					aria-expanded={expanded}
+					onClick={() => setExpanded((value) => !value)}
+				>
+					<MoreHorizontal className='size-4' />
+				</Button>
+			</div>
+			{expanded && (
+				<div className='flex max-w-64 flex-wrap justify-end gap-2 rounded-lg border bg-background p-2 shadow-sm'>
+					{staff && (
 						<>
 							<ConfirmAlertButton
 								size='icon'
 								tooltip='Confirmar agendamento'
 								disabled={appointment.status !== 'pending'}
-								action={() => handleConfirmAppointment(appointment.id)}
+								action={() => onConfirm(appointment.id)}
 							/>
-
+							<ConfirmAlertButton
+								text='Concluir'
+								tooltip='Marcar como concluído'
+								disabled={
+									!['confirmed', 'in_progress'].includes(appointment.status)
+								}
+								action={() => onComplete(appointment.id)}
+							/>
+							<EditButton
+								tooltip='Editar itens e valores'
+								disabled={
+									appointment.isPaid ||
+									billed ||
+									['cancelled', 'no_show'].includes(appointment.status)
+								}
+								renderForm={(close) => (
+									<AppointmentItemsEditor
+										appointment={appointment}
+										services={services}
+										products={products}
+										onSuccess={close}
+									/>
+								)}
+							/>
 							<DeleteAlertButton
-								disabled={Boolean(billingResolved[appointment.id])}
-								action={() => handleDelete(appointment.id)}
-								tooltip={billingResolved[appointment.id] ? 'Atendimento com histórico financeiro não pode ser excluído' : 'Excluir atendimento sem vínculos clínicos ou financeiros'}
+								tooltip={
+									billed
+										? 'Atendimento com histórico financeiro não pode ser excluído'
+										: 'Excluir atendimento sem vínculos clínicos ou financeiros'
+								}
+								disabled={billed}
+								action={() => onDelete(appointment.id)}
 							/>
 						</>
 					)}
-
-					{(profile === 'admin' || profile === 'doctor') && appointment.status === 'completed' && (
-						<EditButton size='default' text='Financeiro' tooltip='Cobrança e pagamentos' renderForm={(close) => (
-							<AppointmentBillingEditor appointment={appointment} billing={billingResolved[appointment.id]} onSuccess={close} />
-						)} />
-					)}
-					{(profile === 'admin' || profile === 'doctor') && (
-						<EditButton disabled={appointment.isPaid || Boolean(billingResolved[appointment.id]) || ['cancelled', 'no_show'].includes(appointment.status)} tooltip='Editar itens e valores' renderForm={(close) => (
-							<AppointmentItemsEditor appointment={appointment} services={services} products={products} onSuccess={close} />
-						)} />
-					)}
-					<EditButton
-						tooltip={'Editar agendamento'}
-						disabled={appointment.status !== 'pending' || Boolean(appointment.productItems?.length)}
-						renderForm={(close) => (
-							<AppointmentFormClient
-								appointment={appointment}
-								pets={pets}
-								doctors={doctors}
-								services={services}
-								viewerRole={viewerRole}
-								onSuccess={close}
-							/>
-						)}
-					/>
-
 					<DeleteAlertButton
-						icon={<BanIcon />}
-						disabled={appointment.status !== 'pending'}
-						action={() => handleCancelAppointment(appointment.id)}
+						icon={<Ban />}
 						tooltip='Cancelar agendamento'
+						disabled={appointment.status !== 'pending'}
+						action={() => onCancel(appointment.id)}
 					/>
-				</TableCell>
-			</TableRow>
-		);
-	};
+				</div>
+			)}
+		</div>
+	);
+}
 
-	const renderMobile = (entry: UnifiedAppointmentItem) => {
-    if (entry.kind === 'care_reminder') {
-      return (
-        <article key={`reminder-${entry.id}`} className='flex min-w-0 flex-col gap-2 rounded-lg border p-3'>
-          <div className='flex flex-wrap items-center justify-between gap-2'>
-            <strong className='flex items-center gap-2 text-sm'><SyringeIcon className='size-4' />Retorno de vacinação</strong>
-            <span className='rounded-md border px-2 py-1 text-xs'>Pendente</span>
-          </div>
-          <Link href={`/pets/${encodeURIComponent(entry.pet.id)}`} className='min-h-11 inline-flex items-center font-semibold underline underline-offset-4'>{entry.pet.name}</Link>
-          <p className='break-words text-sm'>{entry.title}</p>
-          <p className='flex items-center gap-2 text-sm text-muted-foreground'><CalendarDaysIcon className='size-4' />{format(parseISO(entry.dueDate), 'dd/MM/yyyy')} · Sem horário definido</p>
-          <p className='text-xs text-muted-foreground'>Veterinária: {entry.doctor.name}</p>
-          <p className='text-xs text-muted-foreground'>Sem cobrança vinculada</p>
-        </article>
-      );
-    }
-    const appointment: AppointmentListItem = entry;
+const appointmentDate = (date: Date) =>
+	format(new Date(date), "dd/MM/yyyy 'às' HH:mm");
+const reminderDate = (date: string) => format(parseISO(date), 'dd/MM/yyyy');
+
+function ReminderRow({
+	reminder,
+	mobile,
+}: {
+	reminder: ClinicalReminderListItem;
+	mobile?: boolean;
+}) {
+	const link = `/pets/${encodeURIComponent(reminder.pet.id)}`;
+	if (mobile) {
 		return (
-			<div key={appointment.id} className='flex flex-col gap-4'>
-				<div className='flex items-center justify-between'>
-					<span className='flex flex-col gap-2'>
-						<h3 className='font-bold'>
-							{appointment.scheduledAt.toLocaleDateString('pt-BR')} -{' '}
-							{appointment.pet.name}
-						</h3>
-						<BadgeStatus appointment={appointment} />
-					</span>
-
-					<span className='flex flex-col gap-2'>
-						{(profile === 'admin' || profile === 'doctor') && (
-							<>
-								<ConfirmAlertButton
-									size='icon'
-									tooltip='Confirmar agendamento'
-									disabled={appointment.status !== 'pending'}
-									action={() => handleConfirmAppointment(appointment.id)}
-								/>
-
-								<DeleteAlertButton
-									disabled={Boolean(billingResolved[appointment.id])}
-									action={() => handleDelete(appointment.id)}
-									tooltip={billingResolved[appointment.id] ? 'Atendimento com histórico financeiro não pode ser excluído' : 'Excluir atendimento sem vínculos clínicos ou financeiros'}
-								/>
-							</>
-						)}
-
-						{(profile === 'admin' || profile === 'doctor') && appointment.status === 'completed' && (
-						<EditButton size='default' text='Financeiro' tooltip='Cobrança e pagamentos' renderForm={(close) => (
-							<AppointmentBillingEditor appointment={appointment} billing={billingResolved[appointment.id]} onSuccess={close} />
-						)} />
-					)}
-					{(profile === 'admin' || profile === 'doctor') && (
-							<EditButton disabled={appointment.isPaid || Boolean(billingResolved[appointment.id]) || ['cancelled', 'no_show'].includes(appointment.status)} tooltip='Editar itens e valores' renderForm={(close) => (
-								<AppointmentItemsEditor appointment={appointment} services={services} products={products} onSuccess={close} />
-							)} />
-						)}
-						<EditButton
-							tooltip={'Editar agendamento'}
-							disabled={appointment.status !== 'pending' || Boolean(appointment.productItems?.length)}
-							renderForm={(close) => (
-								<AppointmentFormClient
-									appointment={appointment}
-									pets={pets}
-									doctors={doctors}
-									services={services}
-									viewerRole={viewerRole}
-									onSuccess={close}
-								/>
-							)}
-						/>
-
-						<DeleteAlertButton
-							icon={<BanIcon />}
-							disabled={appointment.status !== 'pending'}
-							action={() => handleCancelAppointment(appointment.id)}
-							tooltip='Cancelar agendamento'
-						/>
-					</span>
-				</div>
-
-				<Separator />
-
-				<div className='flex flex-col gap-2'>
-					<p className='flex items-center gap-4'>
-						<span className='text-sm font-semibold'>
-							<PawPrintIcon className='w-4 h-4' />
-						</span>
-						<span className='text-sm'>{appointment.pet.name}</span>
-					</p>
-					<p className='flex items-center gap-4'>
-						<span className='text-sm font-semibold'>
-							<UserRoundIcon className='w-4 h-4' />
-						</span>
-						<span className='text-sm'>
-							{formatPetTutorNames(appointment.pet)}
-						</span>
-					</p>
-					<p className='flex items-center gap-4'>
-						<span className='text-sm font-semibold'>
-							<StethoscopeIcon className='w-4 h-4' />
-						</span>
-						<span className='text-sm'>{appointment.doctor.user.name}</span>
-					</p>
-					<p className='flex items-center gap-4'>
-						<span className='text-sm font-semibold'>
-							<ClockIcon className='w-4 h-4' />
-						</span>
-						<span className='text-sm'>
-							{appointment.scheduledAt.toLocaleDateString('pt-BR')} às{' '}
-							{appointment.scheduledAt.toLocaleTimeString('pt-BR', {
-								hour: '2-digit',
-								minute: '2-digit',
-							})}
-						</span>
-					</p>
-					<div className='flex items-start gap-4'>
-						<span className='text-sm font-semibold'>
-							<ArrowRightIcon className='w-4 h-4' />
-						</span>
-						<div className='flex flex-col gap-1'>
-							{appointment.items.map((item) => (
-								<div className='flex gap-2' key={item.serviceId}>
-									<DotIcon className='w-4 h-4' />
-									<p className='text-sm leading-tight'>
-										{item.service.name} (x{item.quantity}) -{' '}
-										{formatCurrencyFromCents(item.priceAtTimeInCents * item.quantity - item.discountInCents)}
-									</p>
-								</div>
-							))}
-{appointment.productItems?.map((item) => <p key={item.id} className='text-sm'>Produto: {item.product.name} (x{item.quantity}) — {formatCurrencyFromCents(item.priceAtTimeInCents * item.quantity - item.discountInCents)}</p>)}
-						</div>
+			<article
+				className='space-y-3 rounded-xl border bg-card p-3'
+				data-testid='reminder-card'
+			>
+				<div className='flex items-start justify-between gap-2'>
+					<div className='min-w-0'>
+						<Link
+							href={link}
+							className='font-semibold underline-offset-4 hover:underline'
+						>
+							{reminder.pet.name}
+						</Link>
+						<p className='mt-1 text-xs text-muted-foreground'>
+							{reminderDate(reminder.dueDate)} · Vacina
+						</p>
 					</div>
-					<p className='flex items-center gap-4'>
-						<span className='text-sm font-semibold'>
-							<DollarSignIcon className='w-4 h-5' />
-						</span>
-						<span className='text-sm'>
-							{formatCurrencyFromCents(appointment.totalPriceInCents)}
-						</span>
-					</p>
+					<span className='shrink-0 rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200'>
+						Pendente
+					</span>
 				</div>
-
-				{(profile === 'admin' || profile === 'doctor') && (
-					<>
-						<Separator />
-
-						<ConfirmAlertButton
-							text='Marcar como concluído'
-							tooltip='Marcar como concluído'
-							disabled={appointment.status !== 'pending'}
-							action={() => handleCompleteAppointment(appointment.id)}
-						/>
-					</>
-				)}
-			</div>
+				<p className='wrap-break-word text-sm'>
+					<Syringe className='mr-2 inline size-4' />
+					{reminder.title}
+				</p>
+				<Link
+					href={link}
+					className='inline-flex min-h-11 items-center rounded-md bg-emerald-100 px-3 text-sm font-semibold text-emerald-900 hover:bg-emerald-200 dark:bg-emerald-950 dark:text-emerald-100'
+				>
+					Ver pet
+				</Link>
+			</article>
 		);
+	}
+	return (
+		<TableRow data-testid='reminder-row'>
+			<TableCell className='whitespace-nowrap'>
+				{reminderDate(reminder.dueDate)}
+			</TableCell>
+			<TableCell>
+				<Link
+					href={link}
+					className='font-semibold underline-offset-4 hover:underline'
+				>
+					{reminder.pet.name}
+				</Link>
+			</TableCell>
+			<TableCell>
+				<span className='inline-flex items-center gap-1 text-xs'>
+					<Syringe className='size-4' />
+					Vacina
+				</span>
+			</TableCell>
+			<TableCell className='max-w-64'>
+				<p className='line-clamp-2'>{reminder.title}</p>
+			</TableCell>
+			<TableCell>
+				<span className='whitespace-nowrap rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200'>
+					Retorno pendente
+				</span>
+			</TableCell>
+			<TableCell>
+				<Link
+					href={link}
+					className='font-semibold text-primary underline underline-offset-4'
+				>
+					Ver pet
+				</Link>
+			</TableCell>
+		</TableRow>
+	);
+}
+
+export default function AppointmentsListClient({
+	appointments,
+	reminders,
+	billing,
+	pets,
+	doctors,
+	services,
+	products,
+	viewerRole,
+}: Props) {
+	const appointmentData = use(appointments);
+	const reminderData = use(reminders);
+	const billed = use(billing);
+	const params = useSearchParams();
+	const router = useRouter();
+	const [status, setStatus] = useState('all');
+	const [mobileTab, setMobileTab] = useState('appointments');
+
+	const navigatePage = (
+		key: 'appointmentsPage' | 'remindersPage',
+		page: number,
+	) => {
+		const next = new URLSearchParams(params.toString());
+		next.set(key, String(page));
+		router.push(`/appointments?${next.toString()}`);
 	};
 
-	return (
-		<div className='flex flex-col w-full gap-4'>
-			<div className='flex flex-col items-center justify-between gap-4 lg:flex-row'>
-				<SearchInput />
+	const deletion = useAction(deleteAppointment, {
+		onSuccess: () => {
+			toast.success('Atendimento excluído.');
+			router.refresh();
+		},
+		onError: ({ error }) =>
+			toast.error(
+				error.serverError ??
+					'Não foi possível excluir. Verifique os vínculos clínicos e financeiros.',
+			),
+	});
+	const confirmation = useAction(markAsConfirmed, {
+		onSuccess: () => {
+			toast.success('Atendimento confirmado.');
+			router.refresh();
+		},
+		onError: ({ error }) =>
+			toast.error(
+				error.serverError ?? 'Não foi possível confirmar o atendimento.',
+			),
+	});
+	const completion = useAction(markAppointmentAsCompleted, {
+		onSuccess: () => {
+			toast.success('Atendimento concluído.');
+			router.refresh();
+		},
+		onError: ({ error }) =>
+			toast.error(
+				error.serverError ?? 'Não foi possível concluir o atendimento.',
+			),
+	});
+	const cancellation = useAction(markAppointmentAsCancelled, {
+		onSuccess: () => {
+			toast.success('Atendimento cancelado.');
+			router.refresh();
+		},
+		onError: ({ error }) =>
+			toast.error(
+				error.serverError ?? 'Não foi possível cancelar o atendimento.',
+			),
+	});
+	// Filtro visual explícito da página atual; a busca textual consulta o servidor.
+	const visibleAppointments =
+		status === 'all'
+			? appointmentData.data
+			: appointmentData.data.filter(
+					(appointment) => appointment.status === status,
+				);
 
+	const renderActions = (appointment: AppointmentListItem) => (
+		<AppointmentActions
+			appointment={appointment}
+			billing={billed[appointment.id]}
+			pets={pets}
+			doctors={doctors}
+			services={services}
+			products={products}
+			viewerRole={viewerRole}
+			onDelete={(id) => deletion.execute({ id })}
+			onConfirm={(id) => confirmation.execute({ id })}
+			onComplete={(id) => completion.execute({ id })}
+			onCancel={(id) => cancellation.execute({ id })}
+		/>
+	);
+	const appointmentSection = (
+		<div className='space-y-4'>
+			<div className='flex flex-col justify-between gap-3 sm:flex-row sm:items-center'>
+				<div className='flex items-center gap-3'>
+					<div className='rounded-xl bg-emerald-100 p-2.5 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'>
+						<CalendarDays className='size-5' />
+					</div>
+					<div>
+						<h2 className='font-semibold text-lg'>Agendamentos</h2>
+						<p className='text-sm text-muted-foreground'>
+							Atendimentos programados e realizados.
+						</p>
+					</div>
+				</div>
 				<AddButton
-					text='Adicionar Agendamento'
+					text='Adicionar agendamento'
 					renderForm={(close) => (
 						<AppointmentFormClient
 							pets={pets}
@@ -439,25 +418,273 @@ const AppointmentsListClient = ({
 					)}
 				/>
 			</div>
-
-			{(deleteAppointmentAction.isPending ||
-				markAppointmentAsCancelledAction.isPending ||
-				markAppointmentAsCompletedAction.isPending) && <LoadingDialog />}
-
-			<TableComponent
-				emptyMessage='Nenhum agendamento ou retorno encontrado...'
-				columns={columns}
-				renderRow={renderRow}
-				renderMobile={renderMobile}
-				data={appointmentsResolved?.data}
-				currentPage={appointmentsResolved?.metadata.currentPage}
-				totalPages={appointmentsResolved?.metadata.pageCount}
-				totalElements={appointmentsResolved?.metadata.totalCount}
-				pageSize={MAX_PAGE_SIZE}
-				onPageChange={handlePageChange}
-			/>
+			<div className='flex flex-wrap items-center gap-2'>
+				<label
+					htmlFor='appointment-status-filter'
+					className='text-xs text-muted-foreground'
+				>
+					Status nesta página
+				</label>
+				<Select value={status} onValueChange={setStatus}>
+					<SelectTrigger
+						id='appointment-status-filter'
+						className='w-44'
+						aria-label='Filtrar status nesta página'
+					>
+						<SelectValue placeholder='Todos' />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value='all'>Todos</SelectItem>
+						<SelectItem value='pending'>Pendente</SelectItem>
+						<SelectItem value='confirmed'>Confirmado</SelectItem>
+						<SelectItem value='in_progress'>Em andamento</SelectItem>
+						<SelectItem value='completed'>Concluído</SelectItem>
+						<SelectItem value='cancelled'>Cancelado</SelectItem>
+					</SelectContent>
+				</Select>
+			</div>
+			<div className='hidden overflow-x-auto rounded-xl border lg:block'>
+				<Table>
+					<TableHeader>
+						<TableRow className='bg-muted/50'>
+							<TableHead>Data e hora</TableHead>
+							<TableHead>Paciente</TableHead>
+							<TableHead>Tutor</TableHead>
+							<TableHead>Descrição</TableHead>
+							<TableHead>Status</TableHead>
+							<TableHead>Valor</TableHead>
+							<TableHead className='text-right'>Ações</TableHead>
+						</TableRow>
+					</TableHeader>
+					<TableBody>
+						{visibleAppointments.map((appointment) => (
+							<TableRow key={appointment.id} data-testid='appointment-row'>
+								<TableCell className='whitespace-nowrap text-sm'>
+									{appointmentDate(appointment.scheduledAt)}
+								</TableCell>
+								<TableCell>
+									<Link
+										className='font-semibold underline-offset-4 hover:underline'
+										href={`/pets/${encodeURIComponent(appointment.pet.id)}`}
+									>
+										{appointment.pet.name}
+									</Link>
+								</TableCell>
+								<TableCell className='text-sm'>
+									{formatPetTutorNames(appointment.pet) || '—'}
+								</TableCell>
+								<TableCell className='max-w-48'>
+									<p
+										className='truncate text-sm'
+										title={summarizeAppointmentItems(appointment)}
+									>
+										{summarizeAppointmentItems(appointment)}
+									</p>
+								</TableCell>
+								<TableCell>
+									<BadgeStatus appointment={appointment} />
+								</TableCell>
+								<TableCell className='whitespace-nowrap text-sm'>
+									<span className='font-medium'>
+										{formatCurrencyFromCents(appointment.totalPriceInCents)}
+									</span>
+									{billed[appointment.id] && (
+										<p className='text-xs text-muted-foreground'>
+											Cobrança: {billed[appointment.id].status}
+										</p>
+									)}
+								</TableCell>
+								<TableCell>
+									<div className='flex justify-end'>
+										{renderActions(appointment)}
+									</div>
+								</TableCell>
+							</TableRow>
+						))}
+						{visibleAppointments.length === 0 && (
+							<TableRow>
+								<TableCell
+									colSpan={7}
+									className='py-8 text-center text-sm text-muted-foreground'
+								>
+									Nenhum atendimento nesta visualização.
+								</TableCell>
+							</TableRow>
+						)}
+					</TableBody>
+				</Table>
+			</div>
+			<div className='space-y-3 lg:hidden'>
+				{visibleAppointments.map((appointment) => (
+					<article
+						key={appointment.id}
+						className='space-y-3 rounded-xl border bg-card p-3 shadow-sm'
+						data-testid='appointment-card'
+					>
+						<div className='flex flex-wrap items-start justify-between gap-2'>
+							<div className='flex items-center gap-2'>
+								<span className='rounded-lg bg-emerald-100 p-2 text-emerald-900'>
+									<PawPrint className='size-4' />
+								</span>
+								<Link
+									href={`/pets/${encodeURIComponent(appointment.pet.id)}`}
+									className='font-semibold underline-offset-4 hover:underline'
+								>
+									{appointment.pet.name}
+								</Link>
+							</div>
+							<BadgeStatus appointment={appointment} />
+						</div>
+						<div className='space-y-1.5 pl-1 text-sm'>
+							<p>
+								<CalendarDays className='mr-2 inline size-4 text-muted-foreground' />
+								{appointmentDate(appointment.scheduledAt)}
+							</p>
+							<p className='text-muted-foreground'>
+								{formatPetTutorNames(appointment.pet) || 'Tutor não informado'}
+							</p>
+							<p className='wrap-break-word'>
+								{summarizeAppointmentItems(appointment)}
+							</p>
+							<p className='font-semibold'>
+								<Wallet className='mr-2 inline size-4' />
+								{formatCurrencyFromCents(appointment.totalPriceInCents)}
+							</p>
+						</div>
+						<div className='flex justify-end border-t pt-2'>
+							{renderActions(appointment)}
+						</div>
+					</article>
+				))}
+				{visibleAppointments.length === 0 && (
+					<p className='rounded-xl border p-6 text-center text-sm text-muted-foreground'>
+						Nenhum atendimento nesta visualização.
+					</p>
+				)}
+			</div>
+			{appointmentData.metadata.pageCount > 1 && (
+				<Pagination
+					currentPage={appointmentData.metadata.currentPage}
+					totalPages={appointmentData.metadata.pageCount}
+					totalElements={appointmentData.metadata.totalCount}
+					pageSize={MAX_PAGE_SIZE}
+					onPageChange={(page) => navigatePage('appointmentsPage', page)}
+				/>
+			)}
 		</div>
 	);
-};
+	const reminderSection = (
+		<div className='space-y-4'>
+			<div className='flex items-center gap-3'>
+				<div className='rounded-xl bg-emerald-100 p-2.5 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'>
+					<Bell className='size-5' />
+				</div>
+				<div>
+					<h2 className='font-semibold text-lg'>Retornos e lembretes</h2>
+					<p className='text-sm text-muted-foreground'>
+						Acompanhamento clínico, sem cobrança antecipada.
+					</p>
+				</div>
+			</div>
+			<div className='hidden overflow-x-auto rounded-xl border lg:block'>
+				<Table>
+					<TableHeader>
+						<TableRow className='bg-muted/50'>
+							<TableHead>Data prevista</TableHead>
+							<TableHead>Paciente</TableHead>
+							<TableHead>Tipo</TableHead>
+							<TableHead>Descrição</TableHead>
+							<TableHead>Status</TableHead>
+							<TableHead>Ação</TableHead>
+						</TableRow>
+					</TableHeader>
+					<TableBody>
+						{reminderData.data.map((reminder) => (
+							<ReminderRow key={reminder.id} reminder={reminder} />
+						))}
+						{reminderData.data.length === 0 && (
+							<TableRow>
+								<TableCell
+									colSpan={6}
+									className='py-8 text-center text-sm text-muted-foreground'
+								>
+									Nenhum retorno pendente encontrado.
+								</TableCell>
+							</TableRow>
+						)}
+					</TableBody>
+				</Table>
+			</div>
+			<div className='space-y-3 lg:hidden'>
+				{reminderData.data.map((reminder) => (
+					<ReminderRow key={reminder.id} reminder={reminder} mobile />
+				))}
+				{reminderData.data.length === 0 && (
+					<p className='rounded-xl border p-6 text-center text-sm text-muted-foreground'>
+						Nenhum retorno pendente encontrado.
+					</p>
+				)}
+			</div>
+			{reminderData.metadata.pageCount > 1 && (
+				<Pagination
+					currentPage={reminderData.metadata.currentPage}
+					totalPages={reminderData.metadata.pageCount}
+					totalElements={reminderData.metadata.totalCount}
+					pageSize={MAX_PAGE_SIZE}
+					onPageChange={(page) => navigatePage('remindersPage', page)}
+				/>
+			)}
+		</div>
+	);
 
-export default AppointmentsListClient;
+	return (
+		<div className='w-full min-w-0 space-y-5'>
+			{(deletion.isPending ||
+				confirmation.isPending ||
+				completion.isPending ||
+				cancellation.isPending) && <LoadingDialog />}
+			<div className='w-full'>
+				<SearchInput />
+			</div>
+			<div className='hidden space-y-5 lg:block'>
+				<section
+					aria-label='Atendimentos e agendamentos'
+					className='rounded-2xl border bg-card p-4 shadow-sm xl:p-5'
+				>
+					{appointmentSection}
+				</section>
+				<section
+					aria-label='Retornos e lembretes'
+					className='rounded-2xl border bg-card p-4 shadow-sm xl:p-5'
+				>
+					{reminderSection}
+				</section>
+			</div>
+			<Tabs
+				value={mobileTab}
+				onValueChange={setMobileTab}
+				className='lg:hidden'
+			>
+				<TabsList className='grid h-11 w-full grid-cols-2'>
+					<TabsTrigger value='appointments'>
+						Agendamentos ({appointmentData.metadata.totalCount})
+					</TabsTrigger>
+					<TabsTrigger value='reminders'>
+						Retornos ({reminderData.metadata.totalCount})
+					</TabsTrigger>
+				</TabsList>
+				<TabsContent value='appointments' className='pt-3'>
+					{appointmentSection}
+				</TabsContent>
+				<TabsContent value='reminders' className='pt-3'>
+					{reminderSection}
+				</TabsContent>
+			</Tabs>
+			<p className='text-xs text-muted-foreground'>
+				<Clock3 className='mr-1 inline size-3' />
+				Retornos são pendências clínicas e não geram cobrança até a realização
+				do atendimento.
+			</p>
+		</div>
+	);
+}
