@@ -16,7 +16,14 @@ describe('interface de agendamentos', () => {
     const endMenu = list.indexOf('</DropdownMenu>');
     expect(endMenu).toBeGreaterThan(0);
     expect(list.indexOf('<Dialog open={itemsOpen}')).toBeGreaterThan(endMenu);
-    expect(list.indexOf('<AlertDialog open={confirmation !== null}')).toBeGreaterThan(endMenu);
+    const alertDialog = list.indexOf('<AlertDialog\n');
+    expect(alertDialog).toBeGreaterThan(endMenu);
+    expect(list).toContain('open={confirmationRequest !== null}');
+    expect(list).toContain('if (!open && !actionPending) setConfirmationRequest(null)');
+    // A confirmação não pode ser desmontada junto com o menu ao selecionar uma ação.
+    const menuMarkup = list.slice(list.indexOf('<DropdownMenu>'), endMenu);
+    expect(menuMarkup).not.toContain('<AlertDialog');
+    expect(menuMarkup).not.toContain('<Dialog open=');
   });
   it('usa o cabeçalho cinza compartilhado e um link de retorno legível', () => {
     expect(table).toContain('[&_tr]:bg-muted/60');

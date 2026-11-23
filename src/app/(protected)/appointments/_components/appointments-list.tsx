@@ -23,12 +23,10 @@ import AddButton from '@/components/list/add-button';
 import EditButton from '@/components/list/edit-button';
 import SearchInput from '@/components/list/search-input';
 import Pagination from '@/components/list/table-pagination';
-import LoadingDialog from '@/components/ui/loading';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import {
 	AlertDialog,
-	AlertDialogAction,
 	AlertDialogCancel,
 	AlertDialogContent,
 	AlertDialogDescription,
@@ -76,12 +74,15 @@ import { format, parseISO } from 'date-fns';
 import { useAction } from 'next-safe-action/hooks';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { use, useState } from 'react';
+import { use, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import AppointmentFormClient from './appointment-form';
 import AppointmentItemsEditor from './appointment-items-editor';
 import AppointmentBillingEditor from './appointment-billing-editor';
 import BadgeStatus from './badge-status';
+
+type AppointmentConfirmationKind = 'confirm' | 'complete' | 'delete' | 'cancel';
+type AppointmentConfirmationRequest = { id: string; kind: AppointmentConfirmationKind };
 
 type ProductOption = {
 	id: string;
@@ -102,7 +103,7 @@ type Props = {
 
 /** Ações secundárias permanecem montadas fora de menus descartáveis: os dialogs não fecham por desmontagem. */
 function AppointmentActions({
-  appointment, billing, pets, doctors, services, products, viewerRole, onDelete, onConfirm, onComplete, onCancel,
+  appointment, billing, pets, doctors, services, products, viewerRole, onRequestConfirmation, actionPending,
 }: {
   appointment: AppointmentListItem;
   billing?: BillingOverview;
@@ -111,28 +112,16 @@ function AppointmentActions({
   services: ServicesWithRelations[];
   products: ProductOption[];
   viewerRole: UserRole;
-  onDelete: (id: string) => void;
-  onConfirm: (id: string) => void;
-  onComplete: (id: string) => void;
-  onCancel: (id: string) => void;
+  onRequestConfirmation: (id: string, kind: AppointmentConfirmationKind) => void;
+  actionPending: boolean;
 }) {
   const staff = isStaff(viewerRole);
   const billed = Boolean(billing);
   const [itemsOpen, setItemsOpen] = useState(false);
-  const [confirmation, setConfirmation] = useState<'confirm' | 'complete' | 'delete' | 'cancel' | null>(null);
   const availableConfirmation = appointment.status === 'pending';
   const availableCompletion = ['confirmed', 'in_progress'].includes(appointment.status);
   const availableItems = staff && !appointment.isPaid && !billed && !['cancelled', 'no_show'].includes(appointment.status);
 
-  const executeConfirmedAction = () => {
-    switch (confirmation) {
-      case 'confirm': onConfirm(appointment.id); break;
-      case 'complete': onComplete(appointment.id); break;
-      case 'delete': onDelete(appointment.id); break;
-      case 'cancel': onCancel(appointment.id); break;
-    }
-    setConfirmation(null);
-  };
 
   return (
     <>
@@ -144,35 +133,35 @@ function AppointmentActions({
         )}
         <EditButton
           tooltip='Editar agendamento'
-          disabled={appointment.status !== 'pending' || Boolean(appointment.productItems?.length)}
+          disabled={actionPending || billed || Boolean(appointment.productItems?.length) || !(viewerRole === 'customer' ? appointment.status === 'pending' : ['pending', 'confirmed'].includes(appointment.status))}
           renderForm={(close) => (
             <AppointmentFormClient appointment={appointment} pets={pets} doctors={doctors} services={services} viewerRole={viewerRole} onSuccess={close} />
           )}
         />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button type='button' size='icon' variant='outline' aria-label='Mais ações do atendimento'>
+            <Button type='button' size='icon' variant='outline' disabled={actionPending} aria-label='Mais ações do atendimento'>
               <MoreHorizontal className='size-4' />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align='end' sideOffset={6} className='w-52'>
             {staff && (
               <>
-                <DropdownMenuItem disabled={!availableConfirmation} onSelect={() => setConfirmation('confirm')}>
+                <DropdownMenuItem disabled={!availableConfirmation} onSelect={() => onRequestConfirmation(appointment.id, 'confirm')}>
                   <Check className='size-4' />Confirmar atendimento
                 </DropdownMenuItem>
-                <DropdownMenuItem disabled={!availableCompletion} onSelect={() => setConfirmation('complete')}>
+                <DropdownMenuItem disabled={!availableCompletion} onSelect={() => onRequestConfirmation(appointment.id, 'complete')}>
                   <CheckCheck className='size-4' />Concluir atendimento
                 </DropdownMenuItem>
                 <DropdownMenuItem disabled={!availableItems} onSelect={() => setItemsOpen(true)}>
                   <Pencil className='size-4' />Editar itens e valores
                 </DropdownMenuItem>
-                <DropdownMenuItem variant='destructive' disabled={billed} onSelect={() => setConfirmation('delete')}>
+                <DropdownMenuItem variant='destructive' disabled={billed} onSelect={() => onRequestConfirmation(appointment.id, 'delete')}>
                   <Trash2 className='size-4' />Excluir atendimento
                 </DropdownMenuItem>
               </>
             )}
-            <DropdownMenuItem variant='destructive' disabled={!availableConfirmation} onSelect={() => setConfirmation('cancel')}>
+            <DropdownMenuItem variant='destructive' disabled={!availableConfirmation} onSelect={() => onRequestConfirmation(appointment.id, 'cancel')}>
               <Ban className='size-4' />Cancelar agendamento
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -189,28 +178,7 @@ function AppointmentActions({
           />
         )}
       </Dialog>
-      <AlertDialog open={confirmation !== null} onOpenChange={(open) => { if (!open) setConfirmation(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar ação no atendimento?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmation === 'delete'
-                ? 'A exclusão é definitiva e somente será permitida se não houver vínculos clínicos ou financeiros.'
-                : confirmation === 'cancel'
-                  ? 'Deseja cancelar este agendamento?'
-                  : confirmation === 'complete'
-                    ? 'Deseja marcar o atendimento como concluído?'
-                    : 'Deseja confirmar este agendamento?'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Voltar</AlertDialogCancel>
-            <AlertDialogAction onClick={executeConfirmedAction} variant={confirmation === 'delete' ? 'destructive' : 'default'}>
-              Confirmar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
     </>
   );
 }
@@ -318,6 +286,8 @@ export default function AppointmentsListClient({
 	const router = useRouter();
 	const [status, setStatus] = useState('all');
 	const [mobileTab, setMobileTab] = useState('appointments');
+	const [confirmationRequest, setConfirmationRequest] = useState<AppointmentConfirmationRequest | null>(null);
+	const actionInFlight = useRef(false);
 
 	const navigatePage = (
 		key: 'appointmentsPage' | 'remindersPage',
@@ -330,44 +300,60 @@ export default function AppointmentsListClient({
 
 	const deletion = useAction(deleteAppointment, {
 		onSuccess: () => {
+			actionInFlight.current = false;
+			setConfirmationRequest(null);
 			toast.success('Atendimento excluído.');
 			router.refresh();
 		},
-		onError: ({ error }) =>
+		onError: ({ error }) => {
+			actionInFlight.current = false;
 			toast.error(
 				error.serverError ??
 					'Não foi possível excluir. Verifique os vínculos clínicos e financeiros.',
-			),
+			);
+		},
 	});
 	const confirmation = useAction(markAsConfirmed, {
 		onSuccess: () => {
+			actionInFlight.current = false;
+			setConfirmationRequest(null);
 			toast.success('Atendimento confirmado.');
 			router.refresh();
 		},
-		onError: ({ error }) =>
+		onError: ({ error }) => {
+			actionInFlight.current = false;
 			toast.error(
 				error.serverError ?? 'Não foi possível confirmar o atendimento.',
-			),
+			);
+		},
 	});
 	const completion = useAction(markAppointmentAsCompleted, {
 		onSuccess: () => {
+			actionInFlight.current = false;
+			setConfirmationRequest(null);
 			toast.success('Atendimento concluído.');
 			router.refresh();
 		},
-		onError: ({ error }) =>
+		onError: ({ error }) => {
+			actionInFlight.current = false;
 			toast.error(
 				error.serverError ?? 'Não foi possível concluir o atendimento.',
-			),
+			);
+		},
 	});
 	const cancellation = useAction(markAppointmentAsCancelled, {
 		onSuccess: () => {
+			actionInFlight.current = false;
+			setConfirmationRequest(null);
 			toast.success('Atendimento cancelado.');
 			router.refresh();
 		},
-		onError: ({ error }) =>
+		onError: ({ error }) => {
+			actionInFlight.current = false;
 			toast.error(
 				error.serverError ?? 'Não foi possível cancelar o atendimento.',
-			),
+			);
+		},
 	});
 	// Filtro visual explícito da página atual; a busca textual consulta o servidor.
 	const visibleAppointments =
@@ -376,6 +362,27 @@ export default function AppointmentsListClient({
 			: appointmentData.data.filter(
 					(appointment) => appointment.status === status,
 				);
+
+	const actionPending = deletion.isPending || confirmation.isPending || completion.isPending || cancellation.isPending;
+
+	const executeConfirmedAction = () => {
+		if (!confirmationRequest || actionPending || actionInFlight.current) return;
+		actionInFlight.current = true;
+		const { id, kind } = confirmationRequest;
+		switch (kind) {
+			case 'confirm': confirmation.execute({ id }); break;
+			case 'complete': completion.execute({ id }); break;
+			case 'delete': deletion.execute({ id }); break;
+			case 'cancel': cancellation.execute({ id }); break;
+		}
+	};
+
+	const confirmationCopy = {
+		confirm: { title: 'Confirmar agendamento?', description: 'O agendamento passará para o status confirmado.', action: 'Confirmar agendamento' },
+		complete: { title: 'Concluir atendimento?', description: 'O atendimento será marcado como concluído e poderá seguir para cobrança.', action: 'Concluir atendimento' },
+		delete: { title: 'Excluir atendimento definitivamente?', description: 'A exclusão só será permitida se não houver vínculos clínicos ou financeiros. Esta ação não pode ser desfeita.', action: 'Excluir atendimento' },
+		cancel: { title: 'Cancelar agendamento?', description: 'O agendamento pendente será cancelado.', action: 'Cancelar agendamento' },
+	} as const;
 
 	const renderActions = (appointment: AppointmentListItem) => (
 		<AppointmentActions
@@ -386,10 +393,8 @@ export default function AppointmentsListClient({
 			services={services}
 			products={products}
 			viewerRole={viewerRole}
-			onDelete={(id) => deletion.execute({ id })}
-			onConfirm={(id) => confirmation.execute({ id })}
-			onComplete={(id) => completion.execute({ id })}
-			onCancel={(id) => cancellation.execute({ id })}
+			actionPending={actionPending}
+			onRequestConfirmation={(id, kind) => setConfirmationRequest({ id, kind })}
 		/>
 	);
 	const appointmentSection = (
@@ -640,10 +645,34 @@ export default function AppointmentsListClient({
 
 	return (
 		<div className='w-full min-w-0 space-y-5'>
-			{(deletion.isPending ||
-				confirmation.isPending ||
-				completion.isPending ||
-				cancellation.isPending) && <LoadingDialog />}
+			<AlertDialog
+				open={confirmationRequest !== null}
+				onOpenChange={(open) => {
+					if (!open && !actionPending) setConfirmationRequest(null);
+				}}
+			>
+				<AlertDialogContent onEscapeKeyDown={(event) => { if (actionPending) event.preventDefault(); }}>
+					<AlertDialogHeader>
+						<AlertDialogTitle>
+							{confirmationRequest ? confirmationCopy[confirmationRequest.kind].title : ''}
+						</AlertDialogTitle>
+						<AlertDialogDescription>
+							{confirmationRequest ? confirmationCopy[confirmationRequest.kind].description : ''}
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={actionPending}>Voltar</AlertDialogCancel>
+						<Button
+							type='button'
+							variant={confirmationRequest?.kind === 'delete' || confirmationRequest?.kind === 'cancel' ? 'destructive' : 'default'}
+							disabled={actionPending || !confirmationRequest}
+							onClick={executeConfirmedAction}
+						>
+							{actionPending ? 'Processando...' : confirmationRequest ? confirmationCopy[confirmationRequest.kind].action : 'Confirmar'}
+						</Button>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 			<div className='w-full'>
 				<SearchInput />
 			</div>
