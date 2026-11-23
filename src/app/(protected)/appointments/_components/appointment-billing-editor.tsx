@@ -218,7 +218,7 @@ export default function AppointmentBillingEditor({
 							</p>
 						) : (
 							billing.payments.map((p) => (
-								<p key={p.id} className='break-words'>
+								<p key={p.id} className='wrap-break-word'>
 									{new Date(p.receivedAt).toLocaleDateString('pt-BR')} ·{' '}
 									{methodLabels[p.method as Method] ?? p.method} ·{' '}
 									{formatCurrencyFromCents(p.amountInCents)}
