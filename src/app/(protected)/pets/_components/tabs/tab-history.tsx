@@ -34,8 +34,8 @@ const TabHistory = ({
 }: TabHistoryProps) => {
 	return (
 		<TabsContent value='history' className='min-w-0 w-full'>
-			<div className='flex min-w-0 flex-col gap-4 lg:flex-row'>
-				<div className='grid grid-cols-2 gap-2 bg-card sm:grid-cols-3 lg:max-h-30 lg:w-3/5'>
+			<div className='flex min-w-0 flex-col gap-4 2xl:flex-row'>
+				<div className='grid w-full min-w-0 grid-cols-2 content-start gap-2 bg-card sm:grid-cols-3 2xl:w-[52%]'>
 					<DialogWeight petId={petId} />
 
 					<Button className='bg-pathology hover:bg-pathology/80'>
@@ -52,7 +52,11 @@ const TabHistory = ({
 						<FlaskConicalIcon /> Exame
 					</Button>
 
-					<DialogVaccine petId={petId} doctors={doctors} vaccineServices={vaccineServices} />
+					<DialogVaccine
+						petId={petId}
+						doctors={doctors}
+						vaccineServices={vaccineServices}
+					/>
 
 					<Button
 						asChild
@@ -67,7 +71,7 @@ const TabHistory = ({
 					<DialogNotes petId={petId} />
 				</div>
 
-				<div className='min-w-0 w-full flex-1 rounded-xl border bg-muted/20 p-3 sm:p-6 lg:max-h-100'>
+				<div className='min-w-0 w-full flex-1 rounded-xl border bg-muted/20 p-3 sm:p-6'>
 					<div className='mb-3 flex min-w-0 items-center justify-between gap-2 border-b pb-3 sm:mb-2 sm:pb-4'>
 						<h3 className='min-w-0 text-base font-bold sm:text-lg'>
 							Histórico Clínico
@@ -81,7 +85,7 @@ const TabHistory = ({
 						</Badge>
 					</div>
 
-					<div className='pb-2 sm:pb-8 lg:pb-20'>
+					<div className='pb-2 sm:pb-4'>
 						<PetTimelineClient
 							historyEvents={historyEvents}
 							canDelete={canDelete}

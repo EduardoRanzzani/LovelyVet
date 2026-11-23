@@ -9,6 +9,7 @@ import DatePickerForm from '@/components/form/datepicker-form';
 import InputForm from '@/components/form/input-form';
 import SelectForm from '@/components/form/select-form';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import { buildVaccineSubmitPayload } from '@/lib/vaccines/vaccine-submit-payload';
 import type { FieldErrors } from 'react-hook-form';
 import { z } from 'zod';
@@ -154,7 +155,7 @@ const DialogVaccine = ({
 			<DialogContent
 				onInteractOutside={(e) => e.preventDefault()}
 				showCloseButton={false}
-				className='max-w-md'
+				className='flex max-h-[90dvh] w-[calc(100vw-1.5rem)] max-w-lg flex-col gap-3 overflow-y-auto p-4 sm:p-6'
 			>
 				<DialogHeader>
 					<DialogTitle>
@@ -175,11 +176,19 @@ const DialogVaccine = ({
 						onSubmit={(event) => {
 							void form.handleSubmit(onSubmit, onInvalid)(event);
 						}}
-						className='space-y-4'
+						className='min-w-0 space-y-4'
 					>
 						<input type='hidden' {...form.register('petId')} />
 
-						{vaccineServices.length > 0 && (
+						{vaccineServices.length === 0 ? (
+							<div className='space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100' role='status'>
+								<p className='font-semibold'>Nenhuma vacina disponível no catálogo para este paciente.</p>
+								<p>Em Serviços, marque o tipo <strong>Vacinação</strong> e confira se a espécie corresponde à do pet. Você ainda pode registrar uma vacina antiga pelo nome abaixo, sem vínculo comercial.</p>
+								<Button variant='outline' size='sm' asChild className='w-full sm:w-auto'>
+									<Link href='/services' target='_blank' rel='noopener noreferrer'>Abrir catálogo de serviços</Link>
+								</Button>
+							</div>
+						) : (
 							<SelectForm
 								label='Vacina no catálogo de serviços'
 								name='serviceId'
@@ -215,7 +224,7 @@ const DialogVaccine = ({
 
 						{
 							<InputForm
-								label='Nome da vacina (preenchido pelo catálogo)'
+								label={selectedService ? 'Nome da vacina (preenchido pelo catálogo)' : 'Nome da vacina (registro manual)'}
 								name='name'
 								placeholder='Ex: Raiva, V10, Gripe...'
 								register={form.register}
@@ -308,7 +317,7 @@ const DialogVaccine = ({
 					</form>
 				</Form>
 
-				<DialogFooter className='mt-4'>
+				<DialogFooter className='mt-2 flex flex-col gap-2 border-t pt-3 sm:flex-row'>
 					<DialogClose asChild>
 						<Button
 							type='button'

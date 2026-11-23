@@ -474,7 +474,7 @@ const PetDetailsClient = ({
 
 				<Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
 					{/* VIEW MOBILE: Dropdown (Select) */}
-					<div className='md:hidden w-full'>
+					<div className='w-full lg:hidden'>
 						<Select value={activeTab} onValueChange={setActiveTab}>
 							<SelectTrigger className='w-full bg-muted/50 h-12'>
 								<SelectValue placeholder='Selecione uma categoria' />
@@ -493,12 +493,12 @@ const PetDetailsClient = ({
 					</div>
 
 					{/* VIEW DESKTOP: Tabs tradicionais */}
-					<TabsList className='hidden md:flex w-full justify-start h-auto p-1 bg-muted/50 border'>
+					<TabsList className='hidden lg:flex w-full min-w-0 justify-start h-auto flex-wrap gap-1 p-1 bg-muted/50 border'>
 						{visibleTabs.map((tab) => (
 							<TabsTrigger
 								key={tab.id}
 								value={tab.id}
-								className='flex gap-2 px-4 py-2 hover:cursor-pointer'
+								className='flex min-w-0 gap-2 px-3 py-2 text-sm hover:cursor-pointer'
 							>
 								<tab.icon className='w-4 h-4' />
 								{tab.label}
