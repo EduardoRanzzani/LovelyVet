@@ -17,6 +17,7 @@ import type { UserRole } from '@/lib/security/roles';
 import { useUser } from '@clerk/nextjs';
 import {
 	CalculatorIcon,
+	WalletIcon,
 	CalendarIcon,
 	CalendarDaysIcon,
 	ChevronRightIcon,
@@ -84,6 +85,11 @@ const AppSidebar = ({ role }: AppSidebarProps) => {
 			title: 'Agendamentos',
 			url: '/appointments',
 			icon: CalendarIcon,
+		},
+		{
+			title: 'Financeiro',
+			url: '/finance',
+			icon: WalletIcon,
 		},
 		{
 			title: 'Agenda',

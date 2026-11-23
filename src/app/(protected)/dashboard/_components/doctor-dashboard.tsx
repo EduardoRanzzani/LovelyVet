@@ -71,6 +71,7 @@ const DoctorDashboard = ({ appointments, shifts }: DoctorDashboardProps) => {
 
 	return (
 		<div className='flex flex-col gap-6'>
+			<div className='flex justify-end'><Button asChild variant='outline'><Link href='/finance'>Ver financeiro dos atendimentos</Link></Button></div>
 			<div className='grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4'>
 				{indicators.map((indicator) => (
 					<Card key={indicator.title}>
