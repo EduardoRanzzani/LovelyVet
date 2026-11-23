@@ -17,6 +17,9 @@ const mocks = vi.hoisted(() => ({
 	insertValues: vi.fn(),
 	onConflictDoUpdate: vi.fn(),
 	insertReturning: vi.fn(),
+	appointmentReturning: vi.fn(),
+	appointmentFindFirst: vi.fn(),
+	appointmentItemFindFirst: vi.fn(),
 	revalidatePath: vi.fn(),
 }));
 
@@ -91,6 +94,9 @@ describe('insertVaccine com lembrete', () => {
 		mocks.reminderFindFirst.mockResolvedValue(pendingReminder);
 		mocks.updateReturning.mockResolvedValue([{ id: REMINDER_ID }]);
 		mocks.insertReturning.mockResolvedValue([{ id: VACCINE_ID }]);
+		mocks.appointmentReturning.mockResolvedValue([{ id: '88888888-8888-4888-8888-888888888888' }]);
+		mocks.appointmentFindFirst.mockResolvedValue(undefined);
+		mocks.appointmentItemFindFirst.mockResolvedValue(undefined);
 		mocks.vaccineFindFirst.mockResolvedValue(undefined);
 		mocks.serviceFindFirst.mockResolvedValue(undefined);
 
@@ -107,6 +113,7 @@ describe('insertVaccine com lembrete', () => {
 		});
 		mocks.insertValues.mockReturnValue({
 			onConflictDoUpdate: mocks.onConflictDoUpdate,
+			returning: mocks.appointmentReturning,
 		});
 		mocks.onConflictDoUpdate.mockReturnValue({
 			returning: mocks.insertReturning,
@@ -123,6 +130,8 @@ describe('insertVaccine com lembrete', () => {
 					},
 					servicesTable: { findFirst: mocks.serviceFindFirst },
 					petsTable: { findFirst: mocks.petFindFirst },
+					appointmentsTable: { findFirst: mocks.appointmentFindFirst },
+					appointmentItemsTable: { findFirst: mocks.appointmentItemFindFirst },
 				},
 				update: mocks.update,
 				insert: mocks.insert,
@@ -223,6 +232,7 @@ describe('insertVaccine com lembrete', () => {
 			id: '55555555-5555-4555-8555-555555555555',
 			name: 'Vacina V10',
 			isVaccine: true,
+			priceInCents: 8500, durationMinutes: 30,
 		});
 		mocks.reminderFindFirst
 			.mockResolvedValueOnce(pendingReminder)
@@ -254,6 +264,39 @@ describe('insertVaccine com lembrete', () => {
 			...input,
 			serviceId: '55555555-5555-4555-8555-555555555555',
 		})).rejects.toThrow('Vacina não indicada para a espécie do paciente.');
+		expect(mocks.insert).not.toHaveBeenCalled();
+	});
+
+	it('cria atendimento realizado e item com preço histórico na mesma transação', async () => {
+		mocks.serviceFindFirst.mockResolvedValue({
+			id: '55555555-5555-4555-8555-555555555555',
+			name: 'Vacina V10', isVaccine: true, priceInCents: 8500, durationMinutes: 30,
+		});
+		mocks.reminderFindFirst.mockResolvedValue(undefined);
+		await insertVaccine({ ...input, reminderId: undefined, serviceId: '55555555-5555-4555-8555-555555555555' });
+		expect(mocks.insertValues).toHaveBeenCalledWith(expect.objectContaining({
+			status: 'completed', petId: PET_ID, doctorId: DOCTOR_ID,
+			// Data do teste é retroativa: jamais criar valor a receber antigo.
+			totalPriceInCents: 0,
+		}));
+		expect(mocks.insertValues).toHaveBeenCalledWith(expect.objectContaining({
+			serviceId: '55555555-5555-4555-8555-555555555555', priceAtTimeInCents: 0,
+		}));
+		expect(mocks.updateSet).toHaveBeenCalledWith(expect.objectContaining({
+			appointmentId: '88888888-8888-4888-8888-888888888888',
+		}));
+		expect(mocks.transaction).toHaveBeenCalledOnce();
+	});
+
+	it('não duplica a aplicação quando uma operação já foi processada', async () => {
+		mocks.vaccineFindFirst.mockResolvedValue({ id: VACCINE_ID, petId: PET_ID, doctorId: DOCTOR_ID });
+		await insertVaccine({ ...input, reminderId: undefined, operationKey: '99999999-9999-4999-8999-999999999999' });
+		expect(mocks.insert).not.toHaveBeenCalled();
+	});
+
+	it('rejeita reutilização de chave de operação para outro pet', async () => {
+		mocks.vaccineFindFirst.mockResolvedValue({ id: VACCINE_ID, petId: '00000000-0000-4000-8000-000000000000', doctorId: DOCTOR_ID });
+		await expect(insertVaccine({ ...input, reminderId: undefined, operationKey: '99999999-9999-4999-8999-999999999999' })).rejects.toThrow('Identificador de operação já utilizado.');
 		expect(mocks.insert).not.toHaveBeenCalled();
 	});
 

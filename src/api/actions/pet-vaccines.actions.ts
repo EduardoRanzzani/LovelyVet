@@ -1,6 +1,13 @@
 'use server';
 import { db } from '@/db';
-import { careRemindersTable, petsTable, servicesTable, vaccinesTable } from '@/db/schema';
+import {
+	appointmentItemsTable,
+	appointmentsTable,
+	careRemindersTable,
+	petsTable,
+	servicesTable,
+	vaccinesTable,
+} from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { resolveClinicalDoctorId } from '@/lib/security/clinical-access';
@@ -10,6 +17,10 @@ import { revalidatePath } from 'next/cache';
 import { createVaccineSchema } from '../schema/vaccine.schema';
 import { addDays, addYears, format } from 'date-fns';
 import { and, eq } from 'drizzle-orm';
+import {
+	appointmentPriceForVaccination,
+	vaccinationAppointmentNotes,
+} from '@/lib/vaccines/vaccination-appointment';
 
 export const insertVaccine = actionClient
 	.schema(createVaccineSchema)
@@ -45,10 +56,40 @@ export const insertVaccine = actionClient
 		}
 
 		await db.transaction(async (tx) => {
-			let vaccineService: { id: string; name: string } | undefined;
+			// Uma repetição da mesma submissão não cria outra dose nem outro atendimento.
+			if (!parsedInput.id && parsedInput.operationKey) {
+				const previouslySaved = await tx.query.vaccinesTable.findFirst({
+					where: eq(vaccinesTable.operationKey, parsedInput.operationKey),
+				});
+				if (previouslySaved) {
+					if (
+						previouslySaved.petId !== parsedInput.petId ||
+						previouslySaved.doctorId !== doctorId
+					) {
+						throw new Error('Identificador de operação já utilizado.');
+					}
+					return;
+				}
+			}
+
+			let vaccineService:
+				| {
+						id: string;
+						name: string;
+						priceInCents: number;
+						durationMinutes: number;
+				  }
+				| undefined;
 			if (parsedInput.serviceId) {
 				const service = await tx.query.servicesTable.findFirst({
-					columns: { id: true, name: true, isVaccine: true, specieId: true },
+					columns: {
+						id: true,
+						name: true,
+						isVaccine: true,
+						specieId: true,
+						priceInCents: true,
+						durationMinutes: true,
+					},
 					where: eq(servicesTable.id, parsedInput.serviceId),
 				});
 				if (!service?.isVaccine) {
@@ -63,7 +104,12 @@ export const insertVaccine = actionClient
 						throw new Error('Vacina não indicada para a espécie do paciente.');
 					}
 				}
-				vaccineService = { id: service.id, name: service.name };
+				vaccineService = {
+					id: service.id,
+					name: service.name,
+					priceInCents: service.priceInCents,
+					durationMinutes: service.durationMinutes,
+				};
 			}
 
 			if (parsedInput.reminderId) {
@@ -120,17 +166,40 @@ export const insertVaccine = actionClient
 
 			if (parsedInput.id) {
 				const existingVaccine = await tx.query.vaccinesTable.findFirst({
-					columns: { id: true, petId: true },
+					columns: {
+						id: true,
+						petId: true,
+						appointmentId: true,
+						serviceId: true,
+					},
 					where: eq(vaccinesTable.id, parsedInput.id),
 				});
 
 				assertVaccineBelongsToPet(existingVaccine, parsedInput.petId);
+				if (
+					existingVaccine?.appointmentId &&
+					((parsedInput.appointmentId !== undefined &&
+						parsedInput.appointmentId !== existingVaccine.appointmentId) ||
+						parsedInput.serviceId !== existingVaccine.serviceId)
+				) {
+					throw new Error(
+						'Altere o serviço ou vínculo pela tela do atendimento.',
+					);
+				}
 			}
 
 			const values = {
 				...(parsedInput.id && { id: parsedInput.id }),
 				petId: parsedInput.petId,
 				serviceId: vaccineService?.id ?? null,
+				...(!parsedInput.id &&
+					parsedInput.operationKey && {
+						operationKey: parsedInput.operationKey,
+					}),
+				...(!parsedInput.id &&
+					vaccineService && {
+						priceAtApplicationInCents: vaccineService.priceInCents,
+					}),
 				name: vaccineService?.name ?? parsedInput.name,
 				applicationDate: parsedInput.applicationDate,
 				nextDoseDate,
@@ -161,6 +230,102 @@ export const insertVaccine = actionClient
 
 			if (!vaccine) {
 				throw new Error('Não foi possível salvar o registro de vacinação.');
+			}
+
+			// Vacinas antigas sem serviço permanecem apenas no histórico clínico.
+			// Edições não recriam nem recalculam preços históricos.
+			if (!parsedInput.id && vaccineService) {
+				const service = vaccineService;
+				const { totalPriceInCents, itemPriceInCents, historical } =
+					appointmentPriceForVaccination(
+						parsedInput.applicationDate,
+						new Date(),
+						service.priceInCents,
+					);
+				let appointmentId: string;
+				if (parsedInput.appointmentId) {
+					// Nunca descobrir atendimento por data/nome: exigir vínculo explícito.
+					const existingAppointment =
+						await tx.query.appointmentsTable.findFirst({
+							where: eq(appointmentsTable.id, parsedInput.appointmentId),
+						});
+					if (
+						!existingAppointment ||
+						existingAppointment.petId !== parsedInput.petId ||
+						existingAppointment.doctorId !== doctorId ||
+						['cancelled', 'no_show'].includes(existingAppointment.status)
+					) {
+						throw new Error(
+							'Atendimento informado não pertence ao paciente e veterinário.',
+						);
+					}
+					appointmentId = existingAppointment.id;
+					const existingItem = await tx.query.appointmentItemsTable.findFirst({
+						where: and(
+							eq(appointmentItemsTable.appointmentId, appointmentId),
+							eq(appointmentItemsTable.serviceId, service.id),
+						),
+					});
+					if (!existingItem) {
+						if (existingAppointment.isPaid) {
+							throw new Error(
+								'Não é permitido adicionar serviço a um atendimento já pago.',
+							);
+						}
+						await tx.insert(appointmentItemsTable).values({
+							appointmentId,
+							serviceId: service.id,
+							priceAtTimeInCents: itemPriceInCents,
+						});
+					}
+					await tx
+						.update(appointmentsTable)
+						.set({
+							status: 'completed',
+							...(!existingItem && {
+								totalPriceInCents:
+									existingAppointment.totalPriceInCents + itemPriceInCents,
+							}),
+							updatedAt: new Date(),
+						})
+						.where(eq(appointmentsTable.id, appointmentId));
+				} else {
+					const [newAppointment] = await tx
+						.insert(appointmentsTable)
+						.values({
+							petId: parsedInput.petId,
+							doctorId,
+							scheduledAt: parsedInput.applicationDate,
+							endsAt: new Date(
+								parsedInput.applicationDate.getTime() +
+									service.durationMinutes * 60_000,
+							),
+							status: 'completed',
+							totalPriceInCents,
+							isPaid: false,
+							notes: vaccinationAppointmentNotes(service.name, historical),
+						})
+						.returning({ id: appointmentsTable.id });
+					if (!newAppointment)
+						throw new Error(
+							'Não foi possível criar o atendimento da vacinação.',
+						);
+					appointmentId = newAppointment.id;
+					await tx.insert(appointmentItemsTable).values({
+						appointmentId,
+						serviceId: service.id,
+						priceAtTimeInCents: itemPriceInCents,
+					});
+				}
+				await tx
+					.update(vaccinesTable)
+					.set({ appointmentId })
+					.where(
+						and(
+							eq(vaccinesTable.id, vaccine.id),
+							eq(vaccinesTable.petId, parsedInput.petId),
+						),
+					);
 			}
 
 			/*
@@ -223,5 +388,6 @@ export const insertVaccine = actionClient
 
 		revalidatePath(`/pets/${parsedInput.petId}`);
 		revalidatePath('/agenda');
+		revalidatePath('/appointments');
 		revalidatePath('/dashboard');
 	});

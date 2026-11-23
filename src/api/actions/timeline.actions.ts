@@ -38,6 +38,9 @@ export const deleteTimelineItem = actionClient
 					if (!vaccine) {
 						throw new Error('Vacina não encontrada');
 					}
+					if (vaccine.appointmentId) {
+						throw new Error('Vacina vinculada a atendimento: revise o atendimento antes de excluir o registro clínico.');
+					}
 
 					/*
 					 * Remove os lembretes originados pela vacina excluída,

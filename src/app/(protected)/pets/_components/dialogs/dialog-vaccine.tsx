@@ -26,7 +26,7 @@ import { Form } from '@/components/ui/form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { BanIcon, Loader2Icon, SaveIcon, SyringeIcon } from 'lucide-react';
 import { useAction } from 'next-safe-action/hooks';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -34,10 +34,19 @@ import { toast } from 'sonner';
 interface DialogVaccineProps {
 	petId: string;
 	doctors: DoctorsWithRelations[];
-	vaccineServices: { id: string; name: string; priceInCents: number; specieId: string | null }[];
+	vaccineServices: {
+		id: string;
+		name: string;
+		priceInCents: number;
+		specieId: string | null;
+	}[];
 }
 
-const DialogVaccine = ({ petId, doctors, vaccineServices }: DialogVaccineProps) => {
+const DialogVaccine = ({
+	petId,
+	doctors,
+	vaccineServices,
+}: DialogVaccineProps) => {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 
@@ -45,6 +54,7 @@ const DialogVaccine = ({ petId, doctors, vaccineServices }: DialogVaccineProps) 
 	const vaccineName = searchParams.get('vaccineName');
 
 	const [open, setOpen] = useState<boolean>(() => Boolean(reminderId));
+	const operationKeyRef = useRef<string | null>(null);
 
 	const form = useForm({
 		resolver: zodResolver(createVaccineSchema),
@@ -63,8 +73,13 @@ const DialogVaccine = ({ petId, doctors, vaccineServices }: DialogVaccineProps) 
 		},
 	});
 
-	const selectedServiceId = useWatch({ control: form.control, name: 'serviceId' });
-	const selectedService = vaccineServices.find((service) => service.id === selectedServiceId);
+	const selectedServiceId = useWatch({
+		control: form.control,
+		name: 'serviceId',
+	});
+	const selectedService = vaccineServices.find(
+		(service) => service.id === selectedServiceId,
+	);
 
 	const nextDoseType = useWatch({
 		control: form.control,
@@ -79,6 +94,7 @@ const DialogVaccine = ({ petId, doctors, vaccineServices }: DialogVaccineProps) 
 					: 'Registro de vacinação salvo com sucesso!',
 			);
 
+			operationKeyRef.current = null;
 			setOpen(false);
 			form.reset();
 
@@ -98,13 +114,18 @@ const DialogVaccine = ({ petId, doctors, vaccineServices }: DialogVaccineProps) 
 	const handleOpenChange = (newOpen: boolean) => {
 		setOpen(newOpen);
 		if (!newOpen) {
+			operationKeyRef.current = null;
 			form.reset();
 		}
 	};
 
 	const onSubmit = (data: CreateVaccineSchema) => {
 		console.log('Formulário de vacina validado. Enviando action.');
-		insertVaccineAction.execute(buildVaccineSubmitPayload(data, reminderId));
+		operationKeyRef.current ??= crypto.randomUUID();
+		insertVaccineAction.execute({
+			...buildVaccineSubmitPayload(data, reminderId),
+			operationKey: operationKeyRef.current,
+		});
 	};
 
 	const onInvalid = (
@@ -151,7 +172,9 @@ const DialogVaccine = ({ petId, doctors, vaccineServices }: DialogVaccineProps) 
 					<form
 						id='vaccineForm'
 						noValidate
-						onSubmit={form.handleSubmit(onSubmit, onInvalid)}
+						onSubmit={(event) => {
+							void form.handleSubmit(onSubmit, onInvalid)(event);
+						}}
 						className='space-y-4'
 					>
 						<input type='hidden' {...form.register('petId')} />
@@ -166,8 +189,13 @@ const DialogVaccine = ({ petId, doctors, vaccineServices }: DialogVaccineProps) 
 									label: service.name,
 								}))}
 								onSelect={(value) => {
-									const service = vaccineServices.find((item) => item.id === value);
-									if (service) form.setValue('name', service.name, { shouldValidate: true });
+									const service = vaccineServices.find(
+										(item) => item.id === value,
+									);
+									if (service)
+										form.setValue('name', service.name, {
+											shouldValidate: true,
+										});
 								}}
 								placeholder='Selecione a vacina aplicada'
 							/>
@@ -175,12 +203,17 @@ const DialogVaccine = ({ petId, doctors, vaccineServices }: DialogVaccineProps) 
 
 						{selectedService && (
 							<p className='rounded-md border p-2 text-sm text-muted-foreground'>
-								Preço de referência: {(selectedService.priceInCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.
-								O registro da vacina não cria cobrança automaticamente.
+								Preço de referência:{' '}
+								{(selectedService.priceInCents / 100).toLocaleString('pt-BR', {
+									style: 'currency',
+									currency: 'BRL',
+								})}
+								. Uma aplicação registrada hoje cria atendimento com valor;
+								registros de datas anteriores ficam com valor financeiro zero.
 							</p>
 						)}
 
-						{(
+						{
 							<InputForm
 								label='Nome da vacina (preenchido pelo catálogo)'
 								name='name'
@@ -188,7 +221,7 @@ const DialogVaccine = ({ petId, doctors, vaccineServices }: DialogVaccineProps) 
 								register={form.register}
 								error={form.formState.errors.name?.message}
 							/>
-						)}
+						}
 
 						<div className='flex flex-col gap-4'>
 							<DatePickerForm

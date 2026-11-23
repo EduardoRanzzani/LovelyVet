@@ -514,6 +514,11 @@ export const vaccinesTable = pgTable('vaccines', {
 	serviceId: uuid('service_id').references(() => servicesTable.id, {
 		onDelete: 'set null',
 	}),
+	appointmentId: uuid('appointment_id').references(() => appointmentsTable.id, {
+		onDelete: 'set null',
+	}),
+	operationKey: uuid('operation_key').unique(),
+	priceAtApplicationInCents: integer('price_at_application_in_cents'),
 	petId: uuid('pet_id')
 		.notNull()
 		.references(() => petsTable.id),
@@ -824,6 +829,10 @@ export const calendarEventsRelations = relations(
 );
 
 export const vaccinesRelations = relations(vaccinesTable, ({ one }) => ({
+	appointment: one(appointmentsTable, {
+		fields: [vaccinesTable.appointmentId],
+		references: [appointmentsTable.id],
+	}),
 	pet: one(petsTable, {
 		fields: [vaccinesTable.petId],
 		references: [petsTable.id],
