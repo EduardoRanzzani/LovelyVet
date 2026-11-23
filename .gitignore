@@ -45,3 +45,6 @@ ecosystem.config.js
 *.p12
 *.pem
 *.key
+
+# Backups locais dos scripts de instalação
+.local-backups/
