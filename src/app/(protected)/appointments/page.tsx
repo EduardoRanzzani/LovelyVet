@@ -2,6 +2,7 @@ import { getUnifiedAppointmentsPaginated } from '@/api/actions/unified-appointme
 import { getDoctorsForSelection } from '@/api/actions/doctors.actions';
 import { getPetsForSelection } from '@/api/actions/pets.actions';
 import { getServices } from '@/api/actions/services.actions';
+import { getProducts } from '@/api/actions/products.actions';
 import { MAX_PAGE_SIZE } from '@/api/config/consts';
 import {
 	PageContainer,
@@ -31,6 +32,7 @@ const AppointmentsPage = async ({ searchParams }: AppointmentsPageProps) => {
 	const pets = await getPetsForSelection();
 	const doctors = await getDoctorsForSelection();
 	const services = await getServices();
+	const products = context.role === 'customer' ? [] : await getProducts();
 
 	const dataPromise = getUnifiedAppointmentsPaginated(page, MAX_PAGE_SIZE, filter);
 
@@ -57,6 +59,7 @@ const AppointmentsPage = async ({ searchParams }: AppointmentsPageProps) => {
 					<AppointmentsListClient
 						appointments={dataPromise}
 						services={services}
+						products={products}
 						pets={pets}
 						doctors={doctors}
 						viewerRole={context.role}

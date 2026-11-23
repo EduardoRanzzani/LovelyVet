@@ -43,6 +43,7 @@ const mocks = vi.hoisted(() => {
 		dbUpdate,
 		dbDeleteWhere,
 		dbDelete,
+		productItemsFindFirst: vi.fn(),
 		transaction: vi.fn(),
 		requireAuthContext: vi.fn(),
 		requireStaff: vi.fn(),
@@ -57,6 +58,7 @@ const mocks = vi.hoisted(() => {
 vi.mock('@/db', () => ({
 	db: {
 		transaction: mocks.transaction,
+		query: { appointmentProductItemsTable: { findFirst: mocks.productItemsFindFirst } },
 		update: mocks.dbUpdate,
 		delete: mocks.dbDelete,
 	},
@@ -176,6 +178,7 @@ describe('appointments actions', () => {
 		vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
 		mocks.requireAuthContext.mockResolvedValue(customerContext);
+		mocks.productItemsFindFirst.mockResolvedValue(undefined);
 		mocks.requireStaff.mockReturnValue(undefined);
 		mocks.assertCanAccessPet.mockResolvedValue(undefined);
 		mocks.requireAccessibleAppointment.mockResolvedValue({

@@ -177,7 +177,7 @@ export const getPetById = async (
 				orderBy: desc(appointmentsTable.scheduledAt),
 				with: {
 					doctor: { with: { user: true } },
-					items: { with: { service: true } },
+					items: { with: { service: true } }, productItems: { with: { product: true } },
 				},
 			},
 			vaccines: {
@@ -418,7 +418,7 @@ export const getPetHistory = async (petId: string) => {
 				orderBy: desc(appointmentsTable.scheduledAt),
 				with: {
 					doctor: { with: { user: true } },
-					items: { with: { service: true } },
+					items: { with: { service: true } }, productItems: { with: { product: true } },
 				},
 			},
 			vaccines: {

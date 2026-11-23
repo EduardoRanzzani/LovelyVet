@@ -137,6 +137,11 @@ const AppSidebar = ({ role }: AppSidebarProps) => {
 			icon: CogIcon,
 		},
 		{
+			title: 'Produtos',
+			url: '/products',
+			icon: CogIcon,
+		},
+		{
 			title: 'Espécies',
 			url: '/species',
 			icon: CogIcon,

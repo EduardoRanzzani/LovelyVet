@@ -1,5 +1,7 @@
 import {
 	appointmentItemsTable,
+	appointmentProductItemsTable,
+	productsTable,
 	appointmentsTable,
 	breedsTable,
 	clinicalDocumentsTable,
@@ -43,6 +45,7 @@ export type PetsWithRelations = typeof petsTable.$inferSelect & {
 		items: (typeof appointmentItemsTable.$inferSelect & {
 			service: typeof servicesTable.$inferSelect;
 		})[];
+		productItems?: (typeof appointmentProductItemsTable.$inferSelect & { product: typeof productsTable.$inferSelect })[];
 	})[];
 	weightHistory?: (typeof petWeightsTable.$inferSelect & {
 		author?: typeof usersTable.$inferSelect;

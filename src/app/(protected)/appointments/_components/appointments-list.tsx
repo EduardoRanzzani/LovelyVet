@@ -42,6 +42,7 @@ import { useSearchParams } from 'next/navigation';
 import { use } from 'react';
 import { toast } from 'sonner';
 import AppointmentFormClient from './appointment-form';
+import AppointmentItemsEditor from './appointment-items-editor';
 import BadgeStatus from './badge-status';
 
 interface AppointmentsListClientProps {
@@ -49,6 +50,7 @@ interface AppointmentsListClientProps {
 	pets: PetOption[];
 	doctors: DoctorOption[];
 	services: ServicesWithRelations[];
+	products: { id: string; name: string; priceInCents: number; active: boolean }[];
 	viewerRole: UserRole;
 }
 
@@ -57,6 +59,7 @@ const AppointmentsListClient = ({
 	pets,
 	doctors,
 	services,
+	products,
 	viewerRole,
 }: AppointmentsListClientProps) => {
 	const appointmentsResolved = use(appointments);
@@ -192,11 +195,12 @@ const AppointmentsListClient = ({
 							<div className='flex gap-2' key={item.serviceId}>
 								<DotIcon className='w-4 h-4' />
 								<p className='text-sm leading-tight'>
-									{item.service.name} -{' '}
-									{formatCurrencyFromCents(item.priceAtTimeInCents)}
+									{item.service.name} (x{item.quantity}) -{' '}
+									{formatCurrencyFromCents(item.priceAtTimeInCents * item.quantity - item.discountInCents)}
 								</p>
 							</div>
 						))}
+{appointment.productItems?.map((item) => <p key={item.id} className='text-sm'>Produto: {item.product.name} (x{item.quantity}) — {formatCurrencyFromCents(item.priceAtTimeInCents * item.quantity - item.discountInCents)}</p>)}
 					</div>
 				</TableCell>
 				<TableCell>
@@ -219,9 +223,14 @@ const AppointmentsListClient = ({
 						</>
 					)}
 
+					{(profile === 'admin' || profile === 'doctor') && (
+						<EditButton disabled={appointment.isPaid || ['cancelled', 'no_show'].includes(appointment.status)} tooltip='Editar itens e valores' renderForm={(close) => (
+							<AppointmentItemsEditor appointment={appointment} services={services} products={products} onSuccess={close} />
+						)} />
+					)}
 					<EditButton
 						tooltip={'Editar agendamento'}
-						disabled={appointment.status !== 'pending'}
+						disabled={appointment.status !== 'pending' || Boolean(appointment.productItems?.length)}
 						renderForm={(close) => (
 							<AppointmentFormClient
 								appointment={appointment}
@@ -290,8 +299,14 @@ const AppointmentsListClient = ({
 							</>
 						)}
 
+						{(profile === 'admin' || profile === 'doctor') && (
+							<EditButton disabled={appointment.isPaid || ['cancelled', 'no_show'].includes(appointment.status)} tooltip='Editar itens e valores' renderForm={(close) => (
+								<AppointmentItemsEditor appointment={appointment} services={services} products={products} onSuccess={close} />
+							)} />
+						)}
 						<EditButton
 							tooltip={'Editar agendamento'}
+							disabled={appointment.status !== 'pending' || Boolean(appointment.productItems?.length)}
 							renderForm={(close) => (
 								<AppointmentFormClient
 									appointment={appointment}
@@ -357,11 +372,12 @@ const AppointmentsListClient = ({
 								<div className='flex gap-2' key={item.serviceId}>
 									<DotIcon className='w-4 h-4' />
 									<p className='text-sm leading-tight'>
-										{item.service.name} -{' '}
-										{formatCurrencyFromCents(item.priceAtTimeInCents)}
+										{item.service.name} (x{item.quantity}) -{' '}
+										{formatCurrencyFromCents(item.priceAtTimeInCents * item.quantity - item.discountInCents)}
 									</p>
 								</div>
 							))}
+{appointment.productItems?.map((item) => <p key={item.id} className='text-sm'>Produto: {item.product.name} (x{item.quantity}) — {formatCurrencyFromCents(item.priceAtTimeInCents * item.quantity - item.discountInCents)}</p>)}
 						</div>
 					</div>
 					<p className='flex items-center gap-4'>

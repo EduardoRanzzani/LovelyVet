@@ -1,5 +1,7 @@
 import {
 	appointmentItemsTable,
+	appointmentProductItemsTable,
+	productsTable,
 	appointmentsTable,
 	customersTable,
 	doctorsTable,
@@ -24,6 +26,7 @@ export type AppointmentsWithRelations =
 		items: (typeof appointmentItemsTable.$inferSelect & {
 			service: typeof servicesTable.$inferSelect;
 		})[];
+		productItems: (typeof appointmentProductItemsTable.$inferSelect & { product: typeof productsTable.$inferSelect })[];
 	};
 
 export const createAppointmentSchema = z.object({

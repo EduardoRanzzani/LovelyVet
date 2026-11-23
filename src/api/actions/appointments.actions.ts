@@ -108,6 +108,7 @@ export const getAppointmentsPaginated = async (
 				with: { user: { columns: { name: true } } },
 			},
 			items: { with: { service: true } },
+			productItems: { with: { product: true } },
 		},
 	});
 
@@ -178,6 +179,7 @@ export const getAllAppointments = async (): Promise<
 			},
 			doctor: { with: { user: true } },
 			items: { with: { service: true } },
+			productItems: { with: { product: true } },
 		},
 	});
 
@@ -223,6 +225,7 @@ export const getAppointments = async (
 			},
 			doctor: { with: { user: true } },
 			items: { with: { service: true } },
+			productItems: { with: { product: true } },
 		},
 	});
 
@@ -428,6 +431,10 @@ export const upsertAppointment = actionClient
 				context,
 				id,
 			);
+			const productItems = await db.query.appointmentProductItemsTable.findFirst({
+				where: (item, { eq }) => eq(item.appointmentId, id),
+			});
+			if (productItems) throw new Error('Este atendimento possui produtos. Altere os valores pelo editor de itens.');
 
 			/*
 			 * Customer não altera appointments

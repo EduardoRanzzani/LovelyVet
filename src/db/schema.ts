@@ -272,6 +272,16 @@ export const servicesTable = pgTable('services', {
 		.notNull(),
 });
 
+// Produtos comerciais (sem impacto na duração dos atendimentos).
+export const productsTable = pgTable('products', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	name: text('name').notNull(),
+	priceInCents: integer('price_in_cents').notNull(),
+	active: boolean('active').default(true).notNull(),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date()).notNull(),
+});
+
 // Agendamentos
 export const appointmentsTable = pgTable(
 	'appointments',
@@ -311,11 +321,23 @@ export const appointmentItemsTable = pgTable(
 			.notNull()
 			.references(() => servicesTable.id),
 		priceAtTimeInCents: integer('price_at_time_in_cents').notNull(),
+		quantity: integer('quantity').default(1).notNull(),
+		discountInCents: integer('discount_in_cents').default(0).notNull(),
 	},
 	(table) => ({
 		pk: primaryKey({ columns: [table.appointmentId, table.serviceId] }),
 	}),
 );
+
+// Itens de produto: snapshots financeiros independentes do catálogo.
+export const appointmentProductItemsTable = pgTable('appointment_product_items', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	appointmentId: uuid('appointment_id').notNull().references(() => appointmentsTable.id, { onDelete: 'cascade' }),
+	productId: uuid('product_id').notNull().references(() => productsTable.id),
+	quantity: integer('quantity').notNull(),
+	priceAtTimeInCents: integer('price_at_time_in_cents').notNull(),
+	discountInCents: integer('discount_in_cents').default(0).notNull(),
+});
 
 // Prontuário Médico
 export const medicalRecordsTable = pgTable('medical_records', {
@@ -732,6 +754,7 @@ export const appointmentsRelations = relations(
 			references: [doctorsTable.id],
 		}),
 		items: many(appointmentItemsTable),
+		productItems: many(appointmentProductItemsTable),
 		medicalRecord: one(medicalRecordsTable, {
 			fields: [appointmentsTable.id],
 			references: [medicalRecordsTable.appointmentId],
@@ -752,6 +775,11 @@ export const appointmentItemsRelations = relations(
 		}),
 	}),
 );
+
+export const appointmentProductItemsRelations = relations(appointmentProductItemsTable, ({ one }) => ({
+	appointment: one(appointmentsTable, { fields: [appointmentProductItemsTable.appointmentId], references: [appointmentsTable.id] }),
+	product: one(productsTable, { fields: [appointmentProductItemsTable.productId], references: [productsTable.id] }),
+}));
 
 export const prescriptionsRelations = relations(
 	prescriptionsTable,
