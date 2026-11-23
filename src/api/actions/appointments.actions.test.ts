@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => {
 	const txUpdate = vi.fn();
 	const txDeleteWhere = vi.fn();
 	const txDelete = vi.fn();
+	const dbUpdateReturning = vi.fn();
 	const dbUpdateWhere = vi.fn();
 	const dbUpdateSet = vi.fn();
 	const dbUpdate = vi.fn();
@@ -22,6 +23,7 @@ const mocks = vi.hoisted(() => {
 			shiftsTable: { findFirst: vi.fn() },
 			calendarEventsTable: { findFirst: vi.fn() },
 			appointmentChargesTable: { findFirst: vi.fn() },
+			appointmentProductItemsTable: { findFirst: vi.fn() },
 			vaccinesTable: { findFirst: vi.fn() },
 			medicalRecordsTable: { findFirst: vi.fn() },
 			prescriptionsTable: { findFirst: vi.fn() },
@@ -43,6 +45,7 @@ const mocks = vi.hoisted(() => {
 		txUpdate,
 		txDeleteWhere,
 		txDelete,
+		dbUpdateReturning,
 		dbUpdateWhere,
 		dbUpdateSet,
 		dbUpdate,
@@ -190,6 +193,7 @@ describe('appointments actions', () => {
 		mocks.productItemsFindFirst.mockResolvedValue(undefined);
 		mocks.chargeFindFirst.mockResolvedValue(undefined);
 		mocks.tx.query.appointmentChargesTable.findFirst.mockResolvedValue(undefined);
+		mocks.tx.query.appointmentProductItemsTable.findFirst.mockResolvedValue(undefined);
 		mocks.tx.query.vaccinesTable.findFirst.mockResolvedValue(undefined);
 		mocks.tx.query.medicalRecordsTable.findFirst.mockResolvedValue(undefined);
 		mocks.tx.query.prescriptionsTable.findFirst.mockResolvedValue(undefined);
@@ -216,6 +220,8 @@ describe('appointments actions', () => {
 		mocks.txUpdate.mockReturnValue({ set: mocks.txUpdateSet });
 		mocks.txDelete.mockReturnValue({ where: mocks.txDeleteWhere });
 
+		mocks.dbUpdateReturning.mockResolvedValue([{ id: APPOINTMENT_ID }]);
+		mocks.dbUpdateWhere.mockReturnValue({ returning: mocks.dbUpdateReturning });
 		mocks.dbUpdateSet.mockReturnValue({ where: mocks.dbUpdateWhere });
 		mocks.dbUpdate.mockReturnValue({ set: mocks.dbUpdateSet });
 		mocks.dbDelete.mockReturnValue({ where: mocks.dbDeleteWhere });
@@ -360,7 +366,7 @@ describe('appointments actions', () => {
 					...baseInput,
 					id: APPOINTMENT_ID,
 				}),
-			).rejects.toThrow('Apenas agendamentos pendentes podem ser alterados');
+			).rejects.toThrow('O status atual não permite editar este agendamento.');
 
 			expect(mocks.transaction).not.toHaveBeenCalled();
 		});
@@ -373,6 +379,7 @@ describe('appointments actions', () => {
 		});
 
 		it('updates pending appointment and replaces its services', async () => {
+			mocks.tx.query.appointmentsTable.findFirst.mockResolvedValueOnce({ id: APPOINTMENT_ID, status: 'pending' });
 			await upsertAppointment({
 				...baseInput,
 				id: APPOINTMENT_ID,
@@ -404,6 +411,66 @@ describe('appointments actions', () => {
 					priceAtTimeInCents: 3500,
 				},
 			]);
+		});
+
+		it.each(['in_progress', 'completed', 'cancelled', 'no_show'] as const)(
+			'rejects editing an appointment with %s status',
+			async (status) => {
+				mocks.requireAuthContext.mockResolvedValue(adminContext);
+				mocks.requireAccessibleAppointment.mockResolvedValue({ id: APPOINTMENT_ID, status });
+				await expect(upsertAppointment({ ...baseInput, id: APPOINTMENT_ID, status }))
+					.rejects.toThrow('O status atual não permite editar este agendamento.');
+				expect(mocks.transaction).not.toHaveBeenCalled();
+			},
+		);
+
+		it('allows staff to edit a confirmed appointment without changing its status', async () => {
+			mocks.requireAuthContext.mockResolvedValue(adminContext);
+			mocks.requireAccessibleAppointment.mockResolvedValue({ id: APPOINTMENT_ID, status: 'confirmed' });
+			mocks.tx.query.appointmentsTable.findFirst
+				.mockResolvedValueOnce({ id: APPOINTMENT_ID, status: 'confirmed' });
+			await upsertAppointment({ ...baseInput, id: APPOINTMENT_ID, status: 'confirmed' });
+			expect(mocks.txUpdateSet).toHaveBeenCalledWith(expect.objectContaining({ status: 'confirmed' }));
+		});
+
+		it('blocks editing when the status changes after row lock', async () => {
+			mocks.requireAuthContext.mockResolvedValue(adminContext);
+			mocks.requireAccessibleAppointment.mockResolvedValue({ id: APPOINTMENT_ID, status: 'pending' });
+			mocks.tx.query.appointmentsTable.findFirst
+				.mockResolvedValueOnce({ id: APPOINTMENT_ID, status: 'completed' });
+			await expect(upsertAppointment({ ...baseInput, id: APPOINTMENT_ID, status: 'pending' }))
+				.rejects.toThrow('O agendamento mudou de status');
+			expect(mocks.txUpdate).not.toHaveBeenCalled();
+		});
+
+		it('blocks editing when a charge appears after row lock', async () => {
+			mocks.requireAuthContext.mockResolvedValue(adminContext);
+			mocks.requireAccessibleAppointment.mockResolvedValue({ id: APPOINTMENT_ID, status: 'pending' });
+			mocks.tx.query.appointmentsTable.findFirst
+				.mockResolvedValueOnce({ id: APPOINTMENT_ID, status: 'pending' });
+			mocks.tx.query.appointmentChargesTable.findFirst.mockResolvedValue({ id: 'new-charge' });
+			await expect(upsertAppointment({ ...baseInput, id: APPOINTMENT_ID, status: 'pending' }))
+				.rejects.toThrow('Atendimento faturado não pode ser editado.');
+			expect(mocks.txUpdate).not.toHaveBeenCalled();
+		});
+
+		it('blocks editing when products appear after row lock', async () => {
+			mocks.requireAuthContext.mockResolvedValue(adminContext);
+			mocks.requireAccessibleAppointment.mockResolvedValue({ id: APPOINTMENT_ID, status: 'pending' });
+			mocks.tx.query.appointmentsTable.findFirst
+				.mockResolvedValueOnce({ id: APPOINTMENT_ID, status: 'pending' });
+			mocks.tx.query.appointmentProductItemsTable.findFirst.mockResolvedValue({ id: 'new-product' });
+			await expect(upsertAppointment({ ...baseInput, id: APPOINTMENT_ID, status: 'pending' }))
+				.rejects.toThrow('Este atendimento possui produtos');
+			expect(mocks.txUpdate).not.toHaveBeenCalled();
+		});
+
+		it('does not allow staff to change status through the edit form', async () => {
+			mocks.requireAuthContext.mockResolvedValue(adminContext);
+			mocks.requireAccessibleAppointment.mockResolvedValue({ id: APPOINTMENT_ID, status: 'pending' });
+			await expect(upsertAppointment({ ...baseInput, id: APPOINTMENT_ID, status: 'confirmed' }))
+				.rejects.toThrow('Utilize as ações de status');
+			expect(mocks.transaction).not.toHaveBeenCalled();
 		});
 
 		it('rejects conflict with another appointment', async () => {
@@ -520,6 +587,18 @@ describe('appointments actions', () => {
 			expect(mocks.revalidatePath).toHaveBeenCalledWith('/appointments');
 		});
 
+		it('rejects confirmation if status changes before the conditional update', async () => {
+			mocks.requireAuthContext.mockResolvedValue(doctorContext);
+			mocks.dbUpdateReturning.mockResolvedValue([]);
+
+			await expect(markAsConfirmed({ id: APPOINTMENT_ID })).rejects.toThrow(
+				'O agendamento foi alterado por outra operação.',
+			);
+			expect(mocks.dbUpdateWhere).toHaveBeenCalledTimes(1);
+			expect(mocks.dbUpdateReturning).toHaveBeenCalledTimes(1);
+			expect(mocks.revalidatePath).not.toHaveBeenCalled();
+		});
+
 		it('rejects confirmation when appointment is not pending', async () => {
 			mocks.requireAuthContext.mockResolvedValue(doctorContext);
 			mocks.requireAccessibleAppointment.mockResolvedValue({
@@ -559,6 +638,22 @@ describe('appointments actions', () => {
 			},
 		);
 
+		it('rejects completion if status changes before the conditional update', async () => {
+			mocks.requireAuthContext.mockResolvedValue(doctorContext);
+			mocks.requireAccessibleAppointment.mockResolvedValue({
+				id: APPOINTMENT_ID,
+				status: 'confirmed',
+			});
+			mocks.dbUpdateReturning.mockResolvedValue([]);
+
+			await expect(markAppointmentAsCompleted({ id: APPOINTMENT_ID })).rejects.toThrow(
+				'O status do atendimento mudou.',
+			);
+			expect(mocks.dbUpdateWhere).toHaveBeenCalledTimes(1);
+			expect(mocks.dbUpdateReturning).toHaveBeenCalledTimes(1);
+			expect(mocks.revalidatePath).not.toHaveBeenCalled();
+		});
+
 		it('rejects completion when appointment has invalid status', async () => {
 			mocks.requireAuthContext.mockResolvedValue(doctorContext);
 			mocks.requireAccessibleAppointment.mockResolvedValue({
@@ -596,6 +691,17 @@ describe('appointments actions', () => {
 			);
 			expect(mocks.dbUpdateWhere).toHaveBeenCalledTimes(1);
 			expect(mocks.revalidatePath).toHaveBeenCalledWith('/appointments');
+		});
+
+		it('rejects cancellation if status changes before the conditional update', async () => {
+			mocks.dbUpdateReturning.mockResolvedValue([]);
+
+			await expect(markAppointmentAsCancelled({ id: APPOINTMENT_ID })).rejects.toThrow(
+				'O agendamento foi alterado por outra operação',
+			);
+			expect(mocks.dbUpdateWhere).toHaveBeenCalledTimes(1);
+			expect(mocks.dbUpdateReturning).toHaveBeenCalledTimes(1);
+			expect(mocks.revalidatePath).not.toHaveBeenCalled();
 		});
 
 		it('rejects cancellation when appointment is not pending', async () => {
