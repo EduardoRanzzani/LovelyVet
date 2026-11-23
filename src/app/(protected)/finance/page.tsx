@@ -1,3 +1,4 @@
+import { FinanceMonthFilter } from './_components/finance-month-filter';
 import Link from 'next/link';
 import { getFinancialReport, getFinancialCustomerNames } from '@/lib/finance/financial-report-queries';
 import { requirePageAccess } from '@/lib/security/authorization';
@@ -25,10 +26,7 @@ export default async function FinancePage({searchParams}: {searchParams: Promise
   <PageHeader><PageHeaderContent><PageTitle>Financeiro</PageTitle></PageHeaderContent></PageHeader>
   <PageContent>
    <PageDescription>Faturamento, recebimentos e saldos dos atendimentos. Não inclui plantões.</PageDescription>
-   <form method='get' className='flex flex-wrap items-end gap-3'>
-    <label className='flex flex-col gap-1 text-sm'>Mês de referência<input className='h-10 rounded-md border bg-background px-3' type='month' name='month' defaultValue={selected} required /></label>
-    <button type='submit' className='h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground'>Filtrar</button>
-   </form>
+   <FinanceMonthFilter selected={selected} />
    <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4'>
     {[
      ['Faturado no mês',report.billedInCents],
