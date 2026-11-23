@@ -47,4 +47,5 @@ ecosystem.config.js
 *.key
 
 # Backups locais dos scripts de instalação
-.local-backups/
+.local-backups
+.lovelyvet-backups
