@@ -1,4 +1,5 @@
 import { getUnifiedAppointmentsPaginated } from '@/api/actions/unified-appointments.actions';
+import { getBillingOverviews } from '@/lib/finance/billing-queries';
 import { getDoctorsForSelection } from '@/api/actions/doctors.actions';
 import { getPetsForSelection } from '@/api/actions/pets.actions';
 import { getServices } from '@/api/actions/services.actions';
@@ -35,6 +36,10 @@ const AppointmentsPage = async ({ searchParams }: AppointmentsPageProps) => {
 	const products = context.role === 'customer' ? [] : await getProducts();
 
 	const dataPromise = getUnifiedAppointmentsPaginated(page, MAX_PAGE_SIZE, filter);
+	const billingPromise = context.role === 'customer'
+		? Promise.resolve({})
+		: dataPromise.then((data) => getBillingOverviews(data.data.filter((item) => item.kind === 'appointment').map((item) => item.id)));
+
 
 	return (
 		<PageContainer>
@@ -58,6 +63,7 @@ const AppointmentsPage = async ({ searchParams }: AppointmentsPageProps) => {
 				>
 					<AppointmentsListClient
 						appointments={dataPromise}
+						billing={billingPromise}
 						services={services}
 						products={products}
 						pets={pets}

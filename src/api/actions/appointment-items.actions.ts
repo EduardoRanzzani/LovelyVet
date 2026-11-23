@@ -1,6 +1,6 @@
 'use server';
 import { db } from '@/db';
-import { appointmentItemsTable, appointmentProductItemsTable, appointmentsTable, vaccinesTable } from '@/db/schema';
+import { appointmentChargesTable, appointmentItemsTable, appointmentProductItemsTable, appointmentsTable, vaccinesTable } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
@@ -40,6 +40,11 @@ export const updateAppointmentItems = actionClient.schema(updateAppointmentItems
 		if (!appointment || (context.role === 'doctor' && appointment.doctorId !== context.doctorId) || appointment.isPaid || ['cancelled', 'no_show'].includes(appointment.status)) {
 			throw new Error('Atendimento indisponível para edição financeira.');
 		}
+		const issuedCharge = await tx.query.appointmentChargesTable.findFirst({
+			where: eq(appointmentChargesTable.appointmentId, appointment.id),
+			columns: { id: true },
+		});
+		if (issuedCharge) throw new Error('Atendimento com cobrança emitida não pode ter seus itens alterados.');
 		const linkedVaccines = await tx.query.vaccinesTable.findMany({
 			columns: { serviceId: true },
 			where: eq(vaccinesTable.appointmentId, appointment.id),

@@ -7,6 +7,7 @@ import {
 	markAsConfirmed,
 } from '@/api/actions/appointments.actions';
 import { MAX_PAGE_SIZE, PaginatedData } from '@/api/config/consts';
+import type { BillingOverview } from '@/lib/finance/billing-queries';
 import { AppointmentListItem } from '@/api/schema/appointments.schema';
 import type { UnifiedAppointmentItem } from '@/lib/appointments/unified-appointments';
 import { parseISO, format } from 'date-fns';
@@ -43,10 +44,12 @@ import { use } from 'react';
 import { toast } from 'sonner';
 import AppointmentFormClient from './appointment-form';
 import AppointmentItemsEditor from './appointment-items-editor';
+import AppointmentBillingEditor from './appointment-billing-editor';
 import BadgeStatus from './badge-status';
 
 interface AppointmentsListClientProps {
 	appointments: Promise<PaginatedData<UnifiedAppointmentItem>>;
+	billing: Promise<Record<string, BillingOverview>>;
 	pets: PetOption[];
 	doctors: DoctorOption[];
 	services: ServicesWithRelations[];
@@ -56,6 +59,7 @@ interface AppointmentsListClientProps {
 
 const AppointmentsListClient = ({
 	appointments,
+	billing,
 	pets,
 	doctors,
 	services,
@@ -63,6 +67,7 @@ const AppointmentsListClient = ({
 	viewerRole,
 }: AppointmentsListClientProps) => {
 	const appointmentsResolved = use(appointments);
+	const billingResolved = use(billing);
 	const searchParams = useSearchParams();
 	const profile = viewerRole;
 
@@ -205,6 +210,7 @@ const AppointmentsListClient = ({
 				</TableCell>
 				<TableCell>
 					{formatCurrencyFromCents(appointment.totalPriceInCents)}
+					{billingResolved[appointment.id] && <p className='text-xs text-muted-foreground'>Cobrança: {({ pending: 'pendente', partial: 'parcial', paid: 'paga', void: 'cancelada' } as const)[billingResolved[appointment.id].status]}</p>}
 				</TableCell>
 				<TableCell className='w-20 space-x-2'>
 					{(profile === 'admin' || profile === 'doctor') && (
@@ -217,14 +223,20 @@ const AppointmentsListClient = ({
 							/>
 
 							<DeleteAlertButton
+								disabled={Boolean(billingResolved[appointment.id])}
 								action={() => handleDelete(appointment.id)}
 								tooltip='Deletar agendamento'
 							/>
 						</>
 					)}
 
+					{(profile === 'admin' || profile === 'doctor') && appointment.status === 'completed' && (
+						<EditButton size='default' text='Financeiro' tooltip='Cobrança e pagamentos' renderForm={(close) => (
+							<AppointmentBillingEditor appointment={appointment} billing={billingResolved[appointment.id]} onSuccess={close} />
+						)} />
+					)}
 					{(profile === 'admin' || profile === 'doctor') && (
-						<EditButton disabled={appointment.isPaid || ['cancelled', 'no_show'].includes(appointment.status)} tooltip='Editar itens e valores' renderForm={(close) => (
+						<EditButton disabled={appointment.isPaid || Boolean(billingResolved[appointment.id]) || ['cancelled', 'no_show'].includes(appointment.status)} tooltip='Editar itens e valores' renderForm={(close) => (
 							<AppointmentItemsEditor appointment={appointment} services={services} products={products} onSuccess={close} />
 						)} />
 					)}
@@ -293,14 +305,20 @@ const AppointmentsListClient = ({
 								/>
 
 								<DeleteAlertButton
+									disabled={Boolean(billingResolved[appointment.id])}
 									action={() => handleDelete(appointment.id)}
 									tooltip='Deletar agendamento'
 								/>
 							</>
 						)}
 
-						{(profile === 'admin' || profile === 'doctor') && (
-							<EditButton disabled={appointment.isPaid || ['cancelled', 'no_show'].includes(appointment.status)} tooltip='Editar itens e valores' renderForm={(close) => (
+						{(profile === 'admin' || profile === 'doctor') && appointment.status === 'completed' && (
+						<EditButton size='default' text='Financeiro' tooltip='Cobrança e pagamentos' renderForm={(close) => (
+							<AppointmentBillingEditor appointment={appointment} billing={billingResolved[appointment.id]} onSuccess={close} />
+						)} />
+					)}
+					{(profile === 'admin' || profile === 'doctor') && (
+							<EditButton disabled={appointment.isPaid || Boolean(billingResolved[appointment.id]) || ['cancelled', 'no_show'].includes(appointment.status)} tooltip='Editar itens e valores' renderForm={(close) => (
 								<AppointmentItemsEditor appointment={appointment} services={services} products={products} onSuccess={close} />
 							)} />
 						)}

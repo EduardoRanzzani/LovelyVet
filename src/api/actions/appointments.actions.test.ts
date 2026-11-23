@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => {
 			appointmentsTable: { findFirst: vi.fn() },
 			shiftsTable: { findFirst: vi.fn() },
 			calendarEventsTable: { findFirst: vi.fn() },
+			appointmentChargesTable: { findFirst: vi.fn() },
 		},
 		execute: vi.fn(),
 		insert: txInsert,
@@ -44,6 +45,7 @@ const mocks = vi.hoisted(() => {
 		dbDeleteWhere,
 		dbDelete,
 		productItemsFindFirst: vi.fn(),
+		chargeFindFirst: vi.fn(),
 		transaction: vi.fn(),
 		requireAuthContext: vi.fn(),
 		requireStaff: vi.fn(),
@@ -58,7 +60,10 @@ const mocks = vi.hoisted(() => {
 vi.mock('@/db', () => ({
 	db: {
 		transaction: mocks.transaction,
-		query: { appointmentProductItemsTable: { findFirst: mocks.productItemsFindFirst } },
+		query: {
+			appointmentProductItemsTable: { findFirst: mocks.productItemsFindFirst },
+			appointmentChargesTable: { findFirst: mocks.chargeFindFirst },
+		},
 		update: mocks.dbUpdate,
 		delete: mocks.dbDelete,
 	},
@@ -179,6 +184,8 @@ describe('appointments actions', () => {
 
 		mocks.requireAuthContext.mockResolvedValue(customerContext);
 		mocks.productItemsFindFirst.mockResolvedValue(undefined);
+		mocks.chargeFindFirst.mockResolvedValue(undefined);
+		mocks.tx.query.appointmentChargesTable.findFirst.mockResolvedValue(undefined);
 		mocks.requireStaff.mockReturnValue(undefined);
 		mocks.assertCanAccessPet.mockResolvedValue(undefined);
 		mocks.requireAccessibleAppointment.mockResolvedValue({
@@ -347,6 +354,13 @@ describe('appointments actions', () => {
 				}),
 			).rejects.toThrow('Apenas agendamentos pendentes podem ser alterados');
 
+			expect(mocks.transaction).not.toHaveBeenCalled();
+		});
+
+		it('rejects update when charge was already issued', async () => {
+			mocks.chargeFindFirst.mockResolvedValue({ id: 'charge-id' });
+			await expect(upsertAppointment({ ...baseInput, id: APPOINTMENT_ID }))
+				.rejects.toThrow('faturado');
 			expect(mocks.transaction).not.toHaveBeenCalled();
 		});
 

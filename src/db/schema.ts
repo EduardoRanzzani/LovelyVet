@@ -339,6 +339,38 @@ export const appointmentProductItemsTable = pgTable('appointment_product_items',
 	discountInCents: integer('discount_in_cents').default(0).notNull(),
 });
 
+// Cobrança: o pagador é um tutor explicitamente associado ao paciente.
+// Uma única cobrança ativa por atendimento; a reversão é registrada, não apagada.
+export const appointmentChargesTable = pgTable('appointment_charges', {
+ id: uuid('id').primaryKey().defaultRandom(),
+ appointmentId: uuid('appointment_id').notNull().references(() => appointmentsTable.id).unique(),
+ customerId: uuid('customer_id').notNull().references(() => customersTable.id),
+ totalInCents: integer('total_in_cents').notNull(),
+ status: text('status').default('open').notNull(),
+ createdBy: uuid('created_by').notNull().references(() => usersTable.id),
+ createdAt: timestamp('created_at').defaultNow().notNull(),
+ voidedAt: timestamp('voided_at'),
+}, (table) => [
+ check('appointment_charge_total_positive', sql`${table.totalInCents} > 0`),
+ check('appointment_charge_status_valid', sql`${table.status} IN ('open', 'void')`),
+ index('appointment_charges_customer_idx').on(table.customerId),
+]);
+
+export const chargePaymentsTable = pgTable('charge_payments', {
+ id: uuid('id').primaryKey().defaultRandom(),
+ chargeId: uuid('charge_id').notNull().references(() => appointmentChargesTable.id),
+ operationKey: uuid('operation_key').notNull(),
+ amountInCents: integer('amount_in_cents').notNull(),
+ method: text('method').notNull(),
+ receivedBy: uuid('received_by').notNull().references(() => usersTable.id),
+ receivedAt: timestamp('received_at').defaultNow().notNull(),
+}, (table) => [
+ uniqueIndex('charge_payments_operation_unique').on(table.chargeId, table.operationKey),
+ check('charge_payment_amount_positive', sql`${table.amountInCents} > 0`),
+ check('charge_payment_method_valid', sql`${table.method} IN ('pix','cash','credit_card','debit_card','transfer')`),
+ index('charge_payments_charge_idx').on(table.chargeId),
+]);
+
 // Prontuário Médico
 export const medicalRecordsTable = pgTable('medical_records', {
 	id: uuid('id').primaryKey().defaultRandom(),

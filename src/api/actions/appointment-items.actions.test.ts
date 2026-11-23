@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => {
 		execute: vi.fn(),
 		query: {
 			appointmentsTable: { findFirst: vi.fn() },
+			appointmentChargesTable: { findFirst: vi.fn() },
 			vaccinesTable: { findMany: vi.fn() },
 			servicesTable: { findMany: vi.fn() },
 			productsTable: { findMany: vi.fn() },
@@ -36,6 +37,7 @@ describe('edição financeira do atendimento', () => {
 		vi.resetAllMocks();
 		mocks.requireAuthContext.mockResolvedValue(context);
 		mocks.transaction.mockImplementation((fn: (tx: typeof mocks.tx) => Promise<unknown>) => fn(mocks.tx));
+		mocks.tx.query.appointmentChargesTable.findFirst.mockResolvedValue(undefined);
 		mocks.tx.query.appointmentsTable.findFirst.mockResolvedValue({ id: appointmentId, isPaid: false, status: 'completed', doctorId: context.doctorId, pet: { breed: { specieId: 'specie' } } });
 		mocks.tx.query.vaccinesTable.findMany.mockResolvedValue([]);
 		mocks.tx.query.servicesTable.findMany.mockResolvedValue([{ id: serviceId, specieId: null }]);
@@ -51,6 +53,11 @@ describe('edição financeira do atendimento', () => {
 	it('rejeita edição de atendimento pago', async () => {
 		mocks.tx.query.appointmentsTable.findFirst.mockResolvedValue({ id: appointmentId, isPaid: true, status: 'completed', doctorId: context.doctorId, pet: { breed: { specieId: 'specie' } } });
 		await expect(updateAppointmentItems(input)).rejects.toThrow('indisponível');
+		expect(mocks.tx.delete).not.toHaveBeenCalled();
+	});
+	it('bloqueia edição se já existe cobrança emitida', async () => {
+		mocks.tx.query.appointmentChargesTable.findFirst.mockResolvedValue({ id: 'charge-id' });
+		await expect(updateAppointmentItems(input)).rejects.toThrow('cobrança emitida');
 		expect(mocks.tx.delete).not.toHaveBeenCalled();
 	});
 	it('protege vacina associada contra remoção', async () => {

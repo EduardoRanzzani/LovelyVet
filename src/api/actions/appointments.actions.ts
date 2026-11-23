@@ -2,6 +2,7 @@
 
 import { db } from '@/db';
 import {
+	appointmentChargesTable,
 	appointmentItemsTable,
 	appointmentsTable,
 	calendarEventsTable,
@@ -140,13 +141,8 @@ export const getAppointmentsPaginated = async (
 			id: appointment.pet.id,
 			name: appointment.pet.name,
 			petTutors: appointment.pet.petTutors
-				.filter(
-					({ tutor }) =>
-						context.role !== 'customer' || tutor.id === context.customerId,
-				)
-				.map(({ tutor }) => ({
-					tutor: { user: { name: tutor.user.name } },
-				})),
+				.filter(({ tutor }) => context.role !== 'customer' || tutor.id === context.customerId)
+				.map(({ tutor }) => ({ tutor: { id: tutor.id, user: { name: tutor.user.name } } })),
 		},
 	}));
 
@@ -431,6 +427,11 @@ export const upsertAppointment = actionClient
 				context,
 				id,
 			);
+			const charged = await db.query.appointmentChargesTable.findFirst({
+				where: eq(appointmentChargesTable.appointmentId, id),
+				columns: { id: true },
+			});
+			if (charged) throw new Error('Atendimento faturado não pode ser editado.');
 			const productItems = await db.query.appointmentProductItemsTable.findFirst({
 				where: (item, { eq }) => eq(item.appointmentId, id),
 			});
@@ -667,6 +668,12 @@ export const upsertAppointment = actionClient
 				let appointmentId: string | null = null;
 
 				if (id) {
+					await tx.execute(sql`SELECT id FROM appointments WHERE id = ${id} FOR UPDATE`);
+					const billed = await tx.query.appointmentChargesTable.findFirst({
+						where: eq(appointmentChargesTable.appointmentId, id),
+						columns: { id: true },
+					});
+					if (billed) throw new Error('Atendimento faturado não pode ser editado.');
 					await tx
 						.update(appointmentsTable)
 						.set({

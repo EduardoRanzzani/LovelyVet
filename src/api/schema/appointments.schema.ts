@@ -65,7 +65,7 @@ export type AppointmentListItem = Omit<
 	pet: {
 		id: string;
 		name: string;
-		petTutors: { tutor: { user: { name: string } } }[];
+		petTutors: { tutor: { id?: string; user: { name: string } } }[];
 	};
 };
 

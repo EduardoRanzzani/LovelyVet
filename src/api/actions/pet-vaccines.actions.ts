@@ -1,6 +1,7 @@
 'use server';
 import { db } from '@/db';
 import {
+	appointmentChargesTable,
 	appointmentItemsTable,
 	appointmentsTable,
 	careRemindersTable,
@@ -267,6 +268,8 @@ export const insertVaccine = actionClient
 						),
 					});
 					if (!existingItem) {
+						const [issuedCharge] = await tx.select({id: appointmentChargesTable.id}).from(appointmentChargesTable).where(eq(appointmentChargesTable.appointmentId, appointmentId));
+						if (issuedCharge) throw new Error('Não é permitido adicionar vacina a um atendimento já faturado.');
 						if (existingAppointment.isPaid) {
 							throw new Error(
 								'Não é permitido adicionar serviço a um atendimento já pago.',
