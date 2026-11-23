@@ -19,7 +19,7 @@ import {
 } from 'date-fns';
 import { and, eq, gt, gte, lt, lte, ne, notInArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-import { monthNames } from '../config/consts';
+import { resolveShiftMonth } from '@/lib/shifts/shift-month';
 import {
 	createShiftSchema,
 	ShiftsWithRelations,
@@ -56,16 +56,9 @@ export const getShifts = async (
 	requireStaff(context);
 	const scopedDoctorId = getDoctorScopeId(context);
 
-	const now = new Date();
-	const year = now.getFullYear();
-
-	const monthIndex = monthName
-		? monthNames.indexOf(monthName.toLowerCase())
-		: now.getMonth();
-
-	const safeMonthIndex = monthIndex === -1 ? now.getMonth() : monthIndex;
-
-	const referenceDate = new Date(year, safeMonthIndex, 1);
+	// O parâmetro aceita YYYY-MM e URLs antigas com o nome do mês.
+	// A autorização é verificada antes de construir a consulta.
+	const referenceDate = resolveShiftMonth(monthName);
 
 	let startRange = startOfMonth(referenceDate);
 	let endRange = endOfMonth(referenceDate);

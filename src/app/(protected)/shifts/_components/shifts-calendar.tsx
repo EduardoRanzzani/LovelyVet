@@ -1,6 +1,6 @@
 'use client';
 
-import { monthNames } from '@/api/config/consts';
+import { formatShiftMonth, resolveShiftMonth } from '@/lib/shifts/shift-month';
 import { DoctorsWithRelations } from '@/api/schema/doctors.schema';
 import { ShiftsWithRelations } from '@/api/schema/shifts.schema';
 import { CustomCalendar } from '@/components/ui/custom-calendar';
@@ -11,7 +11,6 @@ import {
 	format,
 	isSameDay,
 	isWithinInterval,
-	setMonth,
 	startOfDay,
 } from 'date-fns';
 import { ClockIcon, HospitalIcon, MoonIcon, SunIcon } from 'lucide-react';
@@ -42,17 +41,11 @@ const ShiftsCalendarClient = ({
 		ShiftsWithRelations | undefined
 	>(undefined);
 
-	const monthParam = searchParams.get('month');
-	const currentMonth = monthParam
-		? setMonth(new Date(), monthNames.indexOf(monthParam.toLowerCase()))
-		: new Date();
+	const currentMonth = resolveShiftMonth(searchParams.get('month'));
 
 	const handleMonthChange = (newDate: Date) => {
-		const monthIndex = newDate.getMonth();
-		const monthName = monthNames[monthIndex];
-
-		const params = new URLSearchParams(searchParams);
-		params.set('month', monthName);
+		const params = new URLSearchParams(searchParams.toString());
+		params.set('month', formatShiftMonth(newDate));
 
 		router.push(`${pathname}?${params.toString()}`);
 	};
