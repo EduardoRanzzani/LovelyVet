@@ -20,13 +20,28 @@ import {
 import type { UserRole } from '@/lib/security/roles';
 import { formatCurrencyFromCents } from '@/helpers/currency';
 import AddButton from '@/components/list/add-button';
-import ConfirmAlertButton from '@/components/list/confirm-alert-dialog';
-import DeleteAlertButton from '@/components/list/delete-alert-dialog';
 import EditButton from '@/components/list/edit-button';
 import SearchInput from '@/components/list/search-input';
 import Pagination from '@/components/list/table-pagination';
 import LoadingDialog from '@/components/ui/loading';
 import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
 	Table,
 	TableBody,
@@ -47,6 +62,10 @@ import {
 	CalendarDays,
 	Bell,
 	MoreHorizontal,
+	Check,
+	CheckCheck,
+	Pencil,
+	Trash2,
 	Syringe,
 	PawPrint,
 	Wallet,
@@ -83,135 +102,117 @@ type Props = {
 
 /** Ações secundárias permanecem montadas fora de menus descartáveis: os dialogs não fecham por desmontagem. */
 function AppointmentActions({
-	appointment,
-	billing,
-	pets,
-	doctors,
-	services,
-	products,
-	viewerRole,
-	onDelete,
-	onConfirm,
-	onComplete,
-	onCancel,
+  appointment, billing, pets, doctors, services, products, viewerRole, onDelete, onConfirm, onComplete, onCancel,
 }: {
-	appointment: AppointmentListItem;
-	billing?: BillingOverview;
-	pets: PetOption[];
-	doctors: DoctorOption[];
-	services: ServicesWithRelations[];
-	products: ProductOption[];
-	viewerRole: UserRole;
-	onDelete: (id: string) => void;
-	onConfirm: (id: string) => void;
-	onComplete: (id: string) => void;
-	onCancel: (id: string) => void;
+  appointment: AppointmentListItem;
+  billing?: BillingOverview;
+  pets: PetOption[];
+  doctors: DoctorOption[];
+  services: ServicesWithRelations[];
+  products: ProductOption[];
+  viewerRole: UserRole;
+  onDelete: (id: string) => void;
+  onConfirm: (id: string) => void;
+  onComplete: (id: string) => void;
+  onCancel: (id: string) => void;
 }) {
-	const [expanded, setExpanded] = useState(false);
-	const staff = isStaff(viewerRole);
-	const billed = Boolean(billing);
-	return (
-		<div className='flex flex-col items-end gap-2'>
-			<div className='flex items-center gap-1.5'>
-				{staff && appointment.status === 'completed' && (
-					<EditButton
-						tooltip='Financeiro: cobrança e pagamentos'
-						text='Financeiro'
-						size='default'
-						renderForm={(close) => (
-							<AppointmentBillingEditor
-								appointment={appointment}
-								billing={billing}
-								onSuccess={close}
-							/>
-						)}
-					/>
-				)}
-				<EditButton
-					tooltip='Editar agendamento'
-					disabled={
-						appointment.status !== 'pending' ||
-						Boolean(appointment.productItems?.length)
-					}
-					renderForm={(close) => (
-						<AppointmentFormClient
-							appointment={appointment}
-							pets={pets}
-							doctors={doctors}
-							services={services}
-							viewerRole={viewerRole}
-							onSuccess={close}
-						/>
-					)}
-				/>
-				<Button
-					type='button'
-					size='icon'
-					variant='outline'
-					aria-label={
-						expanded ? 'Ocultar outras ações' : 'Mostrar outras ações'
-					}
-					aria-expanded={expanded}
-					onClick={() => setExpanded((value) => !value)}
-				>
-					<MoreHorizontal className='size-4' />
-				</Button>
-			</div>
-			{expanded && (
-				<div className='flex max-w-64 flex-wrap justify-end gap-2 rounded-lg border bg-background p-2 shadow-sm'>
-					{staff && (
-						<>
-							<ConfirmAlertButton
-								size='icon'
-								tooltip='Confirmar agendamento'
-								disabled={appointment.status !== 'pending'}
-								action={() => onConfirm(appointment.id)}
-							/>
-							<ConfirmAlertButton
-								text='Concluir'
-								tooltip='Marcar como concluído'
-								disabled={
-									!['confirmed', 'in_progress'].includes(appointment.status)
-								}
-								action={() => onComplete(appointment.id)}
-							/>
-							<EditButton
-								tooltip='Editar itens e valores'
-								disabled={
-									appointment.isPaid ||
-									billed ||
-									['cancelled', 'no_show'].includes(appointment.status)
-								}
-								renderForm={(close) => (
-									<AppointmentItemsEditor
-										appointment={appointment}
-										services={services}
-										products={products}
-										onSuccess={close}
-									/>
-								)}
-							/>
-							<DeleteAlertButton
-								tooltip={
-									billed
-										? 'Atendimento com histórico financeiro não pode ser excluído'
-										: 'Excluir atendimento sem vínculos clínicos ou financeiros'
-								}
-								disabled={billed}
-								action={() => onDelete(appointment.id)}
-							/>
-						</>
-					)}
-					<DeleteAlertButton
-						icon={<Ban />}
-						tooltip='Cancelar agendamento'
-						disabled={appointment.status !== 'pending'}
-						action={() => onCancel(appointment.id)}
-					/>
-				</div>
-			)}
-		</div>
-	);
+  const staff = isStaff(viewerRole);
+  const billed = Boolean(billing);
+  const [itemsOpen, setItemsOpen] = useState(false);
+  const [confirmation, setConfirmation] = useState<'confirm' | 'complete' | 'delete' | 'cancel' | null>(null);
+  const availableConfirmation = appointment.status === 'pending';
+  const availableCompletion = ['confirmed', 'in_progress'].includes(appointment.status);
+  const availableItems = staff && !appointment.isPaid && !billed && !['cancelled', 'no_show'].includes(appointment.status);
+
+  const executeConfirmedAction = () => {
+    switch (confirmation) {
+      case 'confirm': onConfirm(appointment.id); break;
+      case 'complete': onComplete(appointment.id); break;
+      case 'delete': onDelete(appointment.id); break;
+      case 'cancel': onCancel(appointment.id); break;
+    }
+    setConfirmation(null);
+  };
+
+  return (
+    <>
+      <div className='flex items-center justify-end gap-1.5 whitespace-nowrap'>
+        {staff && appointment.status === 'completed' && (
+          <EditButton tooltip='Financeiro: cobrança e pagamentos' text='Financeiro' size='default' renderForm={(close) => (
+            <AppointmentBillingEditor appointment={appointment} billing={billing} onSuccess={close} />
+          )} />
+        )}
+        <EditButton
+          tooltip='Editar agendamento'
+          disabled={appointment.status !== 'pending' || Boolean(appointment.productItems?.length)}
+          renderForm={(close) => (
+            <AppointmentFormClient appointment={appointment} pets={pets} doctors={doctors} services={services} viewerRole={viewerRole} onSuccess={close} />
+          )}
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button type='button' size='icon' variant='outline' aria-label='Mais ações do atendimento'>
+              <MoreHorizontal className='size-4' />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align='end' sideOffset={6} className='w-52'>
+            {staff && (
+              <>
+                <DropdownMenuItem disabled={!availableConfirmation} onSelect={() => setConfirmation('confirm')}>
+                  <Check className='size-4' />Confirmar atendimento
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={!availableCompletion} onSelect={() => setConfirmation('complete')}>
+                  <CheckCheck className='size-4' />Concluir atendimento
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={!availableItems} onSelect={() => setItemsOpen(true)}>
+                  <Pencil className='size-4' />Editar itens e valores
+                </DropdownMenuItem>
+                <DropdownMenuItem variant='destructive' disabled={billed} onSelect={() => setConfirmation('delete')}>
+                  <Trash2 className='size-4' />Excluir atendimento
+                </DropdownMenuItem>
+              </>
+            )}
+            <DropdownMenuItem variant='destructive' disabled={!availableConfirmation} onSelect={() => setConfirmation('cancel')}>
+              <Ban className='size-4' />Cancelar agendamento
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      {/* O editor e a confirmação ficam fora do DropdownMenu para não desmontarem ao fechar o menu. */}
+      <Dialog open={itemsOpen} onOpenChange={setItemsOpen}>
+        {itemsOpen && (
+          <AppointmentItemsEditor
+            appointment={appointment}
+            services={services}
+            products={products}
+            onSuccess={() => setItemsOpen(false)}
+          />
+        )}
+      </Dialog>
+      <AlertDialog open={confirmation !== null} onOpenChange={(open) => { if (!open) setConfirmation(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar ação no atendimento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmation === 'delete'
+                ? 'A exclusão é definitiva e somente será permitida se não houver vínculos clínicos ou financeiros.'
+                : confirmation === 'cancel'
+                  ? 'Deseja cancelar este agendamento?'
+                  : confirmation === 'complete'
+                    ? 'Deseja marcar o atendimento como concluído?'
+                    : 'Deseja confirmar este agendamento?'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction onClick={executeConfirmedAction} variant={confirmation === 'delete' ? 'destructive' : 'default'}>
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
 }
 
 const appointmentDate = (date: Date) =>
@@ -291,7 +292,7 @@ function ReminderRow({
 			<TableCell>
 				<Link
 					href={link}
-					className='font-semibold text-primary underline underline-offset-4'
+					className='inline-flex min-h-9 items-center rounded-md px-3 font-semibold text-emerald-800 underline underline-offset-4 hover:bg-emerald-100 hover:text-emerald-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-950'
 				>
 					Ver pet
 				</Link>
