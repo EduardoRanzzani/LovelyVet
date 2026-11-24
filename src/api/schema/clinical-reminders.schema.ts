@@ -5,6 +5,7 @@ export type ClinicalReminderListItem = {
   type: 'vaccine';
   dueDate: string;
   status: 'pending';
+  sourceServiceId: string | null;
   pet: { id: string; name: string };
   doctor: { id: string; name: string };
 };

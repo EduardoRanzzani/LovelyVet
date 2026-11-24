@@ -14,6 +14,7 @@ const reminder: ClinicalReminderListItem = {
 	title: 'Vacina: V10',
 	type: 'vaccine',
 	status: 'pending',
+	sourceServiceId: null,
 	pet: { id: 'pet-1', name: 'Margot' },
 	doctor: { id: 'doctor-1', name: 'Regina' },
 };

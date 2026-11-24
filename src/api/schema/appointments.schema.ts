@@ -31,6 +31,7 @@ export type AppointmentsWithRelations =
 
 export const createAppointmentSchema = z.object({
 	id: z.uuid().optional().nullable(),
+	sourceReminderId: z.uuid().optional(),
 	petId: z.uuid().nonempty({ message: 'Selecione o pet' }),
 	doctorId: z.uuid().nonempty({ message: 'Selecione o veterinário' }),
 	scheduledAt: z.date('A data e hora são obrigatórias'),
@@ -54,7 +55,9 @@ export const createAppointmentSchema = z.object({
 
 export type CreateAppointmentSchema = z.infer<typeof createAppointmentSchema>;
 
-export type AppointmentListItem = Omit<
+export type AppointmentListItem = {
+	linkedReminder?: { id: string; petId: string; title: string; serviceId: string | null } | null;
+} & Omit<
 	AppointmentsWithRelations,
 	'doctor' | 'pet'
 > & {

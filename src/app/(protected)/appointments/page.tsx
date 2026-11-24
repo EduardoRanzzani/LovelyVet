@@ -6,6 +6,7 @@ import { getPetsForSelection } from '@/api/actions/pets.actions';
 import { getServices } from '@/api/actions/services.actions';
 import { getProducts } from '@/api/actions/products.actions';
 import { MAX_PAGE_SIZE } from '@/api/config/consts';
+import { formatShiftMonth, resolveShiftMonth } from '@/lib/shifts/shift-month';
 import {
   PageContainer, PageContent, PageDescription, PageHeader, PageHeaderContent, PageTitle,
 } from '@/components/shared/page-container';
@@ -15,7 +16,7 @@ import { Suspense } from 'react';
 import AppointmentsListClient from './_components/appointments-list';
 
 interface AppointmentsPageProps {
-  searchParams: Promise<{ appointmentsPage?: string; remindersPage?: string; filter?: string }>;
+  searchParams: Promise<{ appointmentsPage?: string; remindersPage?: string; filter?: string; month?: string }>;
 }
 
 const pageNumber = (value?: string) => {
@@ -27,14 +28,15 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
   const context = await requirePageAccess('/appointments');
   const params = await searchParams;
   const keyword = params.filter ?? '';
+  const month = formatShiftMonth(resolveShiftMonth(params.month));
   const [pets, doctors, services, products] = await Promise.all([
     getPetsForSelection(),
     getDoctorsForSelection(),
     getServices(),
     context.role === 'customer' ? Promise.resolve([]) : getProducts(),
   ]);
-  const appointments = getAppointmentsPaginated(pageNumber(params.appointmentsPage), MAX_PAGE_SIZE, keyword);
-  const reminders = getClinicalRemindersPaginated(pageNumber(params.remindersPage), MAX_PAGE_SIZE, keyword);
+  const appointments = getAppointmentsPaginated(pageNumber(params.appointmentsPage), MAX_PAGE_SIZE, keyword, month);
+  const reminders = getClinicalRemindersPaginated(pageNumber(params.remindersPage), MAX_PAGE_SIZE, keyword, month);
   const billing = context.role === 'customer'
     ? Promise.resolve({})
     : appointments.then((result) => getBillingOverviews(result.data.map((item) => item.id)));
@@ -54,6 +56,7 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
             services={services}
             products={products}
             viewerRole={context.role}
+            month={month}
           />
         </Suspense>
       </PageContent>

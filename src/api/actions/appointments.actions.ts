@@ -9,6 +9,7 @@ import {
         clinicalDocumentsTable,
         appointmentItemsTable,
         appointmentsTable,
+        careRemindersTable,
         calendarEventsTable,
         doctorsTable,
         petsTable,
@@ -28,6 +29,7 @@ import { requireStaff } from '@/lib/security/authorization';
 import { resolveRequestedDoctorId } from '@/lib/security/doctor-scope';
 import { assertCanAccessPet } from '@/lib/security/pet-access';
 import { normalizePagination } from '@/lib/pagination';
+import { resolveShiftMonth } from '@/lib/shifts/shift-month';
 import {
         addMinutes,
         addMonths,
@@ -66,9 +68,17 @@ export const getAppointmentsPaginated = async (
         page: number = 1,
         limit: number = MAX_PAGE_SIZE,
         search?: string,
+        month?: string,
 ): Promise<PaginatedData<AppointmentListItem>> => {
         const context = await requireAuthContext();
         const pagination = normalizePagination(page, limit);
+        const selectedMonth = resolveShiftMonth(month);
+        const start = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1);
+        const end = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 1);
+        const monthCondition = and(
+                gte(appointmentsTable.scheduledAt, start),
+                lt(appointmentsTable.scheduledAt, end),
+        );
 
         const searchCondition = search?.trim()
                 ? exists(
@@ -88,6 +98,8 @@ export const getAppointmentsPaginated = async (
                 where: (appointments) =>
                         and(
                                 buildAppointmentAccessCondition(context, undefined, appointments),
+                                gte(appointments.scheduledAt, start),
+                                lt(appointments.scheduledAt, end),
                                 searchCondition,
                         ),
                 limit: pagination.limit,
@@ -114,6 +126,11 @@ export const getAppointmentsPaginated = async (
                         },
                         items: { with: { service: true } },
                         productItems: { with: { product: true } },
+                        careReminders: {
+                                where: (reminder) => eq(reminder.status, 'pending'),
+                                columns: { id: true, petId: true, title: true },
+                                with: { sourceVaccine: { columns: { serviceId: true } } },
+                        },
                 },
         });
 
@@ -126,6 +143,7 @@ export const getAppointmentsPaginated = async (
                 .where(
                         and(
                                 buildAppointmentAccessCondition(context),
+                                monthCondition,
                                 search?.trim()
                                         ? ilike(petsTable.name, `%${search.trim()}%`)
                                         : undefined,
@@ -137,6 +155,12 @@ export const getAppointmentsPaginated = async (
 
         const safeData: AppointmentListItem[] = data.map((appointment) => ({
                 ...appointment,
+                linkedReminder: appointment.careReminders[0] ? {
+                        id: appointment.careReminders[0].id,
+                        petId: appointment.careReminders[0].petId,
+                        title: appointment.careReminders[0].title,
+                        serviceId: appointment.careReminders[0].sourceVaccine?.serviceId ?? null,
+                } : null,
                 doctor: {
                         id: appointment.doctor.id,
                         user: { name: appointment.doctor.user.name },
@@ -407,7 +431,14 @@ export const upsertAppointment = actionClient
         .action(async ({ parsedInput }) => {
                 const context = await requireAuthContext();
 
-                const { id, services, ...data } = parsedInput;
+                const { id, sourceReminderId, services, ...data } = parsedInput;
+
+                if (sourceReminderId) {
+                        requireStaff(context);
+                        if (id || data.status !== 'pending') {
+                                throw new Error('A conversao deve criar um novo agendamento pendente.');
+                        }
+                }
 
                 const doctorId = resolveRequestedDoctorId(context, data.doctorId);
 
@@ -455,6 +486,29 @@ export const upsertAppointment = actionClient
 
                 try {
                         await db.transaction(async (tx) => {
+                                // Trava o lembrete antes de criar o atendimento, prevenindo conversoes duplicadas.
+                                let convertingReminder: typeof careRemindersTable.$inferSelect | undefined;
+                                if (sourceReminderId) {
+                                        await tx.execute(sql`SELECT id FROM care_reminders WHERE id = ${sourceReminderId} FOR UPDATE`);
+                                        const reminder = await tx.query.careRemindersTable.findFirst({
+                                                where: eq(careRemindersTable.id, sourceReminderId),
+                                        });
+                                        if (!reminder || reminder.type !== 'vaccine' || !reminder.sourceVaccineId ||
+                                            reminder.status !== 'pending' || reminder.appointmentId ||
+                                            reminder.petId !== data.petId || reminder.doctorId !== doctorId) {
+                                                throw new Error('Este retorno nao esta disponivel para conversao.');
+                                        }
+                                        const origin = await tx.query.vaccinesTable.findFirst({
+                                                where: eq(vaccinesTable.id, reminder.sourceVaccineId),
+                                        });
+                                        if (!origin || origin.petId !== data.petId) {
+                                                throw new Error('A vacina de origem nao pertence ao paciente.');
+                                        }
+                                        if (origin.serviceId && (services.length !== 1 || services[0] !== origin.serviceId)) {
+                                                throw new Error('O reforco deve utilizar o servico de vacina de origem.');
+                                        }
+                                        convertingReminder = reminder;
+                                }
                                 if (id) {
                                         // Bloqueia a linha antes de validar o estado efetivo do atendimento.
                                         await tx.execute(sql`SELECT id FROM appointments WHERE id = ${id} FOR UPDATE`);
@@ -487,6 +541,17 @@ export const upsertAppointment = actionClient
                                         ]);
                                         if (charged) throw new Error('Atendimento faturado não pode ser editado.');
                                         if (productItem) throw new Error('Este atendimento possui produtos. Altere os valores pelo editor de itens.');
+                                        const linkedReminder = await tx.query.careRemindersTable.findFirst({
+                                                where: eq(careRemindersTable.appointmentId, id),
+                                                with: { sourceVaccine: { columns: { serviceId: true } } },
+                                        });
+                                        if (linkedReminder) {
+                                                if (linkedReminder.petId !== data.petId || linkedReminder.doctorId !== doctorId ||
+                                                    services.length !== 1 ||
+                                                    (linkedReminder.sourceVaccine?.serviceId && services[0] !== linkedReminder.sourceVaccine.serviceId)) {
+                                                        throw new Error('Este retorno permite apenas reagendar a mesma vacinacao.');
+                                                }
+                                        }
                                 }
                                 /*
                                  * Não confiamos em preço nem duração
@@ -508,6 +573,11 @@ export const upsertAppointment = actionClient
                                  */
                                 if (servicesData.length !== new Set(services).size) {
                                         throw new Error('Um ou mais serviços selecionados são inválidos');
+                                }
+
+                                if (convertingReminder &&
+                                    (servicesData.length !== 1 || !servicesData[0].isVaccine)) {
+                                        throw new Error('Selecione um unico servico de vacinacao para este retorno.');
                                 }
 
                                 const servicesTotalInCents = servicesData.reduce(
@@ -738,6 +808,17 @@ export const upsertAppointment = actionClient
                                  * mas mantemos a guarda também
                                  * para deixar a operação explícita.
                                  */
+                                if (convertingReminder && appointmentId) {
+                                        const [linked] = await tx.update(careRemindersTable)
+                                                .set({ appointmentId, updatedAt: new Date() })
+                                                .where(and(
+                                                        eq(careRemindersTable.id, convertingReminder.id),
+                                                        eq(careRemindersTable.status, 'pending'),
+                                                        isNull(careRemindersTable.appointmentId),
+                                                )).returning({ id: careRemindersTable.id });
+                                        if (!linked) throw new Error('Este retorno ja foi convertido por outra operacao.');
+                                }
+
                                 if (appointmentId && servicesData.length > 0) {
                                         const itemsToInsert = servicesData.map((service) => ({
                                                 appointmentId,
@@ -750,6 +831,7 @@ export const upsertAppointment = actionClient
                         });
 
                         revalidatePath('/appointments');
+                        if (sourceReminderId) revalidatePath('/agenda');
 
                         return {
                                 success: true,
@@ -909,7 +991,26 @@ export const markAppointmentAsCompleted = actionClient
                         throw new Error('O status do atendimento mudou. Atualize a página antes de concluí-lo.');
                 }
 
+                // Somente retornos convertidos abrem automaticamente o registro da nova dose.
+                const reminder = await db.query.careRemindersTable.findFirst({
+                        where: and(
+                                eq(careRemindersTable.appointmentId, parsedInput.id),
+                                eq(careRemindersTable.status, 'pending'),
+                        ),
+                        with: { sourceVaccine: { columns: { serviceId: true } } },
+                });
                 revalidatePath('/appointments');
+                if (!reminder) return { vaccineFlow: null };
+                return {
+                        vaccineFlow: {
+                                petId: reminder.petId,
+                                reminderId: reminder.id,
+                                appointmentId: parsedInput.id,
+                                doctorId: reminder.doctorId,
+                                vaccineName: reminder.title.replace(/^Vacina:\s*/, ''),
+                                serviceId: reminder.sourceVaccine?.serviceId ?? undefined,
+                        },
+                };
         });
 
 export const markAppointmentAsCancelled = actionClient
@@ -930,21 +1031,27 @@ export const markAppointmentAsCancelled = actionClient
                         throw new Error('Apenas agendamentos pendentes podem ser cancelados');
                 }
 
-                const updated = await db
-                        .update(appointmentsTable)
-                        .set({
-                                status: 'cancelled',
-                                updatedAt: new Date(),
-                        })
-                        .where(and(
-                                eq(appointmentsTable.id, parsedInput.id),
-                                eq(appointmentsTable.status, 'pending'),
-                        ))
-                        .returning({ id: appointmentsTable.id });
-
-                if (updated.length !== 1) {
-                        throw new Error('O agendamento foi alterado por outra operação e não pode mais ser cancelado.');
-                }
+                await db.transaction(async (tx) => {
+                        const updated = await tx
+                                .update(appointmentsTable)
+                                .set({ status: 'cancelled', updatedAt: new Date() })
+                                .where(and(
+                                        eq(appointmentsTable.id, parsedInput.id),
+                                        eq(appointmentsTable.status, 'pending'),
+                                ))
+                                .returning({ id: appointmentsTable.id });
+                        if (updated.length !== 1) {
+                                throw new Error('O agendamento foi alterado por outra operação e não pode mais ser cancelado.');
+                        }
+                        // Ao cancelar o atendimento, o retorno volta a ser uma pendencia clinica.
+                        await tx.update(careRemindersTable)
+                                .set({ appointmentId: null, updatedAt: new Date() })
+                                .where(and(
+                                        eq(careRemindersTable.appointmentId, parsedInput.id),
+                                        eq(careRemindersTable.status, 'pending'),
+                                ));
+                });
 
                 revalidatePath('/appointments');
+                revalidatePath('/agenda');
         });

@@ -25,9 +25,14 @@ describe('interface de agendamentos', () => {
     expect(menuMarkup).not.toContain('<AlertDialog');
     expect(menuMarkup).not.toContain('<Dialog open=');
   });
-  it('usa o cabeçalho cinza compartilhado e um link de retorno legível', () => {
+  it('usa o cabeçalho cinza e botões compactos para agendar e ver o pet', () => {
     expect(table).toContain('[&_tr]:bg-muted/60');
-    expect(list).toContain('text-emerald-800 underline');
-    expect(list).toContain('dark:text-emerald-300');
+    expect(list).toContain('Agendar');
+    expect(list).toContain('<Button asChild');
+    expect(list).toContain("variant='secondary' size='sm'");
+    expect(list).toContain('<PawPrint className=');
+    expect(list).toContain('Ver pet');
+    expect(list).toContain('aria-label={`Ver detalhes de ${reminder.pet.name}`}');
+    expect(list).not.toContain('text-emerald-800 underline');
   });
 });

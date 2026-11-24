@@ -24,7 +24,8 @@ import EditButton from '@/components/list/edit-button';
 import SearchInput from '@/components/list/search-input';
 import Pagination from '@/components/list/table-pagination';
 import { Button } from '@/components/ui/button';
-import { Dialog } from '@/components/ui/dialog';
+import { MonthNavigator } from '@/components/ui/month-navigator';
+import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import {
 	AlertDialog,
 	AlertDialogCancel,
@@ -71,6 +72,7 @@ import {
 	Ban,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { getVaccineReminderUrl } from '@/lib/vaccines/vaccine-reminder-url';
 import { useAction } from 'next-safe-action/hooks';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -99,6 +101,7 @@ type Props = {
 	services: ServicesWithRelations[];
 	products: ProductOption[];
 	viewerRole: UserRole;
+	month: string;
 };
 
 /** Ações secundárias permanecem montadas fora de menus descartáveis: os dialogs não fecham por desmontagem. */
@@ -118,6 +121,7 @@ function AppointmentActions({
   const staff = isStaff(viewerRole);
   const billed = Boolean(billing);
   const [itemsOpen, setItemsOpen] = useState(false);
+  const router = useRouter();
   const availableConfirmation = appointment.status === 'pending';
   const availableCompletion = ['confirmed', 'in_progress'].includes(appointment.status);
   const availableItems = staff && !appointment.isPaid && !billed && !['cancelled', 'no_show'].includes(appointment.status);
@@ -153,6 +157,18 @@ function AppointmentActions({
                 <DropdownMenuItem disabled={!availableCompletion} onSelect={() => onRequestConfirmation(appointment.id, 'complete')}>
                   <CheckCheck className='size-4' />Concluir atendimento
                 </DropdownMenuItem>
+                {appointment.status === 'completed' && appointment.linkedReminder && (
+                  <DropdownMenuItem onSelect={() => {
+                    const reminder = appointment.linkedReminder;
+                    if (!reminder) return;
+                    router.push(getVaccineReminderUrl(
+                      reminder.petId, reminder.id, reminder.title.replace(/^Vacina:\s*/, ''),
+                      appointment.id, reminder.serviceId ?? undefined, appointment.doctorId,
+                    ));
+                  }}>
+                    <Syringe className='size-4' />Registrar aplicação da vacina
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem disabled={!availableItems} onSelect={() => setItemsOpen(true)}>
                   <Pencil className='size-4' />Editar itens e valores
                 </DropdownMenuItem>
@@ -190,11 +206,31 @@ const reminderDate = (date: string) => format(parseISO(date), 'dd/MM/yyyy');
 function ReminderRow({
 	reminder,
 	mobile,
+	pets, doctors, services, viewerRole,
 }: {
 	reminder: ClinicalReminderListItem;
 	mobile?: boolean;
+	pets: PetOption[];
+	doctors: DoctorOption[];
+	services: ServicesWithRelations[];
+	viewerRole: UserRole;
 }) {
 	const link = `/pets/${encodeURIComponent(reminder.pet.id)}`;
+	const [conversionOpen, setConversionOpen] = useState(false);
+	const conversion = isStaff(viewerRole) ? (
+		<Dialog open={conversionOpen} onOpenChange={setConversionOpen}>
+			<DialogTrigger asChild>
+				<Button type='button' variant='outline' size='sm' className='h-9 min-w-0 flex-1 gap-1.5 whitespace-nowrap lg:h-8 lg:flex-none lg:shrink-0' aria-label={`Agendar retorno de ${reminder.pet.name}`}>
+					<CalendarDays className='size-3.5' />
+					Agendar
+				</Button>
+			</DialogTrigger>
+			{conversionOpen && (
+				<AppointmentFormClient reminder={reminder} pets={pets} doctors={doctors}
+					services={services} viewerRole={viewerRole} onSuccess={() => setConversionOpen(false)} />
+			)}
+		</Dialog>
+	) : null;
 	if (mobile) {
 		return (
 			<article
@@ -221,12 +257,15 @@ function ReminderRow({
 					<Syringe className='mr-2 inline size-4' />
 					{reminder.title}
 				</p>
-				<Link
-					href={link}
-					className='inline-flex min-h-11 items-center rounded-md bg-emerald-100 px-3 text-sm font-semibold text-emerald-900 hover:bg-emerald-200 dark:bg-emerald-950 dark:text-emerald-100'
-				>
-					Ver pet
-				</Link>
+				<div className='flex w-full items-center gap-2'>
+					{conversion}
+					<Button asChild type='button' variant='secondary' size='sm' className='h-9 min-w-0 flex-1 gap-1.5 whitespace-nowrap lg:h-8 lg:flex-none lg:shrink-0'>
+						<Link href={link} aria-label={`Ver detalhes de ${reminder.pet.name}`}>
+							<PawPrint className='size-3.5' />
+							Ver pet
+						</Link>
+					</Button>
+				</div>
 			</article>
 		);
 	}
@@ -258,12 +297,15 @@ function ReminderRow({
 				</span>
 			</TableCell>
 			<TableCell>
-				<Link
-					href={link}
-					className='inline-flex min-h-9 items-center rounded-md px-3 font-semibold text-emerald-800 underline underline-offset-4 hover:bg-emerald-100 hover:text-emerald-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-950'
-				>
-					Ver pet
-				</Link>
+				<div className='flex items-center justify-end gap-2 whitespace-nowrap'>
+					{conversion}
+					<Button asChild type='button' variant='secondary' size='sm' className='h-8 shrink-0 gap-1.5 whitespace-nowrap'>
+						<Link href={link} aria-label={`Ver detalhes de ${reminder.pet.name}`}>
+							<PawPrint className='size-3.5' />
+							Ver pet
+						</Link>
+					</Button>
+				</div>
 			</TableCell>
 		</TableRow>
 	);
@@ -278,6 +320,7 @@ export default function AppointmentsListClient({
 	services,
 	products,
 	viewerRole,
+	month,
 }: Props) {
 	const appointmentData = use(appointments);
 	const reminderData = use(reminders);
@@ -288,6 +331,14 @@ export default function AppointmentsListClient({
 	const [mobileTab, setMobileTab] = useState('appointments');
 	const [confirmationRequest, setConfirmationRequest] = useState<AppointmentConfirmationRequest | null>(null);
 	const actionInFlight = useRef(false);
+
+	const changeMonth = (nextMonth: string) => {
+		const next = new URLSearchParams(params.toString());
+		next.set('month', nextMonth);
+		next.delete('appointmentsPage');
+		next.delete('remindersPage');
+		router.push(`/appointments?${next.toString()}`);
+	};
 
 	const navigatePage = (
 		key: 'appointmentsPage' | 'remindersPage',
@@ -328,10 +379,15 @@ export default function AppointmentsListClient({
 		},
 	});
 	const completion = useAction(markAppointmentAsCompleted, {
-		onSuccess: () => {
+		onSuccess: ({ data }) => {
 			actionInFlight.current = false;
 			setConfirmationRequest(null);
 			toast.success('Atendimento concluído.');
+			if (data?.vaccineFlow) {
+				const { petId, reminderId, vaccineName, appointmentId, serviceId, doctorId } = data.vaccineFlow;
+				router.push(getVaccineReminderUrl(petId, reminderId, vaccineName, appointmentId, serviceId, doctorId));
+				return;
+			}
 			router.refresh();
 		},
 		onError: ({ error }) => {
@@ -606,7 +662,7 @@ export default function AppointmentsListClient({
 					</TableHeader>
 					<TableBody>
 						{reminderData.data.map((reminder) => (
-							<ReminderRow key={reminder.id} reminder={reminder} />
+							<ReminderRow key={reminder.id} reminder={reminder} pets={pets} doctors={doctors} services={services} viewerRole={viewerRole} />
 						))}
 						{reminderData.data.length === 0 && (
 							<TableRow>
@@ -623,7 +679,7 @@ export default function AppointmentsListClient({
 			</div>
 			<div className='space-y-3 lg:hidden'>
 				{reminderData.data.map((reminder) => (
-					<ReminderRow key={reminder.id} reminder={reminder} mobile />
+					<ReminderRow key={reminder.id} reminder={reminder} mobile pets={pets} doctors={doctors} services={services} viewerRole={viewerRole} />
 				))}
 				{reminderData.data.length === 0 && (
 					<p className='rounded-xl border p-6 text-center text-sm text-muted-foreground'>
@@ -645,6 +701,7 @@ export default function AppointmentsListClient({
 
 	return (
 		<div className='w-full min-w-0 space-y-5'>
+			<MonthNavigator month={month} title='Mês dos agendamentos e retornos' onMonthChange={changeMonth} />
 			<AlertDialog
 				open={confirmationRequest !== null}
 				onOpenChange={(open) => {

@@ -39,11 +39,14 @@ import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import { endOfDay, format, startOfDay } from 'date-fns';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { formatCurrencyFromCents } from '@/helpers/currency';
 import { getAppointmentAvailabilityError } from '@/lib/appointments/appointment-form-availability';
+import type { ClinicalReminderListItem } from '@/api/schema/clinical-reminders.schema';
 
 interface AppointmentFormClientProps {
 	appointment?: AppointmentListItem;
+	reminder?: ClinicalReminderListItem;
 	pets: PetOption[];
 	doctors: DoctorOption[];
 	services: ServicesWithRelations[];
@@ -56,13 +59,21 @@ const getServicesKey = (serviceIds: string[]) =>
 
 const AppointmentFormClient = ({
 	appointment,
+	reminder,
 	pets,
 	doctors,
 	services,
 	viewerRole,
 	onSuccess,
 }: AppointmentFormClientProps) => {
+	const router = useRouter();
 	const isCustomer = viewerRole === 'customer';
+	const reminderService = services.find((service) => service.id === reminder?.sourceServiceId);
+	const suggestedSlot = getNextAppointmentSlot();
+	const reminderSlot = reminder
+		? new Date(`${reminder.dueDate}T${format(suggestedSlot, 'HH:mm')}:00`)
+		: suggestedSlot;
+	const initialSlot = reminderSlot > new Date() ? reminderSlot : suggestedSlot;
 
 	const [availability, setAvailability] = useState<{
 		doctorId: string;
@@ -76,19 +87,19 @@ const AppointmentFormClient = ({
 		resolver: zodResolver(createAppointmentSchema),
 		shouldUnregister: true,
 		defaultValues: {
-			petId: appointment?.petId || '',
-			doctorId: appointment?.doctorId || REGINA_DOCTOR_ID,
+			petId: appointment?.petId || reminder?.pet.id || '',
+			doctorId: appointment?.doctorId || reminder?.doctor.id || REGINA_DOCTOR_ID,
 			scheduledAt: appointment?.scheduledAt
 				? new Date(appointment.scheduledAt)
-				: getNextAppointmentSlot(),
+				: initialSlot,
 			status: appointment?.status || 'pending',
 			totalPriceInCents:
 				appointment?.totalPriceInCents !== undefined
 					? fromCents(appointment.totalPriceInCents)
-					: 0,
-			notes: appointment?.notes || '',
+					: reminderService ? fromCents(reminderService.priceInCents) : 0,
+			notes: appointment?.notes || (reminder ? `Retorno: ${reminder.title}` : ''),
 			// Importante: inicializar o array de serviços se estiver editando
-			services: appointment?.items?.map((i) => i.serviceId) || [],
+			services: appointment?.items?.map((i) => i.serviceId) || (reminderService ? [reminderService.id] : []),
 		},
 	});
 
@@ -148,6 +159,7 @@ const AppointmentFormClient = ({
 			...data,
 			scheduledAt,
 			id: appointment?.id,
+			sourceReminderId: reminder?.id,
 			status: appointment?.status ?? 'pending',
 		});
 	};
@@ -157,6 +169,7 @@ const AppointmentFormClient = ({
 			onSuccess?.();
 			toast.success('Agendamento salvo com sucesso!');
 			form.reset();
+			router.refresh();
 		},
 		onError: ({ error }) => {
 			toast.error(
@@ -232,7 +245,7 @@ const AppointmentFormClient = ({
 		>
 			<DialogHeader>
 				<DialogTitle>
-					{appointment ? 'Atualizar Agendamento' : 'Cadastrar Agendamento'}
+					{appointment ? 'Atualizar Agendamento' : reminder ? 'Converter retorno em agendamento' : 'Cadastrar Agendamento'}
 				</DialogTitle>
 				<DialogDescription>
 					Selecione o pet, o veterinário e os serviços prestados.

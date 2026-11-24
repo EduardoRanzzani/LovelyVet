@@ -5,7 +5,7 @@ import { careRemindersTable } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
@@ -23,7 +23,7 @@ export const rescheduleCareReminder = actionClient
 
 		const reminder = await db.query.careRemindersTable.findFirst({
 			where: eq(careRemindersTable.id, parsedInput.id),
-			columns: { id: true, petId: true, doctorId: true, status: true, dueDate: true },
+			columns: { id: true, petId: true, doctorId: true, status: true, dueDate: true, appointmentId: true },
 		});
 
 		if (!reminder) {
@@ -34,6 +34,9 @@ export const rescheduleCareReminder = actionClient
 		}
 		if (reminder.status !== 'pending') {
 			throw new Error('Apenas lembretes pendentes podem ser reagendados.');
+		}
+		if (reminder.appointmentId) {
+			throw new Error('Este retorno já possui atendimento. Reagende pelo atendimento.');
 		}
 		if (reminder.dueDate === parsedInput.dueDate) {
 			return { success: true, dueDate: reminder.dueDate };
@@ -48,6 +51,7 @@ export const rescheduleCareReminder = actionClient
 					eq(careRemindersTable.doctorId, reminder.doctorId),
 					eq(careRemindersTable.status, 'pending'),
 					eq(careRemindersTable.dueDate, reminder.dueDate),
+					isNull(careRemindersTable.appointmentId),
 				),
 			)
 			.returning({ id: careRemindersTable.id, dueDate: careRemindersTable.dueDate });
@@ -84,6 +88,10 @@ export const updateCareReminderStatus = actionClient
 
 		if (context.role === 'doctor' && reminder.doctorId !== context.doctorId) {
 			throw new Error('Você não possui permissão para alterar este lembrete.');
+		}
+
+		if (reminder.appointmentId && reminder.status === 'pending') {
+			throw new Error('Este retorno já possui atendimento. Conclua ou cancele o atendimento primeiro.');
 		}
 
 		/*

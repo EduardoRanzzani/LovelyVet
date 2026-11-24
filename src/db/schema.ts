@@ -610,6 +610,10 @@ export const careRemindersTable = pgTable(
 			() => vaccinesTable.id,
 			{ onDelete: 'set null' },
 		),
+		// Vinculo a um atendimento reservado. Nao significa dose aplicada.
+		appointmentId: uuid('appointment_id').unique('care_reminders_appointment_id_unique').references(
+			() => appointmentsTable.id, { onDelete: 'set null' },
+		),
 		completedAt: timestamp('completed_at'),
 		createdAt: timestamp('created_at').defaultNow().notNull(),
 		updatedAt: timestamp('updated_at')
@@ -786,6 +790,7 @@ export const appointmentsRelations = relations(
 			references: [doctorsTable.id],
 		}),
 		items: many(appointmentItemsTable),
+		careReminders: many(careRemindersTable),
 		productItems: many(appointmentProductItemsTable),
 		medicalRecord: one(medicalRecordsTable, {
 			fields: [appointmentsTable.id],
@@ -913,6 +918,10 @@ export const careRemindersRelations = relations(
 		doctor: one(doctorsTable, {
 			fields: [careRemindersTable.doctorId],
 			references: [doctorsTable.id],
+		}),
+		appointment: one(appointmentsTable, {
+			fields: [careRemindersTable.appointmentId],
+			references: [appointmentsTable.id],
 		}),
 		sourceVaccine: one(vaccinesTable, {
 			fields: [careRemindersTable.sourceVaccineId],

@@ -3,9 +3,10 @@ import 'server-only';
 import { db } from '@/db';
 import { careRemindersTable, petsTable } from '@/db/schema';
 import { normalizePagination } from '@/lib/pagination';
+import { resolveShiftMonth } from '@/lib/shifts/shift-month';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { buildCareReminderAccessCondition } from '@/lib/security/care-reminder-access';
-import { and, asc, count, eq, exists, ilike } from 'drizzle-orm';
+import { and, asc, count, eq, exists, gte, ilike, isNull, lt } from 'drizzle-orm';
 import type { PaginatedData } from '../config/consts';
 import type { ClinicalReminderListItem } from '../schema/clinical-reminders.schema';
 
@@ -14,13 +15,21 @@ export const getClinicalRemindersPaginated = async (
 	page = 1,
 	limit = 10,
 	search?: string,
+	month?: string,
 ): Promise<PaginatedData<ClinicalReminderListItem>> => {
 	const context = await requireAuthContext();
 	const pagination = normalizePagination(page, limit);
+	const selectedMonth = resolveShiftMonth(month);
+	const monthStart = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}-01`;
+	const nextMonth = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 1);
+	const monthEnd = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}-01`;
 	const keyword = search?.trim();
 	const condition = and(
 		buildCareReminderAccessCondition(context),
 		eq(careRemindersTable.status, 'pending'),
+		isNull(careRemindersTable.appointmentId),
+		gte(careRemindersTable.dueDate, monthStart),
+		lt(careRemindersTable.dueDate, monthEnd),
 		keyword
 			? exists(
 					db
@@ -42,6 +51,9 @@ export const getClinicalRemindersPaginated = async (
 				and(
 					buildCareReminderAccessCondition(context, reminder),
 					eq(reminder.status, 'pending'),
+					isNull(reminder.appointmentId),
+					gte(reminder.dueDate, monthStart),
+					lt(reminder.dueDate, monthEnd),
 					keyword
 						? exists(
 								db
@@ -62,6 +74,7 @@ export const getClinicalRemindersPaginated = async (
 			columns: { id: true, title: true, type: true, dueDate: true },
 			with: {
 				pet: { columns: { id: true, name: true } },
+				sourceVaccine: { columns: { id: true, serviceId: true } },
 				doctor: {
 					columns: { id: true },
 					with: { user: { columns: { name: true } } },
@@ -80,6 +93,7 @@ export const getClinicalRemindersPaginated = async (
 			type: reminder.type,
 			dueDate: reminder.dueDate,
 			status: 'pending',
+			sourceServiceId: reminder.sourceVaccine?.serviceId ?? null,
 			pet: reminder.pet,
 			doctor: { id: reminder.doctor.id, name: reminder.doctor.user.name },
 		})),

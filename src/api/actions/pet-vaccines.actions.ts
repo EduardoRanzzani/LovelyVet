@@ -138,6 +138,23 @@ export const insertVaccine = actionClient
 					);
 				}
 
+				if (!reminder.appointmentId && parsedInput.appointmentId) {
+					throw new Error('Este retorno ainda nao foi convertido em agendamento.');
+				}
+				if (reminder.appointmentId && !parsedInput.serviceId) {
+                    throw new Error('Selecione o serviço de vacinação do agendamento.');
+                }
+                if (reminder.appointmentId && reminder.appointmentId !== parsedInput.appointmentId) {
+					throw new Error('O reforco deve ser registrado no atendimento agendado.');
+				}
+				if (reminder.appointmentId) {
+					const linked = await tx.query.appointmentsTable.findFirst({
+						where: eq(appointmentsTable.id, reminder.appointmentId),
+					});
+					if (!linked || linked.status !== 'completed' || linked.petId !== parsedInput.petId || linked.doctorId !== doctorId) {
+						throw new Error('Conclua o atendimento de reforco antes de registrar a dose.');
+					}
+				}
 				if (reminder.status !== 'pending') {
 					throw new Error('Este lembrete já foi finalizado.');
 				}
@@ -268,6 +285,12 @@ export const insertVaccine = actionClient
 						),
 					});
 					if (!existingItem) {
+						if (parsedInput.reminderId) {
+							const linkedReminder = await tx.query.careRemindersTable.findFirst({
+								where: eq(careRemindersTable.id, parsedInput.reminderId),
+							});
+							if (linkedReminder?.appointmentId) throw new Error('O servico de vacina nao corresponde ao atendimento convertido.');
+						}
 						const [issuedCharge] = await tx.select({id: appointmentChargesTable.id}).from(appointmentChargesTable).where(eq(appointmentChargesTable.appointmentId, appointmentId));
 						if (issuedCharge) throw new Error('Não é permitido adicionar vacina a um atendimento já faturado.');
 						if (existingAppointment.isPaid) {

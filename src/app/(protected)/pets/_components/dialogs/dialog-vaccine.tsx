@@ -53,6 +53,9 @@ const DialogVaccine = ({
 
 	const reminderId = searchParams.get('vaccineReminder');
 	const vaccineName = searchParams.get('vaccineName');
+	const appointmentId = searchParams.get('appointmentId');
+	const vaccineService = searchParams.get('vaccineService');
+	const vaccineDoctor = searchParams.get('vaccineDoctor');
 
 	const [open, setOpen] = useState<boolean>(() => Boolean(reminderId));
 	const operationKeyRef = useRef<string | null>(null);
@@ -64,13 +67,13 @@ const DialogVaccine = ({
 			petId,
 			reminderId: reminderId ?? undefined,
 			name: vaccineName ?? '',
-			serviceId: undefined as string | undefined,
+			serviceId: vaccineService ?? undefined,
 			applicationDate: new Date(),
 			nextDoseType: 'booster' as const,
 			daysToNextDose: undefined,
 			lotNumber: '',
 			manufacturer: '',
-			doctorId: REGINA_DOCTOR_ID,
+			doctorId: vaccineDoctor ?? REGINA_DOCTOR_ID,
 		},
 	});
 
@@ -125,6 +128,7 @@ const DialogVaccine = ({
 		operationKeyRef.current ??= crypto.randomUUID();
 		insertVaccineAction.execute({
 			...buildVaccineSubmitPayload(data, reminderId),
+			...(appointmentId ? { appointmentId } : {}),
 			operationKey: operationKeyRef.current,
 		});
 	};

@@ -16,7 +16,7 @@ import {
 	startOfMonth,
 	subMonths,
 } from 'date-fns';
-import { and, eq, gte, isNull, lte, or } from 'drizzle-orm';
+import { and, eq, gte, isNull, lte, ne, or } from 'drizzle-orm';
 import { monthNames } from '../config/consts';
 import type { CalendarEntry } from '../schema/calendar.schema';
 import { getDoctorScopeId } from '@/lib/security/doctor-scope';
@@ -156,6 +156,9 @@ export const getCalendarEntries = async (
 						: undefined,
 					gte(careRemindersTable.dueDate, startDate),
 					lte(careRemindersTable.dueDate, endDate),
+					// O agendamento convertido ocupa o lugar do lembrete na agenda.
+					// Lembretes finalizados continuam disponiveis no historico.
+					or(ne(careRemindersTable.status, 'pending'), isNull(careRemindersTable.appointmentId)),
 				),
 				with: { pet: { columns: { id: true, name: true } } },
 			}),
