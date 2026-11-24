@@ -35,4 +35,14 @@ describe('interface de agendamentos', () => {
     expect(list).toContain('aria-label={`Ver detalhes de ${reminder.pet.name}`}');
     expect(list).not.toContain('text-emerald-800 underline');
   });
+  it('adapta o cabeçalho à largura do conteúdo e evita que o botão comprima o título', () => {
+    const header = list.slice(list.indexOf('const appointmentSection = ('), list.indexOf("htmlFor='appointment-status-filter'"));
+    expect(header).toContain("className='@container space-y-4'");
+    expect(header).toContain('flex flex-col gap-3 @min-[36rem]:flex-row');
+    expect(header).toContain('flex min-w-0 flex-1 items-center');
+    expect(header).toContain('shrink-0 rounded-xl');
+    expect(header).toContain('w-full min-w-0 @min-[36rem]:w-60 @min-[36rem]:shrink-0 [&>button]:w-full');
+    expect(header).toContain('<AddButton');
+    expect(header).not.toContain('sm:flex-row');
+  });
 });

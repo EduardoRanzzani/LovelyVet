@@ -454,31 +454,33 @@ export default function AppointmentsListClient({
 		/>
 	);
 	const appointmentSection = (
-		<div className='space-y-4'>
-			<div className='flex flex-col justify-between gap-3 sm:flex-row sm:items-center'>
-				<div className='flex items-center gap-3'>
-					<div className='rounded-xl bg-emerald-100 p-2.5 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'>
+		<div className='@container space-y-4'>
+			<div className='flex flex-col gap-3 @min-[36rem]:flex-row @min-[36rem]:items-center @min-[36rem]:justify-between'>
+				<div className='flex min-w-0 flex-1 items-center gap-3'>
+					<div className='shrink-0 rounded-xl bg-emerald-100 p-2.5 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'>
 						<CalendarDays className='size-5' />
 					</div>
-					<div>
+					<div className='min-w-0'>
 						<h2 className='font-semibold text-lg'>Agendamentos</h2>
 						<p className='text-sm text-muted-foreground'>
 							Atendimentos programados e realizados.
 						</p>
 					</div>
 				</div>
-				<AddButton
-					text='Adicionar agendamento'
-					renderForm={(close) => (
-						<AppointmentFormClient
-							pets={pets}
-							doctors={doctors}
-							services={services}
-							viewerRole={viewerRole}
-							onSuccess={close}
-						/>
-					)}
-				/>
+				<div className='w-full min-w-0 @min-[36rem]:w-60 @min-[36rem]:shrink-0 [&>button]:w-full'>
+					<AddButton
+						text='Adicionar agendamento'
+						renderForm={(close) => (
+							<AppointmentFormClient
+								pets={pets}
+								doctors={doctors}
+								services={services}
+								viewerRole={viewerRole}
+								onSuccess={close}
+							/>
+						)}
+					/>
+				</div>
 			</div>
 			<div className='flex flex-wrap items-center gap-2'>
 				<label
