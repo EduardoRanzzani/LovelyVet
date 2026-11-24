@@ -2,6 +2,7 @@
 
 import {
 	deleteFinalizedCareReminder,
+	rescheduleCareReminder,
 	updateCareReminderStatus,
 } from '@/api/actions/care-reminders.actions';
 import type { CalendarCareReminderEntry } from '@/api/schema/calendar.schema';
@@ -17,6 +18,7 @@ import {
 	AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button, buttonVariants } from '@/components/ui/button';
+import DatePickerForm from '@/components/form/datepicker-form';
 import {
 	DialogContent,
 	DialogDescription,
@@ -26,6 +28,9 @@ import {
 } from '@/components/ui/dialog';
 import LoadingDialog from '@/components/ui/loading';
 import { getCareReminderStatusUI } from '@/lib/agenda/care-reminder-status';
+import { format, parseISO } from 'date-fns';
+import { useForm } from 'react-hook-form';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { getVaccineReminderUrl } from '@/lib/vaccines/vaccine-reminder-url';
 import {
@@ -34,6 +39,7 @@ import {
 	CheckIcon,
 	SyringeIcon,
 	Trash2Icon,
+	CalendarClockIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -50,6 +56,27 @@ const CareReminderDialog = ({
 	onSuccess,
 }: CareReminderDialogProps) => {
 	const router = useRouter();
+	const [isEditingDate, setIsEditingDate] = useState(false);
+	const dateForm = useForm<{ dueDate: Date }>({
+		defaultValues: { dueDate: parseISO(reminder.dueDate) },
+	});
+	const rescheduleAction = useAction(rescheduleCareReminder, {
+		onSuccess: () => {
+			toast.success('Lembrete reagendado com sucesso.');
+			setIsEditingDate(false);
+			onSuccess?.();
+		},
+		onError: ({ error }) => {
+			toast.error(error.serverError ?? 'Não foi possível reagendar o lembrete.');
+		},
+	});
+	const saveNewDate = dateForm.handleSubmit(({ dueDate }) => {
+		if (!dueDate || Number.isNaN(dueDate.getTime())) {
+			toast.error('Selecione uma data válida.');
+			return;
+		}
+		rescheduleAction.execute({ id: reminder.id, dueDate: format(dueDate, 'yyyy-MM-dd') });
+	});
 
 	const reminderUI = getCareReminderStatusUI(reminder.status);
 
@@ -142,9 +169,35 @@ const CareReminderDialog = ({
 						Data agendada
 					</p>
 
-					<p className='font-medium'>
-						{reminder.dueDate.split('-').reverse().join('/')}
-					</p>
+					{isEditingDate ? (
+						<div className='space-y-3'>
+							<DatePickerForm<{ dueDate: Date }>
+								label='Nova data do retorno'
+								name='dueDate'
+								control={dateForm.control}
+								required
+								showFuture
+								disabled={rescheduleAction.isPending}
+							/>
+							<div className='flex flex-wrap gap-2'>
+								<Button type='button' size='sm' disabled={rescheduleAction.isPending} onClick={() => void saveNewDate()}>
+									{rescheduleAction.isPending ? 'Salvando...' : 'Salvar nova data'}
+								</Button>
+								<Button type='button' size='sm' variant='outline' disabled={rescheduleAction.isPending} onClick={() => { dateForm.reset({ dueDate: parseISO(reminder.dueDate) }); setIsEditingDate(false); }}>
+									Voltar
+								</Button>
+							</div>
+						</div>
+					) : (
+						<div className='flex flex-wrap items-center justify-between gap-2'>
+							<p className='font-medium'>{reminder.dueDate.split('-').reverse().join('/')}</p>
+							{isPending && (
+								<Button type='button' size='sm' variant='outline' onClick={() => setIsEditingDate(true)}>
+									<CalendarClockIcon className='size-4' /> Reagendar
+								</Button>
+							)}
+						</div>
+					)}
 				</div>
 
 				<div className='rounded-lg border p-3'>
@@ -203,9 +256,9 @@ const CareReminderDialog = ({
 				)}
 			</div>
 
-			{(action.isPending || deleteAction.isPending) && <LoadingDialog />}
+			{(action.isPending || deleteAction.isPending || rescheduleAction.isPending) && <LoadingDialog />}
 
-			{isPending && (
+			{isPending && !isEditingDate && (
 				<DialogFooter className='flex-col gap-2 sm:flex-row'>
 					{isVaccineReminder ? (
 						<Button

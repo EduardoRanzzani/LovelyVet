@@ -9,6 +9,60 @@ import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
+/** Reagenda somente a pendência; não altera a vacinação de origem. */
+const rescheduleCareReminderSchema = z.object({
+	id: z.uuid(),
+	dueDate: z.iso.date(),
+});
+
+export const rescheduleCareReminder = actionClient
+	.schema(rescheduleCareReminderSchema)
+	.action(async ({ parsedInput }) => {
+		const context = await requireAuthContext();
+		requireStaff(context);
+
+		const reminder = await db.query.careRemindersTable.findFirst({
+			where: eq(careRemindersTable.id, parsedInput.id),
+			columns: { id: true, petId: true, doctorId: true, status: true, dueDate: true },
+		});
+
+		if (!reminder) {
+			throw new Error('Lembrete não encontrado.');
+		}
+		if (context.role === 'doctor' && reminder.doctorId !== context.doctorId) {
+			throw new Error('Você não possui permissão para alterar este lembrete.');
+		}
+		if (reminder.status !== 'pending') {
+			throw new Error('Apenas lembretes pendentes podem ser reagendados.');
+		}
+		if (reminder.dueDate === parsedInput.dueDate) {
+			return { success: true, dueDate: reminder.dueDate };
+		}
+
+		const [updated] = await db
+			.update(careRemindersTable)
+			.set({ dueDate: parsedInput.dueDate, updatedAt: new Date() })
+			.where(
+				and(
+					eq(careRemindersTable.id, parsedInput.id),
+					eq(careRemindersTable.doctorId, reminder.doctorId),
+					eq(careRemindersTable.status, 'pending'),
+					eq(careRemindersTable.dueDate, reminder.dueDate),
+				),
+			)
+			.returning({ id: careRemindersTable.id, dueDate: careRemindersTable.dueDate });
+
+		if (!updated) {
+			throw new Error('Este lembrete foi alterado por outra operação. Atualize a página.');
+		}
+
+		revalidatePath('/agenda');
+		revalidatePath('/appointments');
+		revalidatePath('/dashboard');
+		revalidatePath(`/pets/${reminder.petId}`);
+		return { success: true, dueDate: updated.dueDate };
+	});
+
 const updateCareReminderStatusSchema = z.object({
 	id: z.string().uuid(),
 	status: z.enum(['completed', 'cancelled']),
