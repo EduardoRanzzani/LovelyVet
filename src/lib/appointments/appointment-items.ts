@@ -1,3 +1,11 @@
+/** Serviços gerais são compatíveis com qualquer espécie. Sem espécie conhecida, só eles são exibidos. */
+export function filterServicesForSpecies<T extends { specieId: string | null }>(
+	services: readonly T[],
+	specieId: string | null | undefined,
+): T[] {
+	return services.filter((service) => service.specieId === null || service.specieId === specieId);
+}
+
 export type PriceLine = { quantity: number; unitPriceInCents: number; discountInCents: number };
 export function totalForLine(line: PriceLine): number {
 	if (!Number.isSafeInteger(line.quantity) || line.quantity < 1 || line.quantity > 999 ||

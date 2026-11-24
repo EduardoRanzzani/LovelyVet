@@ -65,6 +65,17 @@ describe('edição financeira do atendimento', () => {
 		await expect(updateAppointmentItems({ ...input, services: [] })).rejects.toThrow('vacina aplicada');
 		expect(mocks.tx.delete).not.toHaveBeenCalled();
 	});
+	it('rejeita serviço de outra espécie antes de alterar itens', async () => {
+		mocks.tx.query.servicesTable.findMany.mockResolvedValue([{ id: serviceId, specieId: 'other-specie' }]);
+		await expect(updateAppointmentItems(input)).rejects.toThrow('Serviço incompatível com a espécie do paciente.');
+		expect(mocks.tx.delete).not.toHaveBeenCalled();
+		expect(mocks.tx.insert).not.toHaveBeenCalled();
+		expect(mocks.tx.update).not.toHaveBeenCalled();
+	});
+	it('aceita serviço da espécie do paciente', async () => {
+		mocks.tx.query.servicesTable.findMany.mockResolvedValue([{ id: serviceId, specieId: 'specie' }]);
+		await expect(updateAppointmentItems(input)).resolves.toEqual({ success: true, totalPriceInCents: 12000 });
+	});
 	it('recalcula o total em centavos e persiste linhas', async () => {
 		await expect(updateAppointmentItems(input)).resolves.toEqual({ success: true, totalPriceInCents: 12000 });
 		expect(mocks.tx.insert).toHaveBeenCalledTimes(2);

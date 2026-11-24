@@ -188,6 +188,7 @@ function AppointmentActions({
         {itemsOpen && (
           <AppointmentItemsEditor
             appointment={appointment}
+            specieId={pets.find((pet) => pet.id === appointment.pet.id)?.breed?.specieId}
             services={services}
             products={products}
             onSuccess={() => setItemsOpen(false)}

@@ -9,7 +9,7 @@ import SelectForm from '@/components/form/select-form';
 import { Button } from '@/components/ui/button';
 import { DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { formatCurrencyFromCents } from '@/helpers/currency';
-import { totalForItems } from '@/lib/appointments/appointment-items';
+import { filterServicesForSpecies, totalForItems } from '@/lib/appointments/appointment-items';
 import { useAction } from 'next-safe-action/hooks';
 import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -25,8 +25,9 @@ type FormData = {
 const fromCents = (amount: number) => amount / 100;
 const toCents = (amount: number) => Math.round(amount * 100);
 
-export default function AppointmentItemsEditor({ appointment, services, products, onSuccess }: {
+export default function AppointmentItemsEditor({ appointment, specieId, services, products, onSuccess }: {
 	appointment: AppointmentListItem;
+	specieId: string | undefined;
 	services: ServicesWithRelations[];
 	products: Product[];
 	onSuccess?: () => void;
@@ -53,7 +54,9 @@ export default function AppointmentItemsEditor({ appointment, services, products
 	const selectedId = useWatch({ control: form.control, name: 'selectedId' });
 	const serviceLines = useWatch({ control: form.control, name: 'services' }) ?? [];
 	const productLines = useWatch({ control: form.control, name: 'products' }) ?? [];
-	const catalogue = kind === 'service' ? services : products.filter((product) => product.active);
+	const catalogue = kind === 'service'
+		? filterServicesForSpecies(services, specieId)
+		: products.filter((product) => product.active);
 
 	const action = useAction(updateAppointmentItems, {
 		onSuccess: () => { toast.success('Itens do atendimento atualizados'); onSuccess?.(); },
@@ -150,7 +153,7 @@ export default function AppointmentItemsEditor({ appointment, services, products
 					placeholder='Selecione um item'
 					options={catalogue.map((item) => ({ value: item.id, label: `${item.name} — ${formatCurrencyFromCents(item.priceInCents)}` }))}
 				/>
-				<Button type='button' variant='outline' disabled={!selectedId} onClick={addItem}>Adicionar</Button>
+				<Button type='button' variant='outline' disabled={!catalogue.some((item) => item.id === selectedId)} onClick={addItem}>Adicionar</Button>
 			</div>
 			{renderLines(serviceLines, 'service')}
 			{renderLines(productLines, 'product')}
