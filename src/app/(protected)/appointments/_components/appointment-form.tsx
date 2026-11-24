@@ -40,6 +40,7 @@ import { toast } from 'sonner';
 import { endOfDay, format, startOfDay } from 'date-fns';
 import { useState } from 'react';
 import { formatCurrencyFromCents } from '@/helpers/currency';
+import { getAppointmentAvailabilityError } from '@/lib/appointments/appointment-form-availability';
 
 interface AppointmentFormClientProps {
 	appointment?: AppointmentListItem;
@@ -125,34 +126,21 @@ const AppointmentFormClient = ({
 			normalizeAppointmentStart(data.scheduledAt).getTime() ===
 				normalizeAppointmentStart(new Date(appointment.scheduledAt)).getTime();
 
-		// Não permite salvar enquanto a disponibilidade
-		// não tiver sido consultada, exceto quando a agenda
-		// não foi alterada em um agendamento existente.
-		if (currentAvailableTimes === undefined && !unchangedSchedule) {
-			form.setError('scheduledAt', {
-				type: 'manual',
-				message: 'Aguarde a verificação da disponibilidade antes de salvar.',
-			});
-
-			return;
-		}
-
-		// Normaliza a data antes de validar e enviar.
 		const scheduledAt = normalizeAppointmentStart(data.scheduledAt);
-
 		const selectedTime = format(scheduledAt, 'HH:mm');
 
-		// Confirma que o horário selecionado está
-		// entre os horários retornados pelo backend.
-		if (
-			currentAvailableTimes &&
-			!currentAvailableTimes.includes(selectedTime)
-		) {
+		const availabilityError = getAppointmentAvailabilityError({
+			isCheckingAvailability: availabilityAction.isPending,
+			availableTimes: currentAvailableTimes,
+			unchangedSchedule: Boolean(unchangedSchedule),
+			selectedTime,
+		});
+
+		if (availabilityError) {
 			form.setError('scheduledAt', {
 				type: 'manual',
-				message: 'O horário selecionado não está mais disponível.',
+				message: availabilityError,
 			});
-
 			return;
 		}
 
@@ -431,7 +419,7 @@ const AppointmentFormClient = ({
 
 						<Button
 							type='submit'
-							disabled={upsertAppointmentAction.isPending}
+							disabled={upsertAppointmentAction.isPending || availabilityAction.isPending}
 							className='flex-1'
 						>
 							{upsertAppointmentAction.isPending ? (
