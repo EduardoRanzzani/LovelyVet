@@ -54,6 +54,7 @@ import Link from 'next/link';
 import { use, useState } from 'react';
 import { toast } from 'sonner';
 import PetFormClient from './pet-form';
+import TutorPetPhotoDialog from './tutor-pet-photo-dialog';
 import TabHistory from './tabs/tab-history';
 import TabTimeline from './tabs/tab-timeline';
 
@@ -352,15 +353,19 @@ const PetDetailsClient = ({
 			<div className='flex flex-col md:flex-row gap-4 w-full'>
 				{/* Card da Foto e Nome */}
 				<div className='flex flex-col items-center justify-start gap-4 p-5 w-full lg:min-w-75 lg:w-1/3 border border-muted rounded-lg bg-card'>
-					<div className='relative w-40 h-40 md:w-50 md:h-50'>
-						<Image
-							src={pet?.photo || '/pet-placeholder.png'}
-							alt='Foto do pet'
-							fill
-							draggable={false}
-							className='rounded-full border border-zinc-300 object-cover select-none'
-						/>
-					</div>
+					{isCustomer ? (
+						<TutorPetPhotoDialog petId={pet.id} petName={pet.name} photo={pet.photo} />
+					) : (
+						<div className='relative w-40 h-40 md:w-50 md:h-50'>
+							<Image
+								src={pet?.photo || '/pet-placeholder.png'}
+								alt='Foto do pet'
+								fill
+								draggable={false}
+								className='rounded-full border border-zinc-300 object-cover select-none'
+							/>
+						</div>
+					)}
 
 					<div className='text-center'>
 						<h1 className='font-bold text-2xl'>{pet.name}</h1>
