@@ -11,6 +11,8 @@ import {
 	PageHeaderContent,
 	PageTitle,
 } from '@/components/shared/page-container';
+import { getOwnOnlinePaymentOptions } from '@/lib/finance/online-payment-options';
+import { Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FinanceMonthFilter } from '../finance/_components/finance-month-filter';
 import { FinanceSummaryCards } from '../finance/_components/finance-summary-cards';
@@ -45,6 +47,7 @@ export default async function MyFinancePage({
 	const report = await getOwnFinancialReport(selected);
 	const statement = selectStatementCharges(report.statements, selected, selectedScope);
 	const items = await getOwnStatementItems(statement.map((charge) => charge.id));
+	const paymentOptions = await getOwnOnlinePaymentOptions(context, statement);
 	const href = `/my-finance?month=${selected}`;
 	return (
 		<PageContainer>
@@ -111,6 +114,22 @@ export default async function MyFinancePage({
 									charge={charge}
 									items={items.get(charge.id) ?? []}
 									month={selected}
+									paymentAction={
+										paymentOptions.has(charge.id) ? (
+											<Button asChild className='w-full sm:w-auto'>
+												<Link
+													href={`/my-finance/${charge.id}/payment?month=${selected}&scope=${selectedScope}`}
+												>
+													<Wallet />{' '}
+													{paymentOptions.get(charge.id)?.attemptId
+														? 'Acompanhar pagamento'
+														: paymentOptions.get(charge.id)?.canStart
+															? 'Pagar online'
+															: 'Pagamento online (prévia)'}
+												</Link>
+											</Button>
+										) : undefined
+									}
 								/>
 							))}
 						</div>

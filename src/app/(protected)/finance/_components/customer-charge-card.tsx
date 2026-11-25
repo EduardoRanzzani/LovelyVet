@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { ChargeStatusBadge } from '@/components/shared/charge-status-badge';
 import { formatCurrencyFromCents } from '@/helpers/currency';
 import { getMonthBounds, type FinancialStatementRow } from '@/lib/finance/financial-report';
@@ -24,10 +25,12 @@ export function CustomerChargeCard({
 	charge,
 	items,
 	month,
+	paymentAction,
 }: {
 	charge: FinancialStatementRow;
 	items: readonly StatementItem[];
 	month: string;
+	paymentAction?: ReactNode;
 }) {
 	const { start, end } = getMonthBounds(month);
 	const inMonth = (date: Date) => date >= start && date < end;
@@ -56,6 +59,7 @@ export function CustomerChargeCard({
 					</div>
 				))}
 			</dl>
+			{paymentAction && <div className='border-t pt-3'>{paymentAction}</div>}
 			<div className='space-y-2 border-t pt-3'>
 				<h4 className='text-sm font-medium'>Serviços e produtos do atendimento</h4>
 				{items.length === 0 ? (

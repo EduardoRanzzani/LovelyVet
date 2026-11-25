@@ -3,7 +3,11 @@ import { PgDialect } from 'drizzle-orm/pg-core';
 import { and, inArray } from 'drizzle-orm';
 import { appointmentChargesTable } from '@/db/schema';
 import type { AuthContext } from '@/lib/security/auth-context';
-import { buildFinancialAccessCondition, requireFinancialTutorId } from './financial-access';
+import {
+	buildFinancialAccessCondition,
+	buildOwnFinancialChargeAccessCondition,
+	requireFinancialTutorId,
+} from './financial-access';
 
 // Usa o construtor SQL do Drizzle, sem conexão ao PostgreSQL.
 vi.mock('@/db', async () => {
@@ -73,5 +77,15 @@ describe('financial access', () => {
 		const admin = context({ role: 'admin' });
 		expect(buildFinancialAccessCondition(admin)).toBeUndefined();
 		expect(dialect.sqlToQuery(buildFinancialAccessCondition(admin, 'tutor-b')!).params).toEqual(['tutor-b']);
+	});
+	it('combines the requested charge ID and the current tutor scope for checkout', () => {
+		const sql = dialect.sqlToQuery(buildOwnFinancialChargeAccessCondition(context(), 'charge-a')!);
+		expect(sql.sql).toContain('exists');
+		expect(sql.sql).toContain('"pet_tutors"."pet_id" = "appointments"."pet_id"');
+		expect(sql.sql).toContain('"appointment_charges"."id" =');
+		expect(sql.params).toEqual(['tutor-a', 'charge-a']);
+	});
+	it.each(['admin', 'doctor'] as const)('denies checkout scope for %s', (role) => {
+		expect(() => buildOwnFinancialChargeAccessCondition(context({ role }), 'charge-a')).toThrow();
 	});
 });

@@ -13,7 +13,11 @@ import { requireStaff } from '@/lib/security/authorization';
 import { buildAppointmentAccessCondition } from '@/lib/security/appointment-access';
 import { and, eq, inArray } from 'drizzle-orm';
 import { buildFinancialReport, getMonthBounds } from './financial-report';
-import { buildFinancialAccessCondition, requireFinancialTutorId } from './financial-access';
+import {
+	buildFinancialAccessCondition,
+	buildOwnFinancialChargeAccessCondition,
+	requireFinancialTutorId,
+} from './financial-access';
 
 export async function getFinancialReport(month: string, customerId?: string) {
 	const context = await requireAuthContext();
@@ -28,9 +32,20 @@ export async function getOwnFinancialReport(month: string) {
 	return loadFinancialReport(context, month);
 }
 
-async function loadFinancialReport(context: AuthContext, month: string, customerId?: string) {
+/** Consulta apenas a cobrança solicitada, dentro do escopo atual do tutor. */
+export async function getOwnFinancialCharge(month: string, chargeId: string) {
+	const context = await requireAuthContext();
+	requireFinancialTutorId(context);
+	const report = await loadFinancialReport(context, month, undefined, chargeId);
+	return report.statements.find((charge) => charge.id === chargeId) ?? null;
+}
+
+async function loadFinancialReport(context: AuthContext, month: string, customerId?: string, chargeId?: string) {
 	const { start, end } = getMonthBounds(month);
-	const condition = buildFinancialAccessCondition(context, customerId);
+	const condition =
+		chargeId === undefined
+			? buildFinancialAccessCondition(context, customerId)
+			: buildOwnFinancialChargeAccessCondition(context, chargeId);
 	const charges = await db
 		.select({
 			id: appointmentChargesTable.id,

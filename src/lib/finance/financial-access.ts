@@ -28,3 +28,9 @@ export function buildFinancialAccessCondition(context: AuthContext, customerId?:
 		customerId === undefined ? undefined : eq(appointmentChargesTable.customerId, customerId),
 	);
 }
+
+/** Checkout individual: exige tutor e mantém o vínculo atual junto ao ID solicitado. */
+export function buildOwnFinancialChargeAccessCondition(context: AuthContext, chargeId: string) {
+	requireFinancialTutorId(context);
+	return and(buildFinancialAccessCondition(context), eq(appointmentChargesTable.id, chargeId));
+}
