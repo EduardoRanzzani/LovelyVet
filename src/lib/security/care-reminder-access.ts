@@ -33,12 +33,7 @@ export const buildCareReminderAccessCondition = (
 			db
 				.select({ petId: petTutorsTable.petId })
 				.from(petTutorsTable)
-				.where(
-					and(
-						eq(petTutorsTable.petId, columns.petId),
-						eq(petTutorsTable.customerId, context.customerId),
-					),
-				),
+				.where(and(eq(petTutorsTable.petId, columns.petId), eq(petTutorsTable.customerId, context.customerId))),
 		);
 	}
 

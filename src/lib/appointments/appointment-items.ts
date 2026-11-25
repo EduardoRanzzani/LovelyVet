@@ -8,9 +8,15 @@ export function filterServicesForSpecies<T extends { specieId: string | null }>(
 
 export type PriceLine = { quantity: number; unitPriceInCents: number; discountInCents: number };
 export function totalForLine(line: PriceLine): number {
-	if (!Number.isSafeInteger(line.quantity) || line.quantity < 1 || line.quantity > 999 ||
-		!Number.isSafeInteger(line.unitPriceInCents) || line.unitPriceInCents < 0 ||
-		!Number.isSafeInteger(line.discountInCents) || line.discountInCents < 0) {
+	if (
+		!Number.isSafeInteger(line.quantity) ||
+		line.quantity < 1 ||
+		line.quantity > 999 ||
+		!Number.isSafeInteger(line.unitPriceInCents) ||
+		line.unitPriceInCents < 0 ||
+		!Number.isSafeInteger(line.discountInCents) ||
+		line.discountInCents < 0
+	) {
 		throw new Error('Quantidade, valor ou desconto inválido.');
 	}
 	const gross = line.quantity * line.unitPriceInCents;

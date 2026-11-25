@@ -20,9 +20,7 @@ function formatDate(date: Date): string {
 async function main() {
 	console.log('\n🔐 Verificando certificado de assinatura do LovelyVet...\n');
 	const { buffer, passphrase } = await getPrescriptionSigningCertificate();
-	console.log(
-		`✓ Arquivo PFX carregado (${buffer.length.toLocaleString('pt-BR')} bytes)`,
-	);
+	console.log(`✓ Arquivo PFX carregado (${buffer.length.toLocaleString('pt-BR')} bytes)`);
 
 	let p12: forge.pkcs12.Pkcs12Pfx;
 
@@ -31,9 +29,7 @@ async function main() {
 		p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, false, passphrase);
 	} catch (error) {
 		console.error('\n✗ Não foi possível abrir o PFX.');
-		console.error(
-			'  Verifique se a senha está correta e se o arquivo é um PKCS#12 válido.',
-		);
+		console.error('  Verifique se a senha está correta e se o arquivo é um PKCS#12 válido.');
 
 		throw error;
 	}
@@ -51,9 +47,7 @@ async function main() {
 		throw new Error('O PFX não contém nenhum certificado.');
 	}
 
-	console.log(
-		`✓ ${certificateBags.length} certificado(s) encontrado(s) no PFX\n`,
-	);
+	console.log(`✓ ${certificateBags.length} certificado(s) encontrado(s) no PFX\n`);
 
 	const certificates = certificateBags
 		.filter((bag) => Boolean(bag.cert))
@@ -66,23 +60,15 @@ async function main() {
 
 			const certificateAsn1 = forge.pki.certificateToAsn1(certificate);
 
-			const der = Buffer.from(
-				forge.asn1.toDer(certificateAsn1).getBytes(),
-				'binary',
-			);
+			const der = Buffer.from(forge.asn1.toDer(certificateAsn1).getBytes(), 'binary');
 
 			const x509 = new X509Certificate(der);
 
-			const fingerprintSha256 = createHash('sha256')
-				.update(der)
-				.digest('hex')
-				.toUpperCase();
+			const fingerprintSha256 = createHash('sha256').update(der).digest('hex').toUpperCase();
 
 			const commonNameField = certificate.subject.getField('CN');
 
-			const commonName = commonNameField?.value
-				? String(commonNameField.value)
-				: '(CN não encontrado)';
+			const commonName = commonNameField?.value ? String(commonNameField.value) : '(CN não encontrado)';
 
 			return {
 				index,
@@ -99,9 +85,7 @@ async function main() {
 
 		console.log(
 			`  Tipo:        ${
-				certificate.x509.ca
-					? 'Autoridade certificadora (CA)'
-					: 'Certificado final / provável signatário'
+				certificate.x509.ca ? 'Autoridade certificadora (CA)' : 'Certificado final / provável signatário'
 			}`,
 		);
 
@@ -119,14 +103,10 @@ async function main() {
 	 * O certificado do signatário normalmente é o certificado
 	 * final, isto é, aquele que não possui flag de CA.
 	 */
-	const signingCertificate = certificates.find(
-		(certificate) => !certificate.x509.ca,
-	);
+	const signingCertificate = certificates.find((certificate) => !certificate.x509.ca);
 
 	if (!signingCertificate) {
-		throw new Error(
-			'Não foi possível identificar o certificado final do signatário.',
-		);
+		throw new Error('Não foi possível identificar o certificado final do signatário.');
 	}
 
 	console.log('────────────────────────────────────────────────────');
@@ -149,17 +129,12 @@ async function main() {
 		console.log('✓ Certificado está dentro do período de validade');
 	}
 
-	const configuredFingerprint =
-		process.env.PRESCRIPTION_SIGNING_CERTIFICATE_SHA256;
+	const configuredFingerprint = process.env.PRESCRIPTION_SIGNING_CERTIFICATE_SHA256;
 
 	if (!configuredFingerprint) {
-		console.error(
-			'\n✗ PRESCRIPTION_SIGNING_CERTIFICATE_SHA256 não está configurado.',
-		);
+		console.error('\n✗ PRESCRIPTION_SIGNING_CERTIFICATE_SHA256 não está configurado.');
 		console.log('\nUse este valor no .env:');
-		console.log(
-			`PRESCRIPTION_SIGNING_CERTIFICATE_SHA256=${signingCertificate.fingerprintSha256}`,
-		);
+		console.log(`PRESCRIPTION_SIGNING_CERTIFICATE_SHA256=${signingCertificate.fingerprintSha256}`);
 
 		hasError = true;
 	} else {
@@ -167,9 +142,7 @@ async function main() {
 		const actual = normalizeFingerprint(signingCertificate.fingerprintSha256);
 
 		if (expected !== actual) {
-			console.error(
-				'\n✗ O fingerprint configurado NÃO corresponde ao certificado.',
-			);
+			console.error('\n✗ O fingerprint configurado NÃO corresponde ao certificado.');
 			console.error(`  Configurado: ${expected}`);
 			console.error(`  Certificado: ${actual}`);
 			hasError = true;
@@ -184,9 +157,7 @@ async function main() {
 		return;
 	}
 	console.log('\n✅ Certificado carregado e validado com sucesso.');
-	console.log(
-		'Nenhum documento foi assinado e nenhuma informação foi gravada no banco.\n',
-	);
+	console.log('Nenhum documento foi assinado e nenhuma informação foi gravada no banco.\n');
 }
 
 main().catch((error) => {

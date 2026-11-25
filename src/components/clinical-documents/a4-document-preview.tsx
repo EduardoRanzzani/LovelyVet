@@ -9,9 +9,7 @@ interface A4DocumentPreviewProps {
 	children: ReactNode;
 }
 
-export default function A4DocumentPreview({
-	children,
-}: A4DocumentPreviewProps) {
+export default function A4DocumentPreview({ children }: A4DocumentPreviewProps) {
 	const previewContainerRef = useRef<HTMLDivElement>(null);
 	const [previewScale, setPreviewScale] = useState(1);
 
@@ -33,10 +31,7 @@ export default function A4DocumentPreview({
 	}, []);
 
 	return (
-		<div
-			data-a4-preview-shell
-			className='overflow-hidden rounded-xl border bg-muted/40 p-2 sm:p-4'
-		>
+		<div data-a4-preview-shell className='overflow-hidden rounded-xl border bg-muted/40 p-2 sm:p-4'>
 			<style>{`
 				@media print {
 					[data-a4-preview-shell],
@@ -48,11 +43,7 @@ export default function A4DocumentPreview({
 				}
 			`}</style>
 
-			<div
-				ref={previewContainerRef}
-				data-a4-preview-container
-				className='w-full'
-			>
+			<div ref={previewContainerRef} data-a4-preview-container className='w-full'>
 				<div
 					className='mx-auto overflow-hidden'
 					data-a4-preview-viewport

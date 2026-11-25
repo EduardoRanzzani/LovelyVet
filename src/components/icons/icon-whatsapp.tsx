@@ -2,13 +2,7 @@ import { SVGProps } from 'react';
 
 export function WhatsappIcon(props: SVGProps<SVGSVGElement>) {
 	return (
-		<svg
-			xmlns='http://www.w3.org/2000/svg'
-			viewBox='0 0 256 256'
-			width='1em'
-			height='1em'
-			{...props}
-		>
+		<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256' width='1em' height='1em' {...props}>
 			<path
 				fill='#25D366'
 				d='M256 126.445c0 69.833-56.612 126.445-126.445 126.445c-22.38 0-43.402-5.812-61.643-16.012L0 256l20.155-66.923c-11.838-18.491-18.784-40.48-18.784-64.1c0-69.833 56.612-126.445 126.445-126.445S256 56.612 256 126.445z'

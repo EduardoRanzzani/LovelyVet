@@ -25,25 +25,14 @@ const parseTimeToMinutes = (time: string): number => {
 	const hour = Number(hourString);
 	const minute = Number(minuteString);
 
-	if (
-		!Number.isInteger(hour) ||
-		!Number.isInteger(minute) ||
-		hour < 0 ||
-		hour > 23 ||
-		minute < 0 ||
-		minute > 59
-	) {
+	if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
 		throw new Error('Horário de atendimento do veterinário é inválido.');
 	}
 
 	return hour * 60 + minute;
 };
 
-const isWeekDayInRange = (
-	weekDay: number,
-	fromWeekDay: number,
-	toWeekDay: number,
-): boolean => {
+const isWeekDayInRange = (weekDay: number, fromWeekDay: number, toWeekDay: number): boolean => {
 	/*
 	 * Intervalo normal:
 	 *
@@ -62,10 +51,7 @@ const isWeekDayInRange = (
 	return weekDay >= fromWeekDay || weekDay <= toWeekDay;
 };
 
-export const isIntervalWithinDoctorWorkingHours = (
-	interval: Interval,
-	doctor: DoctorWorkingHours,
-): boolean => {
+export const isIntervalWithinDoctorWorkingHours = (interval: Interval, doctor: DoctorWorkingHours): boolean => {
 	if (interval.end <= interval.start) {
 		return false;
 	}
@@ -82,13 +68,7 @@ export const isIntervalWithinDoctorWorkingHours = (
 
 	const weekDay = start.day();
 
-	if (
-		!isWeekDayInRange(
-			weekDay,
-			doctor.availableFromWeekDay,
-			doctor.availableToWeekDay,
-		)
-	) {
+	if (!isWeekDayInRange(weekDay, doctor.availableFromWeekDay, doctor.availableToWeekDay)) {
 		return false;
 	}
 
@@ -97,27 +77,17 @@ export const isIntervalWithinDoctorWorkingHours = (
 	const workingToMinutes = parseTimeToMinutes(doctor.availableToTime);
 
 	if (workingFromMinutes >= workingToMinutes) {
-		throw new Error(
-			'O horário inicial de atendimento deve ser anterior ao horário final.',
-		);
+		throw new Error('O horário inicial de atendimento deve ser anterior ao horário final.');
 	}
 
 	const startMinutes = start.hour() * 60 + start.minute();
-	const endMinutes =
-		end.hour() * 60 +
-		end.minute() +
-		(end.second() > 0 || end.millisecond() > 0 ? 1 : 0);
+	const endMinutes = end.hour() * 60 + end.minute() + (end.second() > 0 || end.millisecond() > 0 ? 1 : 0);
 
 	return startMinutes >= workingFromMinutes && endMinutes <= workingToMinutes;
 };
 
-export const assertIntervalWithinDoctorWorkingHours = (
-	interval: Interval,
-	doctor: DoctorWorkingHours,
-) => {
+export const assertIntervalWithinDoctorWorkingHours = (interval: Interval, doctor: DoctorWorkingHours) => {
 	if (!isIntervalWithinDoctorWorkingHours(interval, doctor)) {
-		throw new Error(
-			'O horário selecionado está fora do horário de atendimento deste veterinário.',
-		);
+		throw new Error('O horário selecionado está fora do horário de atendimento deste veterinário.');
 	}
 };

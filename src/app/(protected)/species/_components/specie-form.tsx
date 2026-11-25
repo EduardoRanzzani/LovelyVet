@@ -1,9 +1,5 @@
 import { upsertSpecie } from '@/api/actions/species.actions';
-import {
-	createSpecieSchema,
-	CreateSpecieSchema,
-	Species,
-} from '@/api/schema/species.schema';
+import { createSpecieSchema, CreateSpecieSchema, Species } from '@/api/schema/species.schema';
 import InputForm from '@/components/form/input-form';
 import { Button } from '@/components/ui/button';
 import {
@@ -56,19 +52,12 @@ const SpecieFormClient = ({ specie, onSuccess }: SpecieFormClientProps) => {
 	});
 
 	return (
-		<DialogContent
-			onInteractOutside={(e) => e.preventDefault()}
-			showCloseButton={false}
-		>
+		<DialogContent onInteractOutside={(e) => e.preventDefault()} showCloseButton={false}>
 			<DialogHeader>
-				<DialogTitle>
-					{specie ? 'Atualizar Espécie' : 'Cadastrar Espécie'}
-				</DialogTitle>
+				<DialogTitle>{specie ? 'Atualizar Espécie' : 'Cadastrar Espécie'}</DialogTitle>
 
 				<DialogDescription>
-					{specie
-						? 'Atualize as informações da espécie selecionada'
-						: 'Adicione uma nova espécie ao sistema'}
+					{specie ? 'Atualize as informações da espécie selecionada' : 'Adicione uma nova espécie ao sistema'}
 				</DialogDescription>
 			</DialogHeader>
 
@@ -100,11 +89,7 @@ const SpecieFormClient = ({ specie, onSuccess }: SpecieFormClientProps) => {
 							</Button>
 						</DialogClose>
 
-						<Button
-							type='submit'
-							disabled={upsertSpecieAction.isPending}
-							className='flex-1'
-						>
+						<Button type='submit' disabled={upsertSpecieAction.isPending} className='flex-1'>
 							{upsertSpecieAction.isPending ? (
 								<Loader2Icon className='h-5 w-5 animate-spin' />
 							) : (

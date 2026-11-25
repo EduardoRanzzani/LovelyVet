@@ -30,15 +30,9 @@ const bytea = customType<{
 });
 
 // --- ENUMS ---
-export const clinicalDocumentTypeEnum = pgEnum('clinical_document_type', [
-	'referral',
-	'exam_request',
-]);
+export const clinicalDocumentTypeEnum = pgEnum('clinical_document_type', ['referral', 'exam_request']);
 export const userRoleEnum = pgEnum('user_role', USER_ROLES);
-export const clerkEnvironmentEnum = pgEnum('clerk_environment', [
-	'development',
-	'production',
-]);
+export const clerkEnvironmentEnum = pgEnum('clerk_environment', ['development', 'production']);
 export const sexEnum = pgEnum('sex', ['male', 'female']);
 export const petStatusEnum = pgEnum('pet_status', ['alive', 'dead', 'missing']);
 export const appointmentStatusEnum = pgEnum('appointment_status', [
@@ -49,20 +43,10 @@ export const appointmentStatusEnum = pgEnum('appointment_status', [
 	'cancelled',
 	'no_show',
 ]);
-export const calendarEventTypeEnum = pgEnum('calendar_event_type', [
-	'personal',
-]);
+export const calendarEventTypeEnum = pgEnum('calendar_event_type', ['personal']);
 export const careReminderTypeEnum = pgEnum('care_reminder_type', ['vaccine']);
-export const careReminderStatusEnum = pgEnum('care_reminder_status', [
-	'pending',
-	'completed',
-	'cancelled',
-]);
-export const vaccineNextDoseTypeEnum = pgEnum('vaccine_next_dose_type', [
-	'booster',
-	'annual',
-	'none',
-]);
+export const careReminderStatusEnum = pgEnum('care_reminder_status', ['pending', 'completed', 'cancelled']);
+export const vaccineNextDoseTypeEnum = pgEnum('vaccine_next_dose_type', ['booster', 'annual', 'none']);
 
 // --- TABLES ---
 
@@ -73,9 +57,7 @@ export const usersTable = pgTable('users', {
 	email: text('email').notNull().unique(),
 	image: text('image'),
 	role: userRoleEnum('role').default('customer').notNull(),
-	isRegistrationComplete: boolean('is_registration_complete')
-		.default(false)
-		.notNull(),
+	isRegistrationComplete: boolean('is_registration_complete').default(false).notNull(),
 	createdAt: timestamp('created_at').defaultNow().notNull(),
 	updatedAt: timestamp('updated_at')
 		.defaultNow()
@@ -99,10 +81,7 @@ export const clerkIdentitiesTable = pgTable(
 			.notNull(),
 	},
 	(table) => [
-		uniqueIndex('clerk_identities_user_environment_unique').on(
-			table.userId,
-			table.environment,
-		),
+		uniqueIndex('clerk_identities_user_environment_unique').on(table.userId, table.environment),
 		index('clerk_identities_user_id_idx').on(table.userId),
 	],
 );
@@ -279,7 +258,10 @@ export const productsTable = pgTable('products', {
 	priceInCents: integer('price_in_cents').notNull(),
 	active: boolean('active').default(true).notNull(),
 	createdAt: timestamp('created_at').defaultNow().notNull(),
-	updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date()).notNull(),
+	updatedAt: timestamp('updated_at')
+		.defaultNow()
+		.$onUpdate(() => new Date())
+		.notNull(),
 });
 
 // Agendamentos
@@ -332,8 +314,12 @@ export const appointmentItemsTable = pgTable(
 // Itens de produto: snapshots financeiros independentes do catálogo.
 export const appointmentProductItemsTable = pgTable('appointment_product_items', {
 	id: uuid('id').primaryKey().defaultRandom(),
-	appointmentId: uuid('appointment_id').notNull().references(() => appointmentsTable.id, { onDelete: 'cascade' }),
-	productId: uuid('product_id').notNull().references(() => productsTable.id),
+	appointmentId: uuid('appointment_id')
+		.notNull()
+		.references(() => appointmentsTable.id, { onDelete: 'cascade' }),
+	productId: uuid('product_id')
+		.notNull()
+		.references(() => productsTable.id),
 	quantity: integer('quantity').notNull(),
 	priceAtTimeInCents: integer('price_at_time_in_cents').notNull(),
 	discountInCents: integer('discount_in_cents').default(0).notNull(),
@@ -341,35 +327,57 @@ export const appointmentProductItemsTable = pgTable('appointment_product_items',
 
 // Cobrança: o pagador é um tutor explicitamente associado ao paciente.
 // Uma única cobrança ativa por atendimento; a reversão é registrada, não apagada.
-export const appointmentChargesTable = pgTable('appointment_charges', {
- id: uuid('id').primaryKey().defaultRandom(),
- appointmentId: uuid('appointment_id').notNull().references(() => appointmentsTable.id).unique(),
- customerId: uuid('customer_id').notNull().references(() => customersTable.id),
- totalInCents: integer('total_in_cents').notNull(),
- status: text('status').default('open').notNull(),
- createdBy: uuid('created_by').notNull().references(() => usersTable.id),
- createdAt: timestamp('created_at').defaultNow().notNull(),
- voidedAt: timestamp('voided_at'),
-}, (table) => [
- check('appointment_charge_total_positive', sql`${table.totalInCents} > 0`),
- check('appointment_charge_status_valid', sql`${table.status} IN ('open', 'void')`),
- index('appointment_charges_customer_idx').on(table.customerId),
-]);
+export const appointmentChargesTable = pgTable(
+	'appointment_charges',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		appointmentId: uuid('appointment_id')
+			.notNull()
+			.references(() => appointmentsTable.id)
+			.unique(),
+		customerId: uuid('customer_id')
+			.notNull()
+			.references(() => customersTable.id),
+		totalInCents: integer('total_in_cents').notNull(),
+		status: text('status').default('open').notNull(),
+		createdBy: uuid('created_by')
+			.notNull()
+			.references(() => usersTable.id),
+		createdAt: timestamp('created_at').defaultNow().notNull(),
+		voidedAt: timestamp('voided_at'),
+	},
+	(table) => [
+		check('appointment_charge_total_positive', sql`${table.totalInCents} > 0`),
+		check('appointment_charge_status_valid', sql`${table.status} IN ('open', 'void')`),
+		index('appointment_charges_customer_idx').on(table.customerId),
+	],
+);
 
-export const chargePaymentsTable = pgTable('charge_payments', {
- id: uuid('id').primaryKey().defaultRandom(),
- chargeId: uuid('charge_id').notNull().references(() => appointmentChargesTable.id),
- operationKey: uuid('operation_key').notNull(),
- amountInCents: integer('amount_in_cents').notNull(),
- method: text('method').notNull(),
- receivedBy: uuid('received_by').notNull().references(() => usersTable.id),
- receivedAt: timestamp('received_at').defaultNow().notNull(),
-}, (table) => [
- uniqueIndex('charge_payments_operation_unique').on(table.chargeId, table.operationKey),
- check('charge_payment_amount_positive', sql`${table.amountInCents} > 0`),
- check('charge_payment_method_valid', sql`${table.method} IN ('pix','cash','credit_card','debit_card','transfer')`),
- index('charge_payments_charge_idx').on(table.chargeId),
-]);
+export const chargePaymentsTable = pgTable(
+	'charge_payments',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		chargeId: uuid('charge_id')
+			.notNull()
+			.references(() => appointmentChargesTable.id),
+		operationKey: uuid('operation_key').notNull(),
+		amountInCents: integer('amount_in_cents').notNull(),
+		method: text('method').notNull(),
+		receivedBy: uuid('received_by')
+			.notNull()
+			.references(() => usersTable.id),
+		receivedAt: timestamp('received_at').defaultNow().notNull(),
+	},
+	(table) => [
+		uniqueIndex('charge_payments_operation_unique').on(table.chargeId, table.operationKey),
+		check('charge_payment_amount_positive', sql`${table.amountInCents} > 0`),
+		check(
+			'charge_payment_method_valid',
+			sql`${table.method} IN ('pix','cash','credit_card','debit_card','transfer')`,
+		),
+		index('charge_payments_charge_idx').on(table.chargeId),
+	],
+);
 
 // Prontuário Médico
 export const medicalRecordsTable = pgTable('medical_records', {
@@ -447,24 +455,16 @@ export const prescriptionSignaturesTable = pgTable(
 		certificateCommonName: text('certificate_common_name').notNull(),
 		certificateIssuer: text('certificate_issuer').notNull(),
 		certificateSerialNumber: text('certificate_serial_number').notNull(),
-		certificateFingerprintSha256: text(
-			'certificate_fingerprint_sha256',
-		).notNull(),
+		certificateFingerprintSha256: text('certificate_fingerprint_sha256').notNull(),
 		certificateValidFrom: timestamp('certificate_valid_from').notNull(),
 		certificateValidTo: timestamp('certificate_valid_to').notNull(),
 		signedAt: timestamp('signed_at').defaultNow().notNull(),
 		createdAt: timestamp('created_at').defaultNow().notNull(),
 	},
 	(table) => [
-		uniqueIndex('prescription_signatures_prescription_id_unique').on(
-			table.prescriptionId,
-		),
-		uniqueIndex('prescription_signatures_validation_token_unique').on(
-			table.validationToken,
-		),
-		index('prescription_signatures_signed_by_user_id_idx').on(
-			table.signedByUserId,
-		),
+		uniqueIndex('prescription_signatures_prescription_id_unique').on(table.prescriptionId),
+		uniqueIndex('prescription_signatures_validation_token_unique').on(table.validationToken),
+		index('prescription_signatures_signed_by_user_id_idx').on(table.signedByUserId),
 	],
 );
 
@@ -480,9 +480,7 @@ export const clinicalDocumentsTable = pgTable('clinical_documents', {
 	appointmentId: uuid('appointment_id').references(() => appointmentsTable.id),
 	type: clinicalDocumentTypeEnum('type').notNull(),
 	content: text('content').notNull(),
-	documentData: jsonb('document_data')
-		.$type<ClinicalDocumentSnapshot>()
-		.notNull(),
+	documentData: jsonb('document_data').$type<ClinicalDocumentSnapshot>().notNull(),
 	issuedAt: timestamp('issued_at').defaultNow().notNull(),
 	createdAt: timestamp('created_at').defaultNow().notNull(),
 	updatedAt: timestamp('updated_at')
@@ -547,18 +545,9 @@ export const calendarEventsTable = pgTable(
 			.notNull(),
 	},
 	(table) => ({
-		doctorStartTimeIdx: index('calendar_events_doctor_start_time_idx').on(
-			table.doctorId,
-			table.startTime,
-		),
-		doctorEndTimeIdx: index('calendar_events_doctor_end_time_idx').on(
-			table.doctorId,
-			table.endTime,
-		),
-		validPeriodCheck: check(
-			'calendar_events_valid_period_check',
-			sql`${table.endTime} > ${table.startTime}`,
-		),
+		doctorStartTimeIdx: index('calendar_events_doctor_start_time_idx').on(table.doctorId, table.startTime),
+		doctorEndTimeIdx: index('calendar_events_doctor_end_time_idx').on(table.doctorId, table.endTime),
+		validPeriodCheck: check('calendar_events_valid_period_check', sql`${table.endTime} > ${table.startTime}`),
 	}),
 );
 
@@ -606,14 +595,11 @@ export const careRemindersTable = pgTable(
 		title: text('title').notNull(),
 		dueDate: date('due_date').notNull(),
 		status: careReminderStatusEnum('status').default('pending').notNull(),
-		sourceVaccineId: uuid('source_vaccine_id').references(
-			() => vaccinesTable.id,
-			{ onDelete: 'set null' },
-		),
+		sourceVaccineId: uuid('source_vaccine_id').references(() => vaccinesTable.id, { onDelete: 'set null' }),
 		// Vinculo a um atendimento reservado. Nao significa dose aplicada.
-		appointmentId: uuid('appointment_id').unique('care_reminders_appointment_id_unique').references(
-			() => appointmentsTable.id, { onDelete: 'set null' },
-		),
+		appointmentId: uuid('appointment_id')
+			.unique('care_reminders_appointment_id_unique')
+			.references(() => appointmentsTable.id, { onDelete: 'set null' }),
 		completedAt: timestamp('completed_at'),
 		createdAt: timestamp('created_at').defaultNow().notNull(),
 		updatedAt: timestamp('updated_at')
@@ -622,17 +608,9 @@ export const careRemindersTable = pgTable(
 			.notNull(),
 	},
 	(table) => ({
-		doctorDueDateIdx: index('care_reminders_doctor_due_date_idx').on(
-			table.doctorId,
-			table.dueDate,
-		),
-		petDueDateIdx: index('care_reminders_pet_due_date_idx').on(
-			table.petId,
-			table.dueDate,
-		),
-		sourceVaccineUniqueIdx: uniqueIndex(
-			'care_reminders_source_vaccine_id_unique',
-		).on(table.sourceVaccineId),
+		doctorDueDateIdx: index('care_reminders_doctor_due_date_idx').on(table.doctorId, table.dueDate),
+		petDueDateIdx: index('care_reminders_pet_due_date_idx').on(table.petId, table.dueDate),
+		sourceVaccineUniqueIdx: uniqueIndex('care_reminders_source_vaccine_id_unique').on(table.sourceVaccineId),
 	}),
 );
 
@@ -686,15 +664,12 @@ export const usersRelations = relations(usersTable, ({ one, many }) => ({
 	}),
 }));
 
-export const clerkIdentitiesRelations = relations(
-	clerkIdentitiesTable,
-	({ one }) => ({
-		user: one(usersTable, {
-			fields: [clerkIdentitiesTable.userId],
-			references: [usersTable.id],
-		}),
+export const clerkIdentitiesRelations = relations(clerkIdentitiesTable, ({ one }) => ({
+	user: one(usersTable, {
+		fields: [clerkIdentitiesTable.userId],
+		references: [usersTable.id],
 	}),
-);
+}));
 
 export const doctorsRelations = relations(doctorsTable, ({ one, many }) => ({
 	user: one(usersTable, {
@@ -707,16 +682,13 @@ export const doctorsRelations = relations(doctorsTable, ({ one, many }) => ({
 	careReminders: many(careRemindersTable),
 }));
 
-export const customersRelations = relations(
-	customersTable,
-	({ one, many }) => ({
-		user: one(usersTable, {
-			fields: [customersTable.userId],
-			references: [usersTable.id],
-		}),
-		petTutors: many(petTutorsTable),
+export const customersRelations = relations(customersTable, ({ one, many }) => ({
+	user: one(usersTable, {
+		fields: [customersTable.userId],
+		references: [usersTable.id],
 	}),
-);
+	petTutors: many(petTutorsTable),
+}));
 
 export const speciesRelations = relations(speciesTable, ({ many }) => ({
 	breeds: many(breedsTable),
@@ -778,99 +750,87 @@ export const petWeightsRelations = relations(petWeightsTable, ({ one }) => ({
 	}),
 }));
 
-export const appointmentsRelations = relations(
-	appointmentsTable,
-	({ one, many }) => ({
-		pet: one(petsTable, {
-			fields: [appointmentsTable.petId],
-			references: [petsTable.id],
-		}),
-		doctor: one(doctorsTable, {
-			fields: [appointmentsTable.doctorId],
-			references: [doctorsTable.id],
-		}),
-		items: many(appointmentItemsTable),
-		careReminders: many(careRemindersTable),
-		productItems: many(appointmentProductItemsTable),
-		medicalRecord: one(medicalRecordsTable, {
-			fields: [appointmentsTable.id],
-			references: [medicalRecordsTable.appointmentId],
-		}),
+export const appointmentsRelations = relations(appointmentsTable, ({ one, many }) => ({
+	pet: one(petsTable, {
+		fields: [appointmentsTable.petId],
+		references: [petsTable.id],
 	}),
-);
+	doctor: one(doctorsTable, {
+		fields: [appointmentsTable.doctorId],
+		references: [doctorsTable.id],
+	}),
+	items: many(appointmentItemsTable),
+	careReminders: many(careRemindersTable),
+	productItems: many(appointmentProductItemsTable),
+	medicalRecord: one(medicalRecordsTable, {
+		fields: [appointmentsTable.id],
+		references: [medicalRecordsTable.appointmentId],
+	}),
+}));
 
-export const appointmentItemsRelations = relations(
-	appointmentItemsTable,
-	({ one }) => ({
-		appointment: one(appointmentsTable, {
-			fields: [appointmentItemsTable.appointmentId],
-			references: [appointmentsTable.id],
-		}),
-		service: one(servicesTable, {
-			fields: [appointmentItemsTable.serviceId],
-			references: [servicesTable.id],
-		}),
+export const appointmentItemsRelations = relations(appointmentItemsTable, ({ one }) => ({
+	appointment: one(appointmentsTable, {
+		fields: [appointmentItemsTable.appointmentId],
+		references: [appointmentsTable.id],
 	}),
-);
+	service: one(servicesTable, {
+		fields: [appointmentItemsTable.serviceId],
+		references: [servicesTable.id],
+	}),
+}));
 
 export const appointmentProductItemsRelations = relations(appointmentProductItemsTable, ({ one }) => ({
-	appointment: one(appointmentsTable, { fields: [appointmentProductItemsTable.appointmentId], references: [appointmentsTable.id] }),
+	appointment: one(appointmentsTable, {
+		fields: [appointmentProductItemsTable.appointmentId],
+		references: [appointmentsTable.id],
+	}),
 	product: one(productsTable, { fields: [appointmentProductItemsTable.productId], references: [productsTable.id] }),
 }));
 
-export const prescriptionsRelations = relations(
-	prescriptionsTable,
-	({ one }) => ({
-		pet: one(petsTable, {
-			fields: [prescriptionsTable.petId],
-			references: [petsTable.id],
-		}),
-		doctor: one(doctorsTable, {
-			fields: [prescriptionsTable.doctorId],
-			references: [doctorsTable.id],
-		}),
-		appointment: one(appointmentsTable, {
-			fields: [prescriptionsTable.appointmentId],
-			references: [appointmentsTable.id],
-		}),
-		signature: one(prescriptionSignaturesTable, {
-			fields: [prescriptionsTable.id],
-			references: [prescriptionSignaturesTable.prescriptionId],
-		}),
+export const prescriptionsRelations = relations(prescriptionsTable, ({ one }) => ({
+	pet: one(petsTable, {
+		fields: [prescriptionsTable.petId],
+		references: [petsTable.id],
 	}),
-);
+	doctor: one(doctorsTable, {
+		fields: [prescriptionsTable.doctorId],
+		references: [doctorsTable.id],
+	}),
+	appointment: one(appointmentsTable, {
+		fields: [prescriptionsTable.appointmentId],
+		references: [appointmentsTable.id],
+	}),
+	signature: one(prescriptionSignaturesTable, {
+		fields: [prescriptionsTable.id],
+		references: [prescriptionSignaturesTable.prescriptionId],
+	}),
+}));
 
-export const prescriptionSignaturesRelations = relations(
-	prescriptionSignaturesTable,
-	({ one }) => ({
-		prescription: one(prescriptionsTable, {
-			fields: [prescriptionSignaturesTable.prescriptionId],
-			references: [prescriptionsTable.id],
-		}),
-		signedByUser: one(usersTable, {
-			fields: [prescriptionSignaturesTable.signedByUserId],
-			references: [usersTable.id],
-		}),
+export const prescriptionSignaturesRelations = relations(prescriptionSignaturesTable, ({ one }) => ({
+	prescription: one(prescriptionsTable, {
+		fields: [prescriptionSignaturesTable.prescriptionId],
+		references: [prescriptionsTable.id],
 	}),
-);
+	signedByUser: one(usersTable, {
+		fields: [prescriptionSignaturesTable.signedByUserId],
+		references: [usersTable.id],
+	}),
+}));
 
-export const medicalRecordsRelations = relations(
-	medicalRecordsTable,
-	({ one }) => ({
-		appointment: one(appointmentsTable, {
-			fields: [medicalRecordsTable.appointmentId],
-			references: [appointmentsTable.id],
-		}),
-		pet: one(petsTable, {
-			fields: [medicalRecordsTable.petId],
-			references: [petsTable.id],
-		}),
-		doctor: one(doctorsTable, {
-			fields: [medicalRecordsTable.doctorId],
-			references: [doctorsTable.id],
-		}),
+export const medicalRecordsRelations = relations(medicalRecordsTable, ({ one }) => ({
+	appointment: one(appointmentsTable, {
+		fields: [medicalRecordsTable.appointmentId],
+		references: [appointmentsTable.id],
 	}),
-);
+	pet: one(petsTable, {
+		fields: [medicalRecordsTable.petId],
+		references: [petsTable.id],
+	}),
+	doctor: one(doctorsTable, {
+		fields: [medicalRecordsTable.doctorId],
+		references: [doctorsTable.id],
+	}),
+}));
 
 export const shiftsRelations = relations(shiftsTable, ({ one }) => ({
 	doctor: one(doctorsTable, {
@@ -883,15 +843,12 @@ export const shiftsRelations = relations(shiftsTable, ({ one }) => ({
 	}),
 }));
 
-export const calendarEventsRelations = relations(
-	calendarEventsTable,
-	({ one }) => ({
-		doctor: one(doctorsTable, {
-			fields: [calendarEventsTable.doctorId],
-			references: [doctorsTable.id],
-		}),
+export const calendarEventsRelations = relations(calendarEventsTable, ({ one }) => ({
+	doctor: one(doctorsTable, {
+		fields: [calendarEventsTable.doctorId],
+		references: [doctorsTable.id],
 	}),
-);
+}));
 
 export const vaccinesRelations = relations(vaccinesTable, ({ one }) => ({
 	appointment: one(appointmentsTable, {
@@ -908,27 +865,24 @@ export const vaccinesRelations = relations(vaccinesTable, ({ one }) => ({
 	}),
 }));
 
-export const careRemindersRelations = relations(
-	careRemindersTable,
-	({ one }) => ({
-		pet: one(petsTable, {
-			fields: [careRemindersTable.petId],
-			references: [petsTable.id],
-		}),
-		doctor: one(doctorsTable, {
-			fields: [careRemindersTable.doctorId],
-			references: [doctorsTable.id],
-		}),
-		appointment: one(appointmentsTable, {
-			fields: [careRemindersTable.appointmentId],
-			references: [appointmentsTable.id],
-		}),
-		sourceVaccine: one(vaccinesTable, {
-			fields: [careRemindersTable.sourceVaccineId],
-			references: [vaccinesTable.id],
-		}),
+export const careRemindersRelations = relations(careRemindersTable, ({ one }) => ({
+	pet: one(petsTable, {
+		fields: [careRemindersTable.petId],
+		references: [petsTable.id],
 	}),
-);
+	doctor: one(doctorsTable, {
+		fields: [careRemindersTable.doctorId],
+		references: [doctorsTable.id],
+	}),
+	appointment: one(appointmentsTable, {
+		fields: [careRemindersTable.appointmentId],
+		references: [appointmentsTable.id],
+	}),
+	sourceVaccine: one(vaccinesTable, {
+		fields: [careRemindersTable.sourceVaccineId],
+		references: [vaccinesTable.id],
+	}),
+}));
 
 export const pathologiesRelations = relations(pathologiesTable, ({ one }) => ({
 	pet: one(petsTable, {
@@ -941,19 +895,16 @@ export const pathologiesRelations = relations(pathologiesTable, ({ one }) => ({
 	}),
 }));
 
-export const petAttachmentsRelations = relations(
-	petAttachmentsTable,
-	({ one }) => ({
-		pet: one(petsTable, {
-			fields: [petAttachmentsTable.petId],
-			references: [petsTable.id],
-		}),
-		author: one(usersTable, {
-			fields: [petAttachmentsTable.authorId],
-			references: [usersTable.id],
-		}),
+export const petAttachmentsRelations = relations(petAttachmentsTable, ({ one }) => ({
+	pet: one(petsTable, {
+		fields: [petAttachmentsTable.petId],
+		references: [petsTable.id],
 	}),
-);
+	author: one(usersTable, {
+		fields: [petAttachmentsTable.authorId],
+		references: [usersTable.id],
+	}),
+}));
 
 export const petNotesRelations = relations(petNotesTable, ({ one }) => ({
 	pet: one(petsTable, {
@@ -970,20 +921,17 @@ export const clinicsRelations = relations(clinicsTable, ({ many }) => ({
 	shifts: many(shiftsTable),
 }));
 
-export const clinicalDocumentsRelations = relations(
-	clinicalDocumentsTable,
-	({ one }) => ({
-		pet: one(petsTable, {
-			fields: [clinicalDocumentsTable.petId],
-			references: [petsTable.id],
-		}),
-		doctor: one(doctorsTable, {
-			fields: [clinicalDocumentsTable.doctorId],
-			references: [doctorsTable.id],
-		}),
-		appointment: one(appointmentsTable, {
-			fields: [clinicalDocumentsTable.appointmentId],
-			references: [appointmentsTable.id],
-		}),
+export const clinicalDocumentsRelations = relations(clinicalDocumentsTable, ({ one }) => ({
+	pet: one(petsTable, {
+		fields: [clinicalDocumentsTable.petId],
+		references: [petsTable.id],
 	}),
-);
+	doctor: one(doctorsTable, {
+		fields: [clinicalDocumentsTable.doctorId],
+		references: [doctorsTable.id],
+	}),
+	appointment: one(appointmentsTable, {
+		fields: [clinicalDocumentsTable.appointmentId],
+		references: [appointmentsTable.id],
+	}),
+}));

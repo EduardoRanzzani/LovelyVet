@@ -10,8 +10,7 @@ export const getCareReminderStatusUI = (status: ReminderStatus) => {
 				cardClassName: 'border-emerald-500/50 bg-emerald-500/10',
 				titleClassName: 'text-emerald-700 dark:text-emerald-400',
 				detailClassName: 'text-muted-foreground',
-				badgeClassName:
-					'border-emerald-500/40 text-emerald-700 dark:text-emerald-400',
+				badgeClassName: 'border-emerald-500/40 text-emerald-700 dark:text-emerald-400',
 			};
 
 		case 'cancelled':
@@ -29,8 +28,7 @@ export const getCareReminderStatusUI = (status: ReminderStatus) => {
 				cardClassName: 'border-amber-500/50 bg-amber-500/10',
 				titleClassName: 'text-foreground',
 				detailClassName: 'text-muted-foreground',
-				badgeClassName:
-					'border-amber-500/40 text-amber-700 dark:text-amber-400',
+				badgeClassName: 'border-amber-500/40 text-amber-700 dark:text-amber-400',
 			};
 	}
 };

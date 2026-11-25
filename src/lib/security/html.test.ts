@@ -3,18 +3,14 @@ import { sanitizeRichTextHtml } from './html';
 
 describe('sanitizeRichTextHtml', () => {
 	it('preserva o alinhamento justificado', () => {
-		const result = sanitizeRichTextHtml(
-			'<p style="text-align: justify">Texto justificado</p>',
-		);
+		const result = sanitizeRichTextHtml('<p style="text-align: justify">Texto justificado</p>');
 
 		expect(result).toContain('text-align: justify');
 		expect(result).toContain('Texto justificado');
 	});
 
 	it('preserva tamanhos de fonte permitidos', () => {
-		const result = sanitizeRichTextHtml(
-			'<p><span style="font-size: 18px">Texto maior</span></p>',
-		);
+		const result = sanitizeRichTextHtml('<p><span style="font-size: 18px">Texto maior</span></p>');
 
 		expect(result).toContain('font-size: 18px');
 		expect(result).toContain('<span');
@@ -22,9 +18,7 @@ describe('sanitizeRichTextHtml', () => {
 
 	it('remove propriedades CSS não permitidas', () => {
 		const result = sanitizeRichTextHtml(
-			'<span style="font-size: 18px; color: red; position: absolute">' +
-				'Texto' +
-				'</span>',
+			'<span style="font-size: 18px; color: red; position: absolute">' + 'Texto' + '</span>',
 		);
 
 		expect(result).toContain('font-size: 18px');
@@ -33,9 +27,7 @@ describe('sanitizeRichTextHtml', () => {
 	});
 
 	it('remove tamanhos fora da lista permitida', () => {
-		const result = sanitizeRichTextHtml(
-			'<span style="font-size: 100px">Texto</span>',
-		);
+		const result = sanitizeRichTextHtml('<span style="font-size: 100px">Texto</span>');
 
 		expect(result).not.toContain('font-size');
 	});
@@ -47,9 +39,7 @@ describe('sanitizeRichTextHtml', () => {
 	});
 
 	it('remove manipuladores de eventos', () => {
-		const result = sanitizeRichTextHtml(
-			'<p onclick="alert(1)">Texto seguro</p>',
-		);
+		const result = sanitizeRichTextHtml('<p onclick="alert(1)">Texto seguro</p>');
 
 		expect(result).not.toContain('onclick');
 		expect(result).toContain('Texto seguro');

@@ -1,15 +1,9 @@
-import {
-	ActionResponse,
-	EmailSchema,
-	emailSchema,
-} from '@/api/schema/emails.schema';
+import { ActionResponse, EmailSchema, emailSchema } from '@/api/schema/emails.schema';
 import { escapeHtml } from '@/lib/security/html';
 import nodemailer from 'nodemailer';
 import path from 'path';
 
-export const sendEmailMessage = async (
-	data: EmailSchema,
-): Promise<ActionResponse> => {
+export const sendEmailMessage = async (data: EmailSchema): Promise<ActionResponse> => {
 	const parsed = emailSchema.parse(data);
 
 	const mailUser = process.env.EMAIL_USER;
@@ -72,10 +66,7 @@ export const sendEmailMessage = async (
 			message: 'Email enviado com sucesso!',
 		};
 	} catch (error) {
-		console.error(
-			'Falha ao enviar e-mail:',
-			error instanceof Error ? error.message : 'erro desconhecido',
-		);
+		console.error('Falha ao enviar e-mail:', error instanceof Error ? error.message : 'erro desconhecido');
 
 		return {
 			success: false,

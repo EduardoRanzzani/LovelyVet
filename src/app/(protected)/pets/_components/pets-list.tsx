@@ -4,10 +4,7 @@ import { deletePet } from '@/api/actions/pets.actions';
 import { MAX_PAGE_SIZE, PaginatedData } from '@/api/config/consts';
 import { BreedsWithRelations } from '@/api/schema/breeds.schema';
 import { CustomersWithRelations } from '@/api/schema/customers.schema';
-import {
-	formatPetTutorNames,
-	PetsWithRelations,
-} from '@/api/schema/pets.schema';
+import { formatPetTutorNames, PetsWithRelations } from '@/api/schema/pets.schema';
 import { Species } from '@/api/schema/species.schema';
 import { formatAge } from '@/api/util';
 import { WhatsappIcon } from '@/components/icons/icon-whatsapp';
@@ -20,22 +17,11 @@ import { Badge } from '@/components/ui/badge'; // Opcional: para status ou gêne
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { TableCell, TableRow } from '@/components/ui/table';
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatWeight } from '@/helpers/weight';
 import { handleNavigation } from '@/lib/utils';
 import type { UserRole } from '@/lib/security/roles';
-import {
-	CalendarIcon,
-	EyeIcon,
-	MarsIcon,
-	UserRoundIcon,
-	VenusIcon,
-	WeightIcon,
-} from 'lucide-react';
+import { CalendarIcon, EyeIcon, MarsIcon, UserRoundIcon, VenusIcon, WeightIcon } from 'lucide-react';
 import { useAction } from 'next-safe-action/hooks';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -51,13 +37,7 @@ interface PetsListClientProps {
 	viewerRole: UserRole;
 }
 
-const PetsListClient = ({
-	pets,
-	species,
-	breeds,
-	customers,
-	viewerRole,
-}: PetsListClientProps) => {
+const PetsListClient = ({ pets, species, breeds, customers, viewerRole }: PetsListClientProps) => {
 	const canDoActions = viewerRole !== 'customer';
 
 	const petsResolved = use(pets);
@@ -82,9 +62,7 @@ const PetsListClient = ({
 		},
 		onError: (err) => {
 			console.error('Erro ao deletar pet:', err);
-			toast.error(
-				'Ocorreu um erro ao tentar deletar o pet. Tente novamente mais tarde.',
-			);
+			toast.error('Ocorreu um erro ao tentar deletar o pet. Tente novamente mais tarde.');
 		},
 	});
 
@@ -103,9 +81,10 @@ const PetsListClient = ({
 	const renderRow = (pet: PetsWithRelations) => {
 		const firstTutor = pet.petTutors[0]?.tutor;
 		const firstName = firstTutor?.user.name.split(' ')[0] ?? '';
-		const whatsappUrl = canDoActions && firstTutor?.phone
-			? `https://wa.me/55${firstTutor.phone.replace(/\D/g, '')}/?text=Ol%C3%A1,%20tudo%20bem%3F%20Gostaria%20de%20falar%20com%20${firstName}%20sobre%20${pet.gender === 'female' ? 'a' : 'o'}%20${pet.name}`
-			: '';
+		const whatsappUrl =
+			canDoActions && firstTutor?.phone
+				? `https://wa.me/55${firstTutor.phone.replace(/\D/g, '')}/?text=Ol%C3%A1,%20tudo%20bem%3F%20Gostaria%20de%20falar%20com%20${firstName}%20sobre%20${pet.gender === 'female' ? 'a' : 'o'}%20${pet.name}`
+				: '';
 
 		return (
 			<TableRow
@@ -139,10 +118,7 @@ const PetsListClient = ({
 									className='object-cover'
 								/>
 							) : (
-								<AvatarImage
-									src={pet?.photo || '/pet-placeholder.png'}
-									alt={pet.name}
-								/>
+								<AvatarImage src={pet?.photo || '/pet-placeholder.png'} alt={pet.name} />
 							)}
 						</Avatar>
 					</div>
@@ -151,9 +127,7 @@ const PetsListClient = ({
 						<span className='font-medium'>{pet.name}</span>
 						<p className='text-xs text-muted-foreground'>
 							<Badge variant={pet.sterile ? 'default' : 'outline'}>
-								<span className='text-xs'>
-									{pet.sterile ? 'Castrado' : 'Fértil'}
-								</span>
+								<span className='text-xs'>{pet.sterile ? 'Castrado' : 'Fértil'}</span>
 							</Badge>{' '}
 							{pet.status !== 'alive' && (
 								<>
@@ -226,13 +200,9 @@ const PetsListClient = ({
 						) : null}
 
 						<div className='flex flex-col min-w-0'>
-							<span className='text-sm font-medium'>
-								{formatPetTutorNames(pet)}
-							</span>
+							<span className='text-sm font-medium'>{formatPetTutorNames(pet)}</span>
 							{canDoActions && firstTutor?.phone ? (
-								<span className='text-[10px] text-muted-foreground uppercase'>
-									{firstTutor.phone}
-								</span>
+								<span className='text-[10px] text-muted-foreground uppercase'>{firstTutor.phone}</span>
 							) : null}
 						</div>
 					</div>
@@ -251,10 +221,7 @@ const PetsListClient = ({
 					</Tooltip>
 
 					{canDoActions && (
-						<DeleteAlertButton
-							tooltip={`Deletar ${pet.name}`}
-							action={() => handleDelete(pet.id)}
-						/>
+						<DeleteAlertButton tooltip={`Deletar ${pet.name}`} action={() => handleDelete(pet.id)} />
 					)}
 				</TableCell>
 			</TableRow>
@@ -264,9 +231,10 @@ const PetsListClient = ({
 	const renderMobile = (pet: PetsWithRelations) => {
 		const firstTutor = pet.petTutors[0]?.tutor;
 		const firstName = firstTutor?.user.name.split(' ')[0] ?? '';
-		const whatsappUrl = canDoActions && firstTutor?.phone
-			? `https://wa.me/55${firstTutor.phone.replace(/\D/g, '')}/?text=Ol%C3%A1,%20tudo%20bem%3F%20Gostaria%20de%20falar%20com%20${firstName}%20sobre%20${pet.gender === 'female' ? 'a' : 'o'}%20${pet.name}`
-			: '';
+		const whatsappUrl =
+			canDoActions && firstTutor?.phone
+				? `https://wa.me/55${firstTutor.phone.replace(/\D/g, '')}/?text=Ol%C3%A1,%20tudo%20bem%3F%20Gostaria%20de%20falar%20com%20${firstName}%20sobre%20${pet.gender === 'female' ? 'a' : 'o'}%20${pet.name}`
+				: '';
 
 		return (
 			<div key={pet.id} className='flex flex-col gap-4'>
@@ -281,10 +249,7 @@ const PetsListClient = ({
 									className='object-cover'
 								/>
 							) : (
-								<AvatarImage
-									src={pet?.photo || '/pet-placeholder.png'}
-									alt={pet.name}
-								/>
+								<AvatarImage src={pet?.photo || '/pet-placeholder.png'} alt={pet.name} />
 							)}
 						</Avatar>
 
@@ -311,9 +276,7 @@ const PetsListClient = ({
 							<TooltipContent>Visualizar {pet.name}</TooltipContent>
 						</Tooltip>
 
-						{canDoActions && (
-							<DeleteAlertButton action={() => handleDelete(pet.id)} />
-						)}
+						{canDoActions && <DeleteAlertButton action={() => handleDelete(pet.id)} />}
 					</span>
 				</div>
 
@@ -328,18 +291,14 @@ const PetsListClient = ({
 								<MarsIcon className='w-4 h-4' />
 							)}
 						</span>
-						<span className='text-sm'>
-							{pet.gender === 'female' ? 'Fêmea' : 'Macho'}
-						</span>
+						<span className='text-sm'>{pet.gender === 'female' ? 'Fêmea' : 'Macho'}</span>
 					</p>
 
 					<p className='flex gap-2 items-center'>
 						<span className='text-sm font-semibold'>
 							<CalendarIcon className='w-4 h-4' />
 						</span>
-						<span className='text-sm'>
-							{formatAge(new Date(pet.birthDate))}
-						</span>
+						<span className='text-sm'>{formatAge(new Date(pet.birthDate))}</span>
 					</p>
 
 					<p className='flex gap-2 items-center'>
@@ -390,12 +349,7 @@ const PetsListClient = ({
 					<AddButton
 						text='Adicionar Pet'
 						renderForm={(close) => (
-							<PetFormClient
-								breeds={breeds}
-								customers={customers}
-								species={species}
-								onSuccess={close}
-							/>
+							<PetFormClient breeds={breeds} customers={customers} species={species} onSuccess={close} />
 						)}
 					/>
 				)}

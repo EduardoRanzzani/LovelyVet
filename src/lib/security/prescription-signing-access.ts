@@ -11,8 +11,6 @@ export function canSignWithReginaCertificate(context: AuthContext): boolean {
 
 export function assertCanSignWithReginaCertificate(context: AuthContext): void {
 	if (!canSignWithReginaCertificate(context)) {
-		throw new Error(
-			'Usuário não autorizado a utilizar o certificado digital desta receita.',
-		);
+		throw new Error('Usuário não autorizado a utilizar o certificado digital desta receita.');
 	}
 }

@@ -1,21 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import {
-	createItiPrescriptionResponse,
-	isItiValidatorFormat,
-	isValidItiSecretCode,
-} from './iti-validation';
+import { createItiPrescriptionResponse, isItiValidatorFormat, isValidItiSecretCode } from './iti-validation';
 
 describe('ITI prescription validation protocol', () => {
-	it.each([
-		'application/validador-iti+json',
-		'application/validador-iti json',
-	])('recognizes the ITI format: %s', (format) => {
-		expect(isItiValidatorFormat(format)).toBe(true);
-	});
+	it.each(['application/validador-iti+json', 'application/validador-iti json'])(
+		'recognizes the ITI format: %s',
+		(format) => {
+			expect(isItiValidatorFormat(format)).toBe(true);
+		},
+	);
 
-	it.each([null, '', 'application/json', 'application/pdf'])(
-		'does not treat other formats as ITI: %s',
-		(format) => expect(isItiValidatorFormat(format)).toBe(false),
+	it.each([null, '', 'application/json', 'application/pdf'])('does not treat other formats as ITI: %s', (format) =>
+		expect(isItiValidatorFormat(format)).toBe(false),
 	);
 
 	it.each(['ABC-123', 'A'.repeat(65), 'ABC_123'])(
@@ -38,11 +33,7 @@ describe('ITI prescription validation protocol', () => {
 	});
 
 	it('returns the signed PDF URL in the structure required by the ITI validator', () => {
-		expect(
-			createItiPrescriptionResponse(
-				'https://app.reginamaciel.com.br/receitas/validar/id/pdf',
-			),
-		).toEqual({
+		expect(createItiPrescriptionResponse('https://app.reginamaciel.com.br/receitas/validar/id/pdf')).toEqual({
 			version: '1.0.0',
 			prescription: {
 				signatureFiles: [

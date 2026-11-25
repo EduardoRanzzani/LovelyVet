@@ -143,11 +143,7 @@ describe('filterPetForViewer', () => {
 		expect(visibleTutor?.city).toBe('');
 		expect(visibleTutor?.state).toBe('');
 
-		expect(
-			visiblePet.petTutors.some(
-				({ tutor: visible }) => visible.id === 'other-customer-id',
-			),
-		).toBe(false);
+		expect(visiblePet.petTutors.some(({ tutor: visible }) => visible.id === 'other-customer-id')).toBe(false);
 	});
 
 	it('removes doctor and author contact data from customer-visible history', () => {
@@ -173,23 +169,15 @@ describe('filterPetForViewer', () => {
 		expect(visiblePet.attachments?.[0]?.author.email).toBe('');
 	});
 
-
 	it('hides tutor-scoped documents issued to another tutor of the same pet', () => {
 		const visiblePet = filterPetForViewer(context('customer'), createPet());
 
-		expect(visiblePet.prescriptions?.map(({ id }) => id)).toEqual([
-			'prescription-id',
-		]);
-		expect(visiblePet.clinicalDocuments?.map(({ id }) => id)).toEqual([
-			'document-id',
-		]);
+		expect(visiblePet.prescriptions?.map(({ id }) => id)).toEqual(['prescription-id']);
+		expect(visiblePet.clinicalDocuments?.map(({ id }) => id)).toEqual(['document-id']);
 	});
 
-	it.each(['admin', 'doctor'] as const)(
-		'preserves the full record for %s',
-		(role) => {
-			const pet = createPet();
-			expect(filterPetForViewer(context(role), pet)).toBe(pet);
-		},
-	);
+	it.each(['admin', 'doctor'] as const)('preserves the full record for %s', (role) => {
+		const pet = createPet();
+		expect(filterPetForViewer(context(role), pet)).toBe(pet);
+	});
 });

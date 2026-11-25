@@ -8,15 +8,11 @@ export type CustomersWithRelations = typeof customersTable.$inferSelect & {
 export const onboardingCustomerSchema = z.object({
 	phone: z.string().nonempty({ message: 'O campo telefone é obrigatório' }),
 	cpf: z.string().nonempty({ message: 'O campo CPF é obrigatório' }),
-	gender: z
-		.enum(['male', 'female'])
-		.nonoptional({ message: 'O campo sexo é obrigatório' }),
+	gender: z.enum(['male', 'female']).nonoptional({ message: 'O campo sexo é obrigatório' }),
 	postalCode: z.string().nonempty({ message: 'O campo CEP é obrigatório' }),
 	address: z.string().nonempty({ message: 'O campo endereço é obrigatório' }),
 	addressNumber: z.string().optional(),
-	neighborhood: z
-		.string()
-		.nonempty({ message: 'O campo bairro é obrigatório' }),
+	neighborhood: z.string().nonempty({ message: 'O campo bairro é obrigatório' }),
 	city: z.string().nonempty({ message: 'O campo cidade é obrigatório' }),
 	state: z.string().nonempty({ message: 'O campo estado é obrigatório' }),
 });
@@ -33,19 +29,13 @@ export const createCustomerWithUserSchema = z.object({
 	image: z.string().optional(),
 	phone: z.string().nonempty({ message: 'O campo telefone é obrigatório' }),
 	cpf: z.string().nonempty({ message: 'O campo cpf é obrigatório' }),
-	gender: z
-		.enum(['male', 'female'])
-		.nonoptional({ message: 'O campo sexo é obrigatório' }),
+	gender: z.enum(['male', 'female']).nonoptional({ message: 'O campo sexo é obrigatório' }),
 	postalCode: z.string().nonempty({ message: 'O campo cep é obrigatório' }),
 	address: z.string().nonempty({ message: 'O campo rua é obrigatório' }),
 	addressNumber: z.string().optional(),
-	neighborhood: z
-		.string()
-		.nonempty({ message: 'O campo bairro é obrigatório' }),
+	neighborhood: z.string().nonempty({ message: 'O campo bairro é obrigatório' }),
 	city: z.string().nonempty({ message: 'O campo cidade é obrigatório' }),
 	state: z.string().nonempty({ message: 'O campo estado é obrigatório' }),
 });
 
-export type CreateCustomerWithUserSchema = z.infer<
-	typeof createCustomerWithUserSchema
->;
+export type CreateCustomerWithUserSchema = z.infer<typeof createCustomerWithUserSchema>;

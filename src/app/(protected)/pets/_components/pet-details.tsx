@@ -3,10 +3,7 @@ import { deleteTimelineItem } from '@/api/actions/timeline.actions';
 import { BreedsWithRelations } from '@/api/schema/breeds.schema';
 import { CustomersWithRelations } from '@/api/schema/customers.schema';
 import { DoctorsWithRelations } from '@/api/schema/doctors.schema';
-import {
-	formatPetTutorNames,
-	PetsWithRelations,
-} from '@/api/schema/pets.schema';
+import { formatPetTutorNames, PetsWithRelations } from '@/api/schema/pets.schema';
 import { Species } from '@/api/schema/species.schema';
 import {
 	DeletableTimelineItemType,
@@ -21,13 +18,7 @@ import EditButton from '@/components/list/edit-button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import LoadingDialog from '@/components/ui/loading';
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { UserRole } from '@/lib/security/roles';
@@ -68,9 +59,7 @@ interface PetDetailsClientProps {
 	viewerRole: UserRole;
 }
 
-const isDeletableTimelineItemType = (
-	type: TimelineItem['type'],
-): type is DeletableTimelineItemType =>
+const isDeletableTimelineItemType = (type: TimelineItem['type']): type is DeletableTimelineItemType =>
 	deletableTimelineItemTypes.some((deletableType) => deletableType === type);
 
 const PetDetailsClient = ({
@@ -83,18 +72,14 @@ const PetDetailsClient = ({
 	viewerRole,
 }: PetDetailsClientProps) => {
 	const isCustomer = viewerRole === 'customer';
-	const [activeTab, setActiveTab] = useState(
-		isCustomer ? 'timeline' : 'history',
-	);
+	const [activeTab, setActiveTab] = useState(isCustomer ? 'timeline' : 'history');
 
 	const { execute, isExecuting } = useAction(deleteTimelineItem, {
 		onSuccess: () => {
 			toast.success('Item removido do histórico!');
 		},
 		onError: ({ error }) => {
-			toast.error(
-				'Erro ao deletar: ' + (error.serverError || 'Tente novamente'),
-			);
+			toast.error('Erro ao deletar: ' + (error.serverError || 'Tente novamente'));
 		},
 	});
 
@@ -167,9 +152,7 @@ const PetDetailsClient = ({
 
 						{!isCustomer && p.documentData && !p.signature && (
 							<Button variant='outline' size='sm' asChild>
-								<Link
-									href={`/pets/${pet.id}/documents/new?prescriptionId=${p.id}`}
-								>
+								<Link href={`/pets/${pet.id}/documents/new?prescriptionId=${p.id}`}>
 									<SquarePenIcon className='size-4' />
 									Editar
 								</Link>
@@ -255,9 +238,7 @@ const PetDetailsClient = ({
 			date: new Date(a.createdAt),
 			title: 'Agendamento',
 			doctor: a.doctor?.user?.name || 'Não atribuído',
-			avatarPerson: a.doctor?.user
-				? toTimelinePerson(a.doctor.user)
-				: undefined,
+			avatarPerson: a.doctor?.user ? toTimelinePerson(a.doctor.user) : undefined,
 			content:
 				a.items?.map((i) => i.service.name).join(', ') +
 					' - ' +
@@ -271,9 +252,7 @@ const PetDetailsClient = ({
 			date: new Date(v.applicationDate),
 			title: 'Vacina',
 			doctor: v.doctor?.user?.name || 'Não atribuído',
-			avatarPerson: v.doctor?.user
-				? toTimelinePerson(v.doctor.user)
-				: undefined,
+			avatarPerson: v.doctor?.user ? toTimelinePerson(v.doctor.user) : undefined,
 			content: (
 				<div className='grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2'>
 					<p className='flex min-w-0 flex-wrap gap-1 sm:gap-2'>
@@ -404,56 +383,41 @@ const PetDetailsClient = ({
 
 					<div className='grid grid-cols-2 gap-y-3 gap-x-4 text-sm'>
 						<p>
-							<span className='font-semibold text-muted-foreground'>
-								Espécie:
-							</span>{' '}
+							<span className='font-semibold text-muted-foreground'>Espécie:</span>{' '}
 							{pet.breed.specie.name}
 						</p>
 
 						<p>
-							<span className='font-semibold text-muted-foreground'>Raça:</span>{' '}
-							{pet.breed.name}
+							<span className='font-semibold text-muted-foreground'>Raça:</span> {pet.breed.name}
 						</p>
 
 						<p>
-							<span className='font-semibold text-muted-foreground'>
-								Gênero:
-							</span>{' '}
+							<span className='font-semibold text-muted-foreground'>Gênero:</span>{' '}
 							{pet.gender === 'female' ? 'Fêmea' : 'Macho'}
 						</p>
 
 						<p>
-							<span className='font-semibold text-muted-foreground'>Cor:</span>{' '}
-							{pet.color}
+							<span className='font-semibold text-muted-foreground'>Cor:</span> {pet.color}
 						</p>
 
 						<p>
-							<span className='font-semibold text-muted-foreground'>
-								Nascimento:
-							</span>{' '}
+							<span className='font-semibold text-muted-foreground'>Nascimento:</span>{' '}
 							{format(new Date(pet.birthDate + 'T12:00:00'), 'dd/MM/yyyy')}
 						</p>
 
 						<p>
-							<span className='font-semibold text-muted-foreground'>
-								Idade:
-							</span>{' '}
-							{age}
+							<span className='font-semibold text-muted-foreground'>Idade:</span> {age}
 						</p>
 
 						<p className='col-span-2 w-full'>
-							<span className='font-semibold text-muted-foreground'>
-								Tutor(es):
-							</span>{' '}
+							<span className='font-semibold text-muted-foreground'>Tutor(es):</span>{' '}
 							{formatPetTutorNames(pet)}
 						</p>
 
 						{!isCustomer && (
 							<>
 								<p className='col-span-2'>
-									<span className='font-semibold text-muted-foreground'>
-										Endereço:
-									</span>{' '}
+									<span className='font-semibold text-muted-foreground'>Endereço:</span>{' '}
 									{fullAddress || '—'}
 								</p>
 
@@ -525,11 +489,7 @@ const PetDetailsClient = ({
 							<h1>Protocolos Clínicos</h1>
 						</TabsContent>
 
-						<TabTimeline
-							historyEvents={historyEvents}
-							canDelete={!isCustomer}
-							onDelete={handleDelete}
-						/>
+						<TabTimeline historyEvents={historyEvents} canDelete={!isCustomer} onDelete={handleDelete} />
 
 						<TabsContent value='schedule'>
 							<h1>Próximos Agendamentos</h1>

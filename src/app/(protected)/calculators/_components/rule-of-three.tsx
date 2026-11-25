@@ -1,12 +1,6 @@
 'use client';
 
-import {
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from '@/components/ui/dialog';
+import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -72,9 +66,7 @@ const RuleOfThree = () => {
 		<DialogContent onInteractOutside={(e) => e.preventDefault()}>
 			<DialogHeader>
 				<DialogTitle>Regra de Três Simples</DialogTitle>
-				<DialogDescription>
-					Preencha os campos abaixo para calcular automaticamente.
-				</DialogDescription>
+				<DialogDescription>Preencha os campos abaixo para calcular automaticamente.</DialogDescription>
 			</DialogHeader>
 
 			<Form {...form}>
@@ -91,9 +83,7 @@ const RuleOfThree = () => {
 							className='w-2/5 text-center z-2'
 						/>
 
-						<p className='text-xs text-center font-medium bg-muted py-1 w-1/5 z-1'>
-							Está para
-						</p>
+						<p className='text-xs text-center font-medium bg-muted py-1 w-1/5 z-1'>Está para</p>
 
 						<Input
 							{...form.register('itemTwo')}
@@ -107,9 +97,7 @@ const RuleOfThree = () => {
 						/>
 					</div>
 
-					<p className='text-sm text-center uppercase font-bold my-4 text-muted-foreground'>
-						Assim como
-					</p>
+					<p className='text-sm text-center uppercase font-bold my-4 text-muted-foreground'>Assim como</p>
 
 					<div className='flex items-center mb-4'>
 						<Input
@@ -122,9 +110,7 @@ const RuleOfThree = () => {
 							placeholder='C'
 							className='w-2/5 text-center z-2'
 						/>
-						<p className='text-xs text-center font-medium bg-muted py-1 w-1/5 z-1'>
-							Está para
-						</p>
+						<p className='text-xs text-center font-medium bg-muted py-1 w-1/5 z-1'>Está para</p>
 						<Input
 							readOnly
 							value={result}

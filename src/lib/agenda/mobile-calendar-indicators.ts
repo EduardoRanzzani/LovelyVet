@@ -1,17 +1,13 @@
 import type { CalendarEntry } from '@/api/schema/calendar.schema';
 import { isNightShift } from './shift-calendar-presentation';
 
-export const getMobileCalendarIndicatorClass = (
-	entry: CalendarEntry,
-): string => {
+export const getMobileCalendarIndicatorClass = (entry: CalendarEntry): string => {
 	switch (entry.kind) {
 		case 'appointment':
 			return 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200';
 
 		case 'shift':
-			return isNightShift(entry.startAt)
-				? 'bg-blue-950 text-blue-200'
-				: 'bg-amber-100 text-amber-900';
+			return isNightShift(entry.startAt) ? 'bg-blue-950 text-blue-200' : 'bg-amber-100 text-amber-900';
 
 		case 'personal':
 			return 'bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200';

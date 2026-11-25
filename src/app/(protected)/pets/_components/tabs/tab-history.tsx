@@ -3,12 +3,7 @@ import { TimelineItem } from '@/api/schema/timeline.schema';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TabsContent } from '@/components/ui/tabs';
-import {
-	FileIcon,
-	FilePenLineIcon,
-	FlaskConicalIcon,
-	StethoscopeIcon,
-} from 'lucide-react';
+import { FileIcon, FilePenLineIcon, FlaskConicalIcon, StethoscopeIcon } from 'lucide-react';
 import DialogNotes from '../dialogs/dialog-notes';
 import DialogVaccine from '../dialogs/dialog-vaccine';
 import DialogWeight from '../dialogs/dialog-weight';
@@ -24,14 +19,7 @@ interface TabHistoryProps {
 	onDelete: (item: TimelineItem) => void;
 }
 
-const TabHistory = ({
-	doctors,
-	vaccineServices,
-	historyEvents,
-	petId,
-	canDelete,
-	onDelete,
-}: TabHistoryProps) => {
+const TabHistory = ({ doctors, vaccineServices, historyEvents, petId, canDelete, onDelete }: TabHistoryProps) => {
 	return (
 		<TabsContent value='history' className='min-w-0 w-full'>
 			<div className='flex min-w-0 flex-col gap-4 2xl:flex-row'>
@@ -52,11 +40,7 @@ const TabHistory = ({
 						<FlaskConicalIcon /> Exame
 					</Button>
 
-					<DialogVaccine
-						petId={petId}
-						doctors={doctors}
-						vaccineServices={vaccineServices}
-					/>
+					<DialogVaccine petId={petId} doctors={doctors} vaccineServices={vaccineServices} />
 
 					<Button
 						asChild
@@ -73,9 +57,7 @@ const TabHistory = ({
 
 				<div className='min-w-0 w-full flex-1 rounded-xl border bg-muted/20 p-3 sm:p-6'>
 					<div className='mb-3 flex min-w-0 items-center justify-between gap-2 border-b pb-3 sm:mb-2 sm:pb-4'>
-						<h3 className='min-w-0 text-base font-bold sm:text-lg'>
-							Histórico Clínico
-						</h3>
+						<h3 className='min-w-0 text-base font-bold sm:text-lg'>Histórico Clínico</h3>
 						<Badge
 							variant={'outline'}
 							className='shrink-0 rounded-full border px-2 py-1 text-[10px] shadow-sm sm:text-xs'
@@ -86,11 +68,7 @@ const TabHistory = ({
 					</div>
 
 					<div className='pb-2 sm:pb-4'>
-						<PetTimelineClient
-							historyEvents={historyEvents}
-							canDelete={canDelete}
-							onDelete={onDelete}
-						/>
+						<PetTimelineClient historyEvents={historyEvents} canDelete={canDelete} onDelete={onDelete} />
 					</div>
 				</div>
 			</div>

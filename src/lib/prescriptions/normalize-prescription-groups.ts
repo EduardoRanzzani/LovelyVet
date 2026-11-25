@@ -1,11 +1,6 @@
-import type {
-	PrescriptionDocumentData,
-	PrescriptionDocumentGroup,
-} from '@/api/schema/prescription-document.schema';
+import type { PrescriptionDocumentData, PrescriptionDocumentGroup } from '@/api/schema/prescription-document.schema';
 
-export function normalizePrescriptionGroups(
-	documentData: PrescriptionDocumentData,
-): PrescriptionDocumentGroup[] {
+export function normalizePrescriptionGroups(documentData: PrescriptionDocumentData): PrescriptionDocumentGroup[] {
 	if (documentData.groups?.length) {
 		return documentData.groups;
 	}

@@ -25,13 +25,9 @@ describe('buildAvailableStarts', () => {
 
 		expect(result).toContain(date('2026-09-21T17:30:00-04:00').toISOString());
 
-		expect(result).not.toContain(
-			date('2026-09-21T07:55:00-04:00').toISOString(),
-		);
+		expect(result).not.toContain(date('2026-09-21T07:55:00-04:00').toISOString());
 
-		expect(result).not.toContain(
-			date('2026-09-21T17:35:00-04:00').toISOString(),
-		);
+		expect(result).not.toContain(date('2026-09-21T17:35:00-04:00').toISOString());
 	});
 
 	it('removes starts that would overlap a busy interval', () => {
@@ -56,13 +52,9 @@ describe('buildAvailableStarts', () => {
 		/*
 		 * Sobrepõe 10:00.
 		 */
-		expect(result).not.toContain(
-			date('2026-09-21T09:35:00-04:00').toISOString(),
-		);
+		expect(result).not.toContain(date('2026-09-21T09:35:00-04:00').toISOString());
 
-		expect(result).not.toContain(
-			date('2026-09-21T10:00:00-04:00').toISOString(),
-		);
+		expect(result).not.toContain(date('2026-09-21T10:00:00-04:00').toISOString());
 
 		/*
 		 * Começa exatamente quando o compromisso termina.
@@ -93,9 +85,7 @@ describe('buildAvailableStarts', () => {
 
 		expect(result).toContain(date('2026-09-21T16:30:00-04:00').toISOString());
 
-		expect(result).not.toContain(
-			date('2026-09-21T16:35:00-04:00').toISOString(),
-		);
+		expect(result).not.toContain(date('2026-09-21T16:35:00-04:00').toISOString());
 	});
 
 	it('rejects zero or negative duration', () => {

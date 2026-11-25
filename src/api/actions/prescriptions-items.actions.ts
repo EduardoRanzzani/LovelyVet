@@ -11,10 +11,7 @@ import { asc, count, eq, ilike, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
 import { MAX_PAGE_SIZE, PaginatedData } from '../config/consts';
-import {
-	createPrescriptionItemSchema,
-	PrescriptionItemsWithRelations,
-} from '../schema/prescriptions-items.schema';
+import { createPrescriptionItemSchema, PrescriptionItemsWithRelations } from '../schema/prescriptions-items.schema';
 
 export const getPrescriptionsItems = async () => {
 	const context = await requireAuthContext();
@@ -48,10 +45,7 @@ export const getPrescriptionsItemsPaginated = async (
 		orderBy: asc(prescriptionItemsTable.name),
 	});
 
-	const totalCountResult = await db
-		.select({ value: count() })
-		.from(prescriptionItemsTable)
-		.where(filterCondition);
+	const totalCountResult = await db.select({ value: count() }).from(prescriptionItemsTable).where(filterCondition);
 
 	const totalCount = Number(totalCountResult[0]?.value ?? 0);
 	const pageCount = Math.ceil(totalCount / pagination.limit);
@@ -115,9 +109,7 @@ export const deletePrescriptionItem = actionClient
 			throw new Error('Item de receita não encontrado');
 		}
 
-		await db
-			.delete(prescriptionItemsTable)
-			.where(eq(prescriptionItemsTable.id, parsedInput.id));
+		await db.delete(prescriptionItemsTable).where(eq(prescriptionItemsTable.id, parsedInput.id));
 
 		revalidatePath('/prescriptions-items');
 	});

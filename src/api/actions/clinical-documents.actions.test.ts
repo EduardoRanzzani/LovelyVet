@@ -27,10 +27,8 @@ vi.mock('@/db', () => ({
 vi.mock('@/lib/next-safe-action', () => ({
 	actionClient: {
 		schema: () => ({
-			action:
-				(handler: (args: { parsedInput: unknown }) => unknown) =>
-				(parsedInput: unknown) =>
-					handler({ parsedInput }),
+			action: (handler: (args: { parsedInput: unknown }) => unknown) => (parsedInput: unknown) =>
+				handler({ parsedInput }),
 		}),
 	},
 }));
@@ -71,10 +69,7 @@ vi.mock('next/cache', () => ({
 	revalidatePath: mocks.revalidatePath,
 }));
 
-import {
-	getClinicalDocumentById,
-	saveClinicalDocument,
-} from './clinical-documents.actions';
+import { getClinicalDocumentById, saveClinicalDocument } from './clinical-documents.actions';
 
 const PET_ID = '11111111-1111-4111-8111-111111111111';
 const TUTOR_ID = '22222222-2222-4222-8222-222222222222';
@@ -212,14 +207,8 @@ describe('clinical documents actions', () => {
 			const result = await saveClinicalDocument(baseInput);
 
 			expect(mocks.requireStaff).toHaveBeenCalledWith(doctorContext);
-			expect(mocks.assertCanAccessPet).toHaveBeenCalledWith(
-				doctorContext,
-				PET_ID,
-			);
-			expect(mocks.resolveClinicalDoctorId).toHaveBeenCalledWith(
-				doctorContext,
-				DOCTOR_ID,
-			);
+			expect(mocks.assertCanAccessPet).toHaveBeenCalledWith(doctorContext, PET_ID);
+			expect(mocks.resolveClinicalDoctorId).toHaveBeenCalledWith(doctorContext, DOCTOR_ID);
 			expect(mocks.dbInsert).toHaveBeenCalledWith(clinicalDocumentsTable);
 			expect(mocks.insertValues).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -298,9 +287,7 @@ describe('clinical documents actions', () => {
 
 			mocks.sanitizeRichTextHtml.mockReturnValue('<p>&nbsp;</p>');
 
-			await expect(saveClinicalDocument(baseInput)).rejects.toThrow(
-				'Digite o conteúdo do documento',
-			);
+			await expect(saveClinicalDocument(baseInput)).rejects.toThrow('Digite o conteúdo do documento');
 
 			expect(mocks.dbInsert).not.toHaveBeenCalled();
 		});
@@ -310,9 +297,7 @@ describe('clinical documents actions', () => {
 				tutorRows: [],
 			});
 
-			await expect(saveClinicalDocument(baseInput)).rejects.toThrow(
-				'Tutor não pertence ao paciente',
-			);
+			await expect(saveClinicalDocument(baseInput)).rejects.toThrow('Tutor não pertence ao paciente');
 
 			expect(mocks.dbInsert).not.toHaveBeenCalled();
 		});
@@ -322,9 +307,7 @@ describe('clinical documents actions', () => {
 				petRows: [],
 			});
 
-			await expect(saveClinicalDocument(baseInput)).rejects.toThrow(
-				'Paciente não encontrado',
-			);
+			await expect(saveClinicalDocument(baseInput)).rejects.toThrow('Paciente não encontrado');
 
 			expect(mocks.dbInsert).not.toHaveBeenCalled();
 		});
@@ -378,9 +361,7 @@ describe('clinical documents actions', () => {
 				throw new Error('Usuário não autorizado');
 			});
 
-			await expect(saveClinicalDocument(baseInput)).rejects.toThrow(
-				'Usuário não autorizado',
-			);
+			await expect(saveClinicalDocument(baseInput)).rejects.toThrow('Usuário não autorizado');
 
 			expect(mocks.assertCanAccessPet).not.toHaveBeenCalled();
 			expect(mocks.dbSelect).not.toHaveBeenCalled();
@@ -388,13 +369,9 @@ describe('clinical documents actions', () => {
 		});
 
 		it('stops when staff cannot access pet', async () => {
-			mocks.assertCanAccessPet.mockRejectedValue(
-				new Error('Paciente não encontrado'),
-			);
+			mocks.assertCanAccessPet.mockRejectedValue(new Error('Paciente não encontrado'));
 
-			await expect(saveClinicalDocument(baseInput)).rejects.toThrow(
-				'Paciente não encontrado',
-			);
+			await expect(saveClinicalDocument(baseInput)).rejects.toThrow('Paciente não encontrado');
 
 			expect(mocks.resolveClinicalDoctorId).not.toHaveBeenCalled();
 			expect(mocks.dbSelect).not.toHaveBeenCalled();
@@ -409,14 +386,8 @@ describe('clinical documents actions', () => {
 
 			const result = await getClinicalDocumentById(DOCUMENT_ID);
 
-			expect(mocks.assertCanAccessPet).toHaveBeenCalledWith(
-				customerContext,
-				PET_ID,
-			);
-			expect(mocks.canAccessTutorScopedData).toHaveBeenCalledWith(
-				customerContext,
-				TUTOR_ID,
-			);
+			expect(mocks.assertCanAccessPet).toHaveBeenCalledWith(customerContext, PET_ID);
+			expect(mocks.canAccessTutorScopedData).toHaveBeenCalledWith(customerContext, TUTOR_ID);
 			expect(result).toEqual(document);
 		});
 
@@ -437,26 +408,16 @@ describe('clinical documents actions', () => {
 
 			const result = await getClinicalDocumentById(DOCUMENT_ID);
 
-			expect(mocks.assertCanAccessPet).toHaveBeenCalledWith(
-				customerContext,
-				PET_ID,
-			);
-			expect(mocks.canAccessTutorScopedData).toHaveBeenCalledWith(
-				customerContext,
-				TUTOR_ID,
-			);
+			expect(mocks.assertCanAccessPet).toHaveBeenCalledWith(customerContext, PET_ID);
+			expect(mocks.canAccessTutorScopedData).toHaveBeenCalledWith(customerContext, TUTOR_ID);
 			expect(result).toBeNull();
 		});
 
 		it('rejects access when user cannot access pet', async () => {
 			mocks.dbSelect.mockReturnValue(createSelectChain([document]));
-			mocks.assertCanAccessPet.mockRejectedValue(
-				new Error('Paciente não encontrado'),
-			);
+			mocks.assertCanAccessPet.mockRejectedValue(new Error('Paciente não encontrado'));
 
-			await expect(getClinicalDocumentById(DOCUMENT_ID)).rejects.toThrow(
-				'Paciente não encontrado',
-			);
+			await expect(getClinicalDocumentById(DOCUMENT_ID)).rejects.toThrow('Paciente não encontrado');
 
 			expect(mocks.canAccessTutorScopedData).not.toHaveBeenCalled();
 		});

@@ -7,22 +7,8 @@ import { formatPetTutorNames } from '@/api/schema/pets.schema';
 import { ShiftsWithRelations } from '@/api/schema/shifts.schema';
 import { CustomCalendar } from '@/components/ui/custom-calendar';
 import { cn } from '@/lib/utils';
-import {
-	endOfDay,
-	format,
-	isSameDay,
-	isWithinInterval,
-	setMonth,
-	startOfDay,
-} from 'date-fns';
-import {
-	ClockIcon,
-	HospitalIcon,
-	MoonIcon,
-	StethoscopeIcon,
-	SunIcon,
-	UserIcon,
-} from 'lucide-react';
+import { endOfDay, format, isSameDay, isWithinInterval, setMonth, startOfDay } from 'date-fns';
+import { ClockIcon, HospitalIcon, MoonIcon, StethoscopeIcon, SunIcon, UserIcon } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 interface DashboardCalendarProps {
@@ -30,18 +16,13 @@ interface DashboardCalendarProps {
 	appointments: AppointmentsWithRelations[];
 }
 
-const DashboardCalendarClient = ({
-	shifts,
-	appointments,
-}: DashboardCalendarProps) => {
+const DashboardCalendarClient = ({ shifts, appointments }: DashboardCalendarProps) => {
 	const searchParams = useSearchParams();
 	const router = useRouter();
 	const pathname = usePathname();
 
 	const monthParam = searchParams.get('month');
-	const currentMonth = monthParam
-		? setMonth(new Date(), monthNames.indexOf(monthParam.toLowerCase()))
-		: new Date();
+	const currentMonth = monthParam ? setMonth(new Date(), monthNames.indexOf(monthParam.toLowerCase())) : new Date();
 
 	const handleMonthChange = (newDate: Date) => {
 		const monthIndex = newDate.getMonth();
@@ -53,11 +34,7 @@ const DashboardCalendarClient = ({
 		router.push(`${pathname}?${params.toString()}`);
 	};
 
-	const renderDayContent = (
-		date: Date,
-		isMobile: boolean,
-		isCurrentMonth: boolean,
-	) => {
+	const renderDayContent = (date: Date, isMobile: boolean, isCurrentMonth: boolean) => {
 		// Filtro de Plantões
 		const dayShifts = shifts.filter((s) => {
 			const start = new Date(s.startTime);
@@ -71,9 +48,7 @@ const DashboardCalendarClient = ({
 		});
 
 		// Filtro de Agendamentos
-		const dayAppointments = appointments.filter((a) =>
-			isSameDay(new Date(a.scheduledAt), date),
-		);
+		const dayAppointments = appointments.filter((a) => isSameDay(new Date(a.scheduledAt), date));
 
 		return (
 			<div
@@ -102,15 +77,11 @@ const DashboardCalendarClient = ({
 							</span>
 							<span className='flex items-center gap-2'>
 								<ClockIcon className='w-3 h-3' />
-								<p className='truncate'>
-									{format(new Date(appo.scheduledAt), 'HH:mm')}
-								</p>
+								<p className='truncate'>{format(new Date(appo.scheduledAt), 'HH:mm')}</p>
 							</span>
 							<span className='flex items-center gap-2'>
 								<UserIcon className='w-3 h-3' />
-								<p className='truncate'>
-									{appo.pet ? formatPetTutorNames(appo.pet) : ''}
-								</p>
+								<p className='truncate'>{appo.pet ? formatPetTutorNames(appo.pet) : ''}</p>
 							</span>
 						</div>
 					</div>
@@ -149,11 +120,7 @@ const DashboardCalendarClient = ({
 										'flex items-center gap-2',
 									)}
 								>
-									{isNight ? (
-										<MoonIcon className='w-3 h-3' />
-									) : (
-										<SunIcon className='w-3 h-3' />
-									)}
+									{isNight ? <MoonIcon className='w-3 h-3' /> : <SunIcon className='w-3 h-3' />}
 									{shift.clinicName}
 								</span>
 							</div>
@@ -166,13 +133,9 @@ const DashboardCalendarClient = ({
 									)}
 								>
 									<ClockIcon className='w-3 h-3' />
-									{isStart
-										? 'Entrada: ' + format(new Date(shift.startTime), 'HH:mm')
-										: ''}
+									{isStart ? 'Entrada: ' + format(new Date(shift.startTime), 'HH:mm') : ''}
 									{isStart && isEnd && ' - '}
-									{isEnd
-										? 'Saída: ' + format(new Date(shift.endTime), 'HH:mm')
-										: ''}
+									{isEnd ? 'Saída: ' + format(new Date(shift.endTime), 'HH:mm') : ''}
 									{!isStart && !isEnd && 'Continuação'}
 								</span>
 							</div>
@@ -189,9 +152,7 @@ const DashboardCalendarClient = ({
 			return isSameDay(date, start);
 		});
 
-		const dayAppointments = appointments.filter((a) =>
-			isSameDay(new Date(a.scheduledAt), date),
-		);
+		const dayAppointments = appointments.filter((a) => isSameDay(new Date(a.scheduledAt), date));
 
 		return (
 			<div
@@ -232,11 +193,7 @@ const DashboardCalendarClient = ({
 							)}
 						>
 							<span className='flex gap-2'>
-								{isNight ? (
-									<MoonIcon className='w-3 h-3' />
-								) : (
-									<SunIcon className='w-3 h-3' />
-								)}
+								{isNight ? <MoonIcon className='w-3 h-3' /> : <SunIcon className='w-3 h-3' />}
 								<HospitalIcon className='w-3 h-3' />
 							</span>
 						</div>

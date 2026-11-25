@@ -41,15 +41,12 @@ const generateSecurePassword = (): string => {
 	return `${randomBytes(24).toString('base64url')}Aa1!`;
 };
 
-export const createNewClerkUser = async (
-	data: CreateCustomerWithUserSchema | CreateDoctorWithUserSchema,
-) => {
+export const createNewClerkUser = async (data: CreateCustomerWithUserSchema | CreateDoctorWithUserSchema) => {
 	try {
 		const nameParts = data.name.trim().split(/\s+/);
 
 		const firstName = nameParts[0];
-		const lastName =
-			nameParts.length > 1 ? nameParts.slice(1).join(' ') : undefined;
+		const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : undefined;
 
 		const username = generateUsername(data.name);
 
@@ -69,8 +66,7 @@ export const createNewClerkUser = async (
 			console.error('[Clerk Error]', errorCode ?? 'unknown_error');
 
 			if (firstError) {
-				const friendlyMessage =
-					CLERK_ERROR_MESSAGES[firstError.code] ?? firstError.message;
+				const friendlyMessage = CLERK_ERROR_MESSAGES[firstError.code] ?? firstError.message;
 
 				throw new Error(friendlyMessage);
 			}

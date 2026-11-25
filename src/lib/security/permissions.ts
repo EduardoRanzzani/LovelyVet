@@ -51,7 +51,5 @@ export const ROUTE_PERMISSIONS: Record<UserRole, readonly string[]> = {
 };
 
 export const canAccessPath = (role: UserRole, pathname: string): boolean => {
-	return ROUTE_PERMISSIONS[role].some((route) =>
-		isPathWithinRoute(pathname, route),
-	);
+	return ROUTE_PERMISSIONS[role].some((route) => isPathWithinRoute(pathname, route));
 };

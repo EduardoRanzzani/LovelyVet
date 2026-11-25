@@ -8,7 +8,11 @@ describe('test environment', () => {
 	});
 
 	it('supports disabled controls', () => {
-		render(<button type='button' disabled>Excluir</button>);
+		render(
+			<button type='button' disabled>
+				Excluir
+			</button>,
+		);
 		expect(screen.getByRole('button', { name: 'Excluir' })).toBeDisabled();
 	});
 });

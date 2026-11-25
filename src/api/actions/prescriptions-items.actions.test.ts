@@ -36,10 +36,8 @@ vi.mock('@/db', () => ({
 vi.mock('@/lib/next-safe-action', () => ({
 	actionClient: {
 		schema: () => ({
-			action:
-				(handler: (args: { parsedInput: unknown }) => unknown) =>
-				(parsedInput: unknown) =>
-					handler({ parsedInput }),
+			action: (handler: (args: { parsedInput: unknown }) => unknown) => (parsedInput: unknown) =>
+				handler({ parsedInput }),
 		}),
 	},
 }));
@@ -142,9 +140,7 @@ describe('prescriptions items actions', () => {
 				throw new Error('Usuário não autorizado');
 			});
 
-			await expect(getPrescriptionsItems()).rejects.toThrow(
-				'Usuário não autorizado',
-			);
+			await expect(getPrescriptionsItems()).rejects.toThrow('Usuário não autorizado');
 
 			expect(mocks.findMany).not.toHaveBeenCalled();
 		});

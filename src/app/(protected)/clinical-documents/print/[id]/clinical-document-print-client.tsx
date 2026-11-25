@@ -1,9 +1,6 @@
 'use client';
 
-import type {
-	ClinicalDocumentSnapshot,
-	ClinicalDocumentType,
-} from '@/api/schema/clinical-documents.schema';
+import type { ClinicalDocumentSnapshot, ClinicalDocumentType } from '@/api/schema/clinical-documents.schema';
 import A4DocumentPreview from '@/components/clinical-documents/a4-document-preview';
 import RichTextClinicalDocument from '@/components/clinical-documents/rich-text-clinical-document';
 import { Button } from '@/components/ui/button';

@@ -36,9 +36,7 @@ const ClinicsPage = async ({ searchParams }: ClinicsPageProps) => {
 			</PageHeader>
 
 			<PageContent>
-				<PageDescription>
-					Lista de clínicas previamente cadastradas para plantões
-				</PageDescription>
+				<PageDescription>Lista de clínicas previamente cadastradas para plantões</PageDescription>
 				<Suspense
 					fallback={
 						<>

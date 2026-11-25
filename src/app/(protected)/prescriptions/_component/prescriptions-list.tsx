@@ -8,13 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { handleNavigation } from '@/lib/utils';
-import {
-	DownloadIcon,
-	FilePenLineIcon,
-	HistoryIcon,
-	PlusIcon,
-	ShieldCheckIcon,
-} from 'lucide-react';
+import { DownloadIcon, FilePenLineIcon, HistoryIcon, PlusIcon, ShieldCheckIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { use } from 'react';
@@ -43,9 +37,7 @@ const PrescriptionActions = ({ prescription }: PrescriptionActionsProps) => {
 		return (
 			<div className='flex flex-wrap gap-2'>
 				<Button asChild size='sm' variant='outline'>
-					<Link
-						href={`/pets/${prescription.petId}/documents/new?prescriptionId=${prescription.id}`}
-					>
+					<Link href={`/pets/${prescription.petId}/documents/new?prescriptionId=${prescription.id}`}>
 						<FilePenLineIcon className='size-4' />
 						Editar
 					</Link>
@@ -88,9 +80,7 @@ const PrescriptionStatus = ({ prescription }: PrescriptionActionsProps) => {
 	return <Badge variant='outline'>Legada</Badge>;
 };
 
-const PrescriptionsListClient = ({
-	prescriptions,
-}: PrescriptionsListClientProps) => {
+const PrescriptionsListClient = ({ prescriptions }: PrescriptionsListClientProps) => {
 	const prescriptionsResolved = use(prescriptions);
 	const searchParams = useSearchParams();
 
@@ -131,9 +121,7 @@ const PrescriptionsListClient = ({
 				<div className='min-w-0'>
 					<h3 className='font-medium'>{prescription.pet.name}</h3>
 
-					<p className='text-sm text-muted-foreground'>
-						{prescription.issuedAt.toLocaleDateString('pt-BR')}
-					</p>
+					<p className='text-sm text-muted-foreground'>{prescription.issuedAt.toLocaleDateString('pt-BR')}</p>
 				</div>
 
 				<PrescriptionStatus prescription={prescription} />

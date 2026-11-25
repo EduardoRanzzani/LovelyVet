@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-	prescriptionDocumentDataSchema,
-	savePrescriptionDocumentSchema,
-} from './prescription-document.schema';
+import { prescriptionDocumentDataSchema, savePrescriptionDocumentSchema } from './prescription-document.schema';
 
 const validInput = {
 	petId: '11111111-1111-4111-8111-111111111111',

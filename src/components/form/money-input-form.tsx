@@ -2,20 +2,11 @@ import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import {
-	Control,
-	Controller,
-	FieldValues,
-	Path,
-	RegisterOptions,
-} from 'react-hook-form';
+import { Control, Controller, FieldValues, Path, RegisterOptions } from 'react-hook-form';
 import { NumericFormat, NumericFormatProps } from 'react-number-format';
 
 // Estendemos as props do NumericFormat para manter o comportamento de moeda
-interface MoneyInputFormProps<T extends FieldValues> extends Omit<
-	NumericFormatProps,
-	'name'
-> {
+interface MoneyInputFormProps<T extends FieldValues> extends Omit<NumericFormatProps, 'name'> {
 	label: string;
 	error?: string;
 	name: Path<T>;

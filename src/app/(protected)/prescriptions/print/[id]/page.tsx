@@ -9,9 +9,7 @@ interface PrintPrescriptionPageProps {
 	}>;
 }
 
-export default async function PrintPrescriptionPage({
-	params,
-}: PrintPrescriptionPageProps) {
+export default async function PrintPrescriptionPage({ params }: PrintPrescriptionPageProps) {
 	await connection();
 
 	const { id } = await params;

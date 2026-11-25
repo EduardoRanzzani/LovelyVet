@@ -1,9 +1,6 @@
 'use client';
 
-import {
-	deleteCalendarEvent,
-	getCalendarEventDetails,
-} from '@/api/actions/calendar-events.actions';
+import { deleteCalendarEvent, getCalendarEventDetails } from '@/api/actions/calendar-events.actions';
 import { monthNames } from '@/api/config/consts';
 import type {
 	CalendarCareReminderEntry,
@@ -16,48 +13,22 @@ import { CustomCalendar } from '@/components/ui/custom-calendar';
 import DeleteAlertButton from '@/components/list/delete-alert-dialog';
 import { Dialog } from '@/components/ui/dialog';
 import LoadingDialog from '@/components/ui/loading';
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getCalendarEntryTimeLabel } from '@/lib/agenda/calendar-entry-time';
 import { getCareReminderStatusUI } from '@/lib/agenda/care-reminder-status';
 import {
 	getMobileCalendarIndicatorClass,
 	getMobileCalendarVisibleCount,
 } from '@/lib/agenda/mobile-calendar-indicators';
-import {
-	isNightShift,
-	startsOnCalendarDay,
-} from '@/lib/agenda/shift-calendar-presentation';
+import { isNightShift, startsOnCalendarDay } from '@/lib/agenda/shift-calendar-presentation';
 import { cn } from '@/lib/utils';
-import {
-	eachDayOfInterval,
-	endOfDay,
-	isSameDay,
-	isWithinInterval,
-	parseISO,
-	startOfDay,
-} from 'date-fns';
-import {
-	BellIcon,
-	CalendarClockIcon,
-	ClockIcon,
-	HospitalIcon,
-	MoonIcon,
-	StethoscopeIcon,
-	SunIcon,
-} from 'lucide-react';
+import { eachDayOfInterval, endOfDay, isSameDay, isWithinInterval, parseISO, startOfDay } from 'date-fns';
+import { BellIcon, CalendarClockIcon, ClockIcon, HospitalIcon, MoonIcon, StethoscopeIcon, SunIcon } from 'lucide-react';
 import { useAction } from 'next-safe-action/hooks';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { use, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import CalendarEventForm, {
-	type PersonalCalendarEventDetails,
-} from './calendar-event-form';
+import CalendarEventForm, { type PersonalCalendarEventDetails } from './calendar-event-form';
 import CareReminderDialog from './care-reminder-dialog';
 import AgendaEntryDetailsDialog from './agenda-entry-details-dialog';
 
@@ -82,26 +53,17 @@ const AgendaCalendarClient = ({
 	const searchParams = useSearchParams();
 	const [isFormOpen, setIsFormOpen] = useState(false);
 	const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-	const [selectedPersonalEvent, setSelectedPersonalEvent] = useState<
-		PersonalCalendarEventDetails | undefined
-	>();
-	const [selectedCareReminder, setSelectedCareReminder] = useState<
-		CalendarCareReminderEntry | undefined
-	>();
+	const [selectedPersonalEvent, setSelectedPersonalEvent] = useState<PersonalCalendarEventDetails | undefined>();
+	const [selectedCareReminder, setSelectedCareReminder] = useState<CalendarCareReminderEntry | undefined>();
 	const [selectedAgendaEntry, setSelectedAgendaEntry] = useState<
 		CalendarAppointmentEntry | CalendarShiftEntry | undefined
 	>();
 	const monthParam = searchParams.get('month');
 	const yearParam = Number(searchParams.get('year'));
 	const now = new Date();
-	const monthIndex = monthParam
-		? monthNames.indexOf(monthParam.toLowerCase())
-		: now.getMonth();
+	const monthIndex = monthParam ? monthNames.indexOf(monthParam.toLowerCase()) : now.getMonth();
 	const safeMonthIndex = monthIndex >= 0 ? monthIndex : now.getMonth();
-	const safeYear =
-		Number.isInteger(yearParam) && yearParam > 0
-			? yearParam
-			: now.getFullYear();
+	const safeYear = Number.isInteger(yearParam) && yearParam > 0 ? yearParam : now.getFullYear();
 	const currentMonth = new Date(safeYear, safeMonthIndex, 1);
 
 	const eventDetailsAction = useAction(getCalendarEventDetails, {
@@ -122,9 +84,7 @@ const AgendaCalendarClient = ({
 		},
 
 		onError: ({ error }) => {
-			toast.error(
-				error.serverError ?? 'Não foi possível carregar o compromisso.',
-			);
+			toast.error(error.serverError ?? 'Não foi possível carregar o compromisso.');
 		},
 	});
 
@@ -134,9 +94,7 @@ const AgendaCalendarClient = ({
 			router.refresh();
 		},
 		onError: ({ error }) => {
-			toast.error(
-				error.serverError ?? 'Não foi possível excluir o compromisso.',
-			);
+			toast.error(error.serverError ?? 'Não foi possível excluir o compromisso.');
 		},
 	});
 
@@ -253,11 +211,7 @@ const AgendaCalendarClient = ({
 			case 'shift':
 				return (
 					<span className='inline-flex shrink-0 items-center gap-1'>
-						{isNightShift(entry.startAt) ? (
-							<MoonIcon className='size-3' />
-						) : (
-							<SunIcon className='size-3' />
-						)}
+						{isNightShift(entry.startAt) ? <MoonIcon className='size-3' /> : <SunIcon className='size-3' />}
 
 						<HospitalIcon className='size-3' />
 					</span>
@@ -272,13 +226,9 @@ const AgendaCalendarClient = ({
 	};
 
 	const renderEntry = (entry: CalendarEntry, date: Date) => {
-		const reminderUI =
-			entry.kind === 'care_reminder'
-				? getCareReminderStatusUI(entry.status)
-				: null;
+		const reminderUI = entry.kind === 'care_reminder' ? getCareReminderStatusUI(entry.status) : null;
 
-		const isShiftStart =
-			entry.kind === 'shift' && isSameDay(new Date(entry.startAt), date);
+		const isShiftStart = entry.kind === 'shift' && isSameDay(new Date(entry.startAt), date);
 
 		const className =
 			entry.kind === 'appointment'
@@ -320,28 +270,18 @@ const AgendaCalendarClient = ({
 					className,
 					entry.kind === 'shift' && !isShiftStart && 'opacity-70 border-dashed',
 					'cursor-pointer transition-opacity hover:opacity-80 active:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
-					entry.kind === 'appointment' &&
-						!entry.blocksSchedule &&
-						'border-dashed',
+					entry.kind === 'appointment' && !entry.blocksSchedule && 'border-dashed',
 				)}
 			>
 				<div className='flex min-w-0 items-start gap-1.5 font-semibold'>
 					<span className='mt-0.5 shrink-0'>{renderEntryIcon(entry)}</span>
 
-					<span
-						className={cn(
-							'min-w-0 flex-1 wrap-break-word',
-							reminderUI?.titleClassName,
-						)}
-					>
+					<span className={cn('min-w-0 flex-1 wrap-break-word', reminderUI?.titleClassName)}>
 						{entry.title}
 					</span>
 
 					{entry.kind === 'personal' && (
-						<div
-							className='ml-auto shrink-0'
-							onClick={(event) => event.stopPropagation()}
-						>
+						<div className='ml-auto shrink-0' onClick={(event) => event.stopPropagation()}>
 							<DeleteAlertButton
 								tooltip='Excluir compromisso'
 								disabled={deleteEventAction.isPending}
@@ -357,9 +297,7 @@ const AgendaCalendarClient = ({
 
 				{entry.kind === 'care_reminder' ? (
 					<div className='mt-1 flex min-w-0 flex-col gap-1'>
-						<span className='wrap-break-word text-muted-foreground'>
-							{entry.pet.name}
-						</span>
+						<span className='wrap-break-word text-muted-foreground'>{entry.pet.name}</span>
 
 						<span
 							className={cn(
@@ -395,48 +333,27 @@ const AgendaCalendarClient = ({
 		);
 	};
 
-	const renderDay = (
-		date: Date,
-		_isMobile: boolean,
-		isCurrentMonth: boolean,
-	) => {
+	const renderDay = (date: Date, _isMobile: boolean, isCurrentMonth: boolean) => {
 		const dayEntries = getEntriesForDay(date);
 
 		return (
-			<div
-				className={cn(
-					'mt-1 flex flex-col gap-1',
-					!isCurrentMonth && 'pointer-events-none opacity-30',
-				)}
-			>
+			<div className={cn('mt-1 flex flex-col gap-1', !isCurrentMonth && 'pointer-events-none opacity-30')}>
 				{dayEntries.map((entry) => renderEntry(entry, date))}
 
-				{dayEntries.length === 0 && (
-					<span className='px-1 text-[10px] text-muted-foreground/50'>
-						Livre
-					</span>
-				)}
+				{dayEntries.length === 0 && <span className='px-1 text-[10px] text-muted-foreground/50'>Livre</span>}
 			</div>
 		);
 	};
 
 	const renderMobileHeader = (date: Date, isCurrentMonth: boolean) => {
 		const dayEntries = getEntriesForDay(date).filter(
-			(entry) =>
-				entry.kind !== 'shift' || startsOnCalendarDay(entry.startAt, date),
+			(entry) => entry.kind !== 'shift' || startsOnCalendarDay(entry.startAt, date),
 		);
 
-		const { visible, remaining } = getMobileCalendarVisibleCount(
-			dayEntries.length,
-		);
+		const { visible, remaining } = getMobileCalendarVisibleCount(dayEntries.length);
 
 		return (
-			<div
-				className={cn(
-					'flex w-full min-w-0 flex-wrap items-center gap-0.5',
-					!isCurrentMonth && 'opacity-30',
-				)}
-			>
+			<div className={cn('flex w-full min-w-0 flex-wrap items-center gap-0.5', !isCurrentMonth && 'opacity-30')}>
 				{dayEntries.slice(0, visible).map((entry) => {
 					const isShift = entry.kind === 'shift';
 
@@ -511,10 +428,7 @@ const AgendaCalendarClient = ({
 				</div>
 
 				{viewerRole === 'admin' && (
-					<Select
-						value={selectedDoctorId ?? 'all'}
-						onValueChange={handleDoctorChange}
-					>
+					<Select value={selectedDoctorId ?? 'all'} onValueChange={handleDoctorChange}>
 						<SelectTrigger className='w-full md:w-64'>
 							<SelectValue placeholder='Veterinário' />
 						</SelectTrigger>
@@ -554,23 +468,14 @@ const AgendaCalendarClient = ({
 				/>
 
 				{isFormOpen && selectedCareReminder && (
-					<CareReminderDialog
-						reminder={selectedCareReminder}
-						onSuccess={handleFormSuccess}
-					/>
+					<CareReminderDialog reminder={selectedCareReminder} onSuccess={handleFormSuccess} />
 				)}
 
-				{isFormOpen && selectedAgendaEntry && (
-					<AgendaEntryDetailsDialog entry={selectedAgendaEntry} />
-				)}
+				{isFormOpen && selectedAgendaEntry && <AgendaEntryDetailsDialog entry={selectedAgendaEntry} />}
 
 				{isFormOpen && !selectedCareReminder && !selectedAgendaEntry && (
 					<CalendarEventForm
-						key={
-							selectedPersonalEvent?.id ??
-							selectedDate?.toISOString() ??
-							'new-calendar-event'
-						}
+						key={selectedPersonalEvent?.id ?? selectedDate?.toISOString() ?? 'new-calendar-event'}
 						event={selectedPersonalEvent}
 						doctors={doctors}
 						selectedDate={selectedDate}

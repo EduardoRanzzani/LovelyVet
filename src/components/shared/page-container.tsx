@@ -18,11 +18,7 @@ export const PageHeader = ({ children }: { children: React.ReactNode }) => {
 	);
 };
 
-export const PageHeaderContent = ({
-	children,
-}: {
-	children: React.ReactNode;
-}) => {
+export const PageHeaderContent = ({ children }: { children: React.ReactNode }) => {
 	return <div className='flex flex-col'>{children}</div>; // Removido space-y-1 para alinhar melhor
 };
 
@@ -30,11 +26,7 @@ export const PageTitle = ({ children }: { children: React.ReactNode }) => {
 	return <h1 className='text-lg font-semibold leading-none'>{children}</h1>;
 };
 
-export const PageDescription = ({
-	children,
-}: {
-	children: React.ReactNode;
-}) => {
+export const PageDescription = ({ children }: { children: React.ReactNode }) => {
 	return <p className='text-muted-foreground text-sm'>{children}</p>;
 };
 

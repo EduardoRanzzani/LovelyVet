@@ -10,10 +10,7 @@ import { revalidatePath } from 'next/cache';
 import z from 'zod';
 import { PaginatedData } from '../config/consts';
 import { normalizePagination } from '@/lib/pagination';
-import {
-	BreedsWithRelations,
-	createBreedSchema,
-} from '../schema/breeds.schema';
+import { BreedsWithRelations, createBreedSchema } from '../schema/breeds.schema';
 
 export const getBreeds = async (): Promise<BreedsWithRelations[]> => {
 	await requireAuthContext();
@@ -38,10 +35,7 @@ export const getBreedsPaginated = async (
 
 	const pagination = normalizePagination(page, limit);
 	const filterCondition = search
-		? or(
-				ilike(breedsTable.name, `%${search}%`),
-				ilike(speciesTable.name, `%${search}%`),
-			)
+		? or(ilike(breedsTable.name, `%${search}%`), ilike(speciesTable.name, `%${search}%`))
 		: undefined;
 
 	const dataPromise = db
@@ -62,10 +56,7 @@ export const getBreedsPaginated = async (
 		.innerJoin(speciesTable, eq(breedsTable.specieId, speciesTable.id))
 		.where(filterCondition);
 
-	const [data, totalCountResult] = await Promise.all([
-		dataPromise,
-		totalCountPromise,
-	]);
+	const [data, totalCountResult] = await Promise.all([dataPromise, totalCountPromise]);
 
 	const totalCount = totalCountResult[0].value;
 	const pageCount = Math.ceil(totalCount / pagination.limit);
@@ -86,30 +77,28 @@ export const getBreedsPaginated = async (
 	};
 };
 
-export const upsertBreed = actionClient
-	.schema(createBreedSchema)
-	.action(async ({ parsedInput }) => {
-		const context = await requireAuthContext();
-		requireStaff(context);
+export const upsertBreed = actionClient.schema(createBreedSchema).action(async ({ parsedInput }) => {
+	const context = await requireAuthContext();
+	requireStaff(context);
 
-		await db
-			.insert(breedsTable)
-			.values({
-				id: parsedInput.id ?? undefined,
+	await db
+		.insert(breedsTable)
+		.values({
+			id: parsedInput.id ?? undefined,
+			name: parsedInput.name,
+			specieId: parsedInput.specieId,
+		})
+		.onConflictDoUpdate({
+			target: breedsTable.id,
+			set: {
 				name: parsedInput.name,
 				specieId: parsedInput.specieId,
-			})
-			.onConflictDoUpdate({
-				target: breedsTable.id,
-				set: {
-					name: parsedInput.name,
-					specieId: parsedInput.specieId,
-				},
-			})
-			.returning();
+			},
+		})
+		.returning();
 
-		revalidatePath('/breeds');
-	});
+	revalidatePath('/breeds');
+});
 
 export const deleteBreed = actionClient
 	.schema(z.object({ id: z.uuid({ message: 'ID da raça inválido' }) }))

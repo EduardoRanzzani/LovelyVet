@@ -5,16 +5,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea'; // Certifique-se de ter instalado o componente base do Shadcn
 import { cn } from '@/lib/utils';
 import { TextareaHTMLAttributes } from 'react';
-import {
-	FieldValues,
-	Path,
-	RegisterOptions,
-	UseFormRegister,
-} from 'react-hook-form';
+import { FieldValues, Path, RegisterOptions, UseFormRegister } from 'react-hook-form';
 
-interface TextareaFormProps<
-	T extends FieldValues,
-> extends TextareaHTMLAttributes<HTMLTextAreaElement> {
+interface TextareaFormProps<T extends FieldValues> extends TextareaHTMLAttributes<HTMLTextAreaElement> {
 	label: string;
 	error?: string;
 	name: Path<T>;
@@ -31,8 +24,7 @@ const TextareaForm = <T extends FieldValues>({
 	className,
 	...props
 }: TextareaFormProps<T>) => {
-	const textareaId =
-		props.id || name || label.replace(/\s+/g, '-').toLowerCase();
+	const textareaId = props.id || name || label.replace(/\s+/g, '-').toLowerCase();
 
 	return (
 		<Field className={cn('flex min-w-0 flex-col gap-1', className)}>

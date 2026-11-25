@@ -16,15 +16,11 @@ const context = (
 
 describe('canAccessTutorScopedData', () => {
 	it('allows a customer to access a document issued to the same tutor', () => {
-		expect(
-			canAccessTutorScopedData(context('customer'), 'customer-a'),
-		).toBe(true);
+		expect(canAccessTutorScopedData(context('customer'), 'customer-a')).toBe(true);
 	});
 
 	it('blocks a customer from a document issued to another tutor', () => {
-		expect(
-			canAccessTutorScopedData(context('customer'), 'customer-b'),
-		).toBe(false);
+		expect(canAccessTutorScopedData(context('customer'), 'customer-b')).toBe(false);
 	});
 
 	it('allows legacy pet-scoped data without a tutor id', () => {
@@ -33,15 +29,10 @@ describe('canAccessTutorScopedData', () => {
 	});
 
 	it('denies tutor-scoped customer data when the customer profile is missing', () => {
-		expect(
-			canAccessTutorScopedData(context('customer', null), 'customer-a'),
-		).toBe(false);
+		expect(canAccessTutorScopedData(context('customer', null), 'customer-a')).toBe(false);
 	});
 
-	it.each(['admin', 'doctor'] as const)(
-		'allows %s to access tutor-scoped data',
-		(role) => {
-			expect(canAccessTutorScopedData(context(role), 'customer-b')).toBe(true);
-		},
-	);
+	it.each(['admin', 'doctor'] as const)('allows %s to access tutor-scoped data', (role) => {
+		expect(canAccessTutorScopedData(context(role), 'customer-b')).toBe(true);
+	});
 });

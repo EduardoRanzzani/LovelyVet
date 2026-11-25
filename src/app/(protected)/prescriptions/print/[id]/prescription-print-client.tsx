@@ -17,11 +17,7 @@ interface PrescriptionPrintClientProps {
 	issuedAt: string;
 }
 
-export default function PrescriptionPrintClient({
-	petId,
-	documentData,
-	issuedAt,
-}: PrescriptionPrintClientProps) {
+export default function PrescriptionPrintClient({ petId, documentData, issuedAt }: PrescriptionPrintClientProps) {
 	const date = new Date(issuedAt).toLocaleDateString('pt-BR', {
 		day: 'numeric',
 		month: 'long',

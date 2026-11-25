@@ -16,11 +16,7 @@ import { Button } from '@/components/ui/button';
 import LoadingDialog from '@/components/ui/loading';
 import { Separator } from '@/components/ui/separator';
 import { TableCell, TableRow } from '@/components/ui/table';
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { handleNavigation } from '@/lib/utils';
 import { IdCardIcon, MapPinIcon, PhoneIcon } from 'lucide-react';
 import { useAction } from 'next-safe-action/hooks';
@@ -56,9 +52,7 @@ const CustomersListClient = ({ customers }: CustomersListClientProps) => {
 		},
 		onError: (err) => {
 			console.error('Erro ao deletar cliente:', err);
-			toast.error(
-				'Ocorreu um erro ao tentar deletar o cliente. Tente novamente mais tarde.',
-			);
+			toast.error('Ocorreu um erro ao tentar deletar o cliente. Tente novamente mais tarde.');
 		},
 	});
 
@@ -88,18 +82,13 @@ const CustomersListClient = ({ customers }: CustomersListClientProps) => {
 								className='object-cover'
 							/>
 						) : (
-							<AvatarImage
-								src={'/avatar-placeholder.png'}
-								alt={customer.user.name}
-							/>
+							<AvatarImage src={'/avatar-placeholder.png'} alt={customer.user.name} />
 						)}
 					</Avatar>
 
 					<span className='flex flex-col'>
 						<h3>{customer.user.name}</h3>
-						<p className='text-xs text-muted-foreground'>
-							{customer.user.email}
-						</p>
+						<p className='text-xs text-muted-foreground'>{customer.user.email}</p>
 					</span>
 				</TableCell>
 
@@ -128,9 +117,7 @@ const CustomersListClient = ({ customers }: CustomersListClientProps) => {
 								<Button asChild variant={'outline'} className='2xl:size-9'>
 									<Link href={googleMapsUrl} target='_blank'>
 										<GoogleMapsIcon />
-										<span className='flex 2xl:hidden'>
-											Abrir no Google Maps
-										</span>
+										<span className='flex 2xl:hidden'>Abrir no Google Maps</span>
 									</Link>
 								</Button>
 							</TooltipTrigger>
@@ -143,9 +130,7 @@ const CustomersListClient = ({ customers }: CustomersListClientProps) => {
 				<TableCell className='w-20 space-x-2'>
 					<EditButton
 						tooltip={`Editar ${customer.user.name}`}
-						renderForm={(close) => (
-							<CustomerFormClient customer={customer} onSuccess={close} />
-						)}
+						renderForm={(close) => <CustomerFormClient customer={customer} onSuccess={close} />}
 					/>
 
 					<DeleteAlertButton action={() => handleDelete(customer.id)} />
@@ -165,10 +150,7 @@ const CustomersListClient = ({ customers }: CustomersListClientProps) => {
 					<div className='flex gap-4'>
 						<Avatar className='h-10 w-10 rounded-full' draggable={false}>
 							{customer.user.image ? (
-								<AvatarImage
-									src={customer.user.image}
-									alt={customer.user.name}
-								/>
+								<AvatarImage src={customer.user.image} alt={customer.user.name} />
 							) : (
 								<AvatarFallback className='rounded-full'>
 									{getInitials(customer.user.name)}
@@ -178,18 +160,14 @@ const CustomersListClient = ({ customers }: CustomersListClientProps) => {
 
 						<span className='flex flex-col'>
 							<h3 className='font-bold'>{customer.user.name}</h3>
-							<p className='text-xs text-muted-foreground'>
-								{customer.user.email}
-							</p>
+							<p className='text-xs text-muted-foreground'>{customer.user.email}</p>
 						</span>
 					</div>
 
 					<span className='flex flex-col gap-2'>
 						<EditButton
 							tooltip={`Editar ${customer.user.name}`}
-							renderForm={(close) => (
-								<CustomerFormClient customer={customer} onSuccess={close} />
-							)}
+							renderForm={(close) => <CustomerFormClient customer={customer} onSuccess={close} />}
 						/>
 						<DeleteAlertButton action={() => handleDelete(customer.id)} />
 					</span>
@@ -223,9 +201,7 @@ const CustomersListClient = ({ customers }: CustomersListClientProps) => {
 						<span className='text-sm font-semibold'>
 							<MapPinIcon className='w-4 h-4' />
 						</span>
-						<span className='text-sm flex gap-2 items-center'>
-							{fullAddress}
-						</span>
+						<span className='text-sm flex gap-2 items-center'>{fullAddress}</span>
 					</p>
 
 					<Button asChild variant={'outline'}>
@@ -244,10 +220,7 @@ const CustomersListClient = ({ customers }: CustomersListClientProps) => {
 			<div className='flex flex-col lg:flex-row items-center justify-between gap-4'>
 				<SearchInput />
 
-				<AddButton
-					text='Adicionar Cliente'
-					renderForm={(close) => <CustomerFormClient onSuccess={close} />}
-				/>
+				<AddButton text='Adicionar Cliente' renderForm={(close) => <CustomerFormClient onSuccess={close} />} />
 			</div>
 
 			{deleteCustomerAction.isPending && <LoadingDialog />}

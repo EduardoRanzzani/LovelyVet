@@ -3,16 +3,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { InputHTMLAttributes } from 'react';
-import {
-	FieldValues,
-	Path,
-	RegisterOptions,
-	UseFormRegister,
-} from 'react-hook-form';
+import { FieldValues, Path, RegisterOptions, UseFormRegister } from 'react-hook-form';
 
-interface InputFormProps<
-	T extends FieldValues,
-> extends InputHTMLAttributes<HTMLInputElement> {
+interface InputFormProps<T extends FieldValues> extends InputHTMLAttributes<HTMLInputElement> {
 	label: string;
 	error?: string;
 	name: Path<T>;

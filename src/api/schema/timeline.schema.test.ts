@@ -8,21 +8,17 @@ const validInput = {
 };
 
 describe('deleteTimelineItemSchema', () => {
-	it.each([
-		'prescription',
-		'referral',
-		'exam_request',
-		'weight',
-		'vaccine',
-		'note',
-	] as const)('accepts deletable timeline type: %s', (type) => {
-		const result = deleteTimelineItemSchema.safeParse({
-			...validInput,
-			type,
-		});
+	it.each(['prescription', 'referral', 'exam_request', 'weight', 'vaccine', 'note'] as const)(
+		'accepts deletable timeline type: %s',
+		(type) => {
+			const result = deleteTimelineItemSchema.safeParse({
+				...validInput,
+				type,
+			});
 
-		expect(result.success).toBe(true);
-	});
+			expect(result.success).toBe(true);
+		},
+	);
 
 	it.each(['record', 'appointment', 'pathology', 'attachment'] as const)(
 		'rejects non-deletable timeline type: %s',

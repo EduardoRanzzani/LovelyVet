@@ -2,9 +2,7 @@
 
 import { sanitizeRichTextHtml } from '@/lib/security/html';
 import type { Ref } from 'react';
-import ClinicalDocumentSheet, {
-	type ClinicalDocumentPatient,
-} from './clinical-document-sheet';
+import ClinicalDocumentSheet, { type ClinicalDocumentPatient } from './clinical-document-sheet';
 
 interface RichTextClinicalDocumentProps {
 	patient: ClinicalDocumentPatient;
@@ -13,12 +11,7 @@ interface RichTextClinicalDocumentProps {
 	printRef?: Ref<HTMLDivElement>;
 }
 
-export default function RichTextClinicalDocument({
-	patient,
-	title,
-	content,
-	printRef,
-}: RichTextClinicalDocumentProps) {
+export default function RichTextClinicalDocument({ patient, title, content, printRef }: RichTextClinicalDocumentProps) {
 	return (
 		<ClinicalDocumentSheet patient={patient} title={title} printRef={printRef}>
 			{content.trim() ? (
@@ -29,9 +22,7 @@ export default function RichTextClinicalDocument({
 					}}
 				/>
 			) : (
-				<p className='text-center text-[11px] text-zinc-400'>
-					Digite o conteúdo do documento para visualizar.
-				</p>
+				<p className='text-center text-[11px] text-zinc-400'>Digite o conteúdo do documento para visualizar.</p>
 			)}
 		</ClinicalDocumentSheet>
 	);

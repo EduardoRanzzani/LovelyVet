@@ -1,10 +1,6 @@
 import { format, isSameDay } from 'date-fns';
 
-export const getCalendarEntryTimeLabel = (
-	startAt: Date,
-	endAt: Date | null,
-	currentDay: Date,
-): string => {
+export const getCalendarEntryTimeLabel = (startAt: Date, endAt: Date | null, currentDay: Date): string => {
 	const start = new Date(startAt);
 	const end = endAt ? new Date(endAt) : null;
 

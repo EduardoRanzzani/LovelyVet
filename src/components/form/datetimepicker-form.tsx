@@ -4,18 +4,8 @@ import { normalizeAppointmentStart } from '@/lib/scheduling/appointment-time';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Label } from '@/components/ui/label';
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -58,13 +48,9 @@ const DateTimePickerForm = <T extends FieldValues>({
 }: DateTimePickerFormProps<T>) => {
 	const [isOpen, setIsOpen] = useState(false);
 
-	const hours = Array.from({ length: 24 }, (_, i) =>
-		i.toString().padStart(2, '0'),
-	);
+	const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
 
-	const minutes = Array.from({ length: 12 }, (_, i) =>
-		(i * 5).toString().padStart(2, '0'),
-	);
+	const minutes = Array.from({ length: 12 }, (_, i) => (i * 5).toString().padStart(2, '0'));
 
 	return (
 		<div className={cn('flex min-w-0 flex-col gap-1', className)}>
@@ -99,15 +85,9 @@ const DateTimePickerForm = <T extends FieldValues>({
 					const selectedTimeIsAvailable =
 						!selectedDate ||
 						availableTimes === undefined ||
-						isTimeAvailable(
-							format(selectedDate, 'HH'),
-							format(selectedDate, 'mm'),
-						);
+						isTimeAvailable(format(selectedDate, 'HH'), format(selectedDate, 'mm'));
 
-					const handleTimeChange = (
-						type: 'hour' | 'minute',
-						timeValue: string,
-					) => {
+					const handleTimeChange = (type: 'hour' | 'minute', timeValue: string) => {
 						const baseDate = selectedDate || new Date();
 
 						const newDate = normalizeAppointmentStart(baseDate);
@@ -117,10 +97,7 @@ const DateTimePickerForm = <T extends FieldValues>({
 
 							const currentMinute = format(newDate, 'mm');
 
-							if (
-								availableTimes !== undefined &&
-								!isTimeAvailable(timeValue, currentMinute)
-							) {
+							if (availableTimes !== undefined && !isTimeAvailable(timeValue, currentMinute)) {
 								const firstAvailableMinute = minutes.find((minute) =>
 									isTimeAvailable(timeValue, minute),
 								);
@@ -134,10 +111,7 @@ const DateTimePickerForm = <T extends FieldValues>({
 						} else {
 							const hour = format(newDate, 'HH');
 
-							if (
-								availableTimes !== undefined &&
-								!isTimeAvailable(hour, timeValue)
-							) {
+							if (availableTimes !== undefined && !isTimeAvailable(hour, timeValue)) {
 								return;
 							}
 
@@ -184,10 +158,7 @@ const DateTimePickerForm = <T extends FieldValues>({
 								</Button>
 							</PopoverTrigger>
 
-							<PopoverContent
-								className='flex w-auto max-w-[calc(100vw-1rem)] flex-col p-0'
-								align='start'
-							>
+							<PopoverContent className='flex w-auto max-w-[calc(100vw-1rem)] flex-col p-0' align='start'>
 								<Calendar
 									mode='single'
 									selected={selectedDate || undefined}
@@ -217,9 +188,7 @@ const DateTimePickerForm = <T extends FieldValues>({
 								<div className='flex items-center justify-between gap-4 border-t border-border bg-muted/20 p-3'>
 									<div className='flex w-full items-center gap-1'>
 										<Select
-											value={
-												selectedDate ? format(selectedDate, 'HH') : undefined
-											}
+											value={selectedDate ? format(selectedDate, 'HH') : undefined}
 											disabled={
 												disabled ||
 												availabilityLoading ||
@@ -247,17 +216,13 @@ const DateTimePickerForm = <T extends FieldValues>({
 										<span className='text-xs font-bold'>:</span>
 
 										<Select
-											value={
-												selectedDate ? format(selectedDate, 'mm') : undefined
-											}
+											value={selectedDate ? format(selectedDate, 'mm') : undefined}
 											disabled={
 												disabled ||
 												availabilityLoading ||
 												(availabilityRequired && availableTimes === undefined)
 											}
-											onValueChange={(value) =>
-												handleTimeChange('minute', value)
-											}
+											onValueChange={(value) => handleTimeChange('minute', value)}
 										>
 											<SelectTrigger className='h-8 flex-1 text-xs'>
 												<SelectValue placeholder='00' />
@@ -270,10 +235,7 @@ const DateTimePickerForm = <T extends FieldValues>({
 														value={minute}
 														disabled={
 															selectedDate
-																? !isTimeAvailable(
-																		format(selectedDate, 'HH'),
-																		minute,
-																	)
+																? !isTimeAvailable(format(selectedDate, 'HH'), minute)
 																: false
 														}
 													>
@@ -285,14 +247,11 @@ const DateTimePickerForm = <T extends FieldValues>({
 									</div>
 								</div>
 
-								{availabilityRequired &&
-									!availabilityLoading &&
-									availableTimes === undefined && (
-										<p className='border-t px-3 py-2 text-xs text-muted-foreground'>
-											Selecione o veterinário e os serviços para consultar os
-											horários.
-										</p>
-									)}
+								{availabilityRequired && !availabilityLoading && availableTimes === undefined && (
+									<p className='border-t px-3 py-2 text-xs text-muted-foreground'>
+										Selecione o veterinário e os serviços para consultar os horários.
+									</p>
+								)}
 
 								{availabilityLoading && (
 									<div className='flex items-center gap-2 border-t px-3 py-2 text-xs text-muted-foreground'>
@@ -305,8 +264,7 @@ const DateTimePickerForm = <T extends FieldValues>({
 									availableTimes !== undefined &&
 									availableTimes.length === 0 && (
 										<p className='border-t px-3 py-2 text-xs text-destructive'>
-											Não há horário disponível neste dia para a duração
-											selecionada.
+											Não há horário disponível neste dia para a duração selecionada.
 										</p>
 									)}
 

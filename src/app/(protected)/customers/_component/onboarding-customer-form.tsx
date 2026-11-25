@@ -2,10 +2,7 @@
 
 import { onboardingCustomer } from '@/api/actions/customers.actions';
 import { searchAddressByPostalCode } from '@/api/config/consts';
-import {
-	OnboardingCustomerSchema,
-	onboardingCustomerSchema,
-} from '@/api/schema/customers.schema';
+import { OnboardingCustomerSchema, onboardingCustomerSchema } from '@/api/schema/customers.schema';
 import InputForm from '@/components/form/input-form';
 import InputFormMask from '@/components/form/input-mask-form';
 import SelectForm from '@/components/form/select-form';
@@ -76,16 +73,11 @@ const OnboardingCustomerFormDialog = ({ isOpen }: { isOpen: boolean }) => {
 				showCloseButton={false}
 			>
 				<Form {...form}>
-					<form
-						id='registerForm'
-						onSubmit={form.handleSubmit(formSubmit)}
-						className='flex flex-col gap-2'
-					>
+					<form id='registerForm' onSubmit={form.handleSubmit(formSubmit)} className='flex flex-col gap-2'>
 						<DialogHeader>
 							<DialogTitle>Complete seu cadastro</DialogTitle>
 							<DialogDescription>
-								Precisamos de mais alguns dados para finalizar o seu cadastro no
-								sistema.
+								Precisamos de mais alguns dados para finalizar o seu cadastro no sistema.
 							</DialogDescription>
 						</DialogHeader>
 
@@ -185,11 +177,7 @@ const OnboardingCustomerFormDialog = ({ isOpen }: { isOpen: boolean }) => {
 						{onboardingCustomerAction.isPending && <LoadingDialog />}
 
 						<DialogFooter>
-							<Button
-								type='submit'
-								disabled={onboardingCustomerAction.isPending}
-								className='flex-1'
-							>
+							<Button type='submit' disabled={onboardingCustomerAction.isPending} className='flex-1'>
 								{onboardingCustomerAction.isPending ? (
 									<Loader2Icon className='h-5 w-5 animate-spin' />
 								) : (

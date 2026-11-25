@@ -32,10 +32,7 @@ interface PublicSignedPrescriptionPdfRouteProps {
 	}>;
 }
 
-export async function GET(
-	request: Request,
-	{ params }: PublicSignedPrescriptionPdfRouteProps,
-) {
+export async function GET(request: Request, { params }: PublicSignedPrescriptionPdfRouteProps) {
 	const { id } = await params;
 	const lookup = z.uuid().safeParse(id).success
 		? eq(prescriptionSignaturesTable.id, id)
@@ -49,10 +46,7 @@ export async function GET(
 			validationToken: prescriptionSignaturesTable.validationToken,
 		})
 		.from(prescriptionSignaturesTable)
-		.innerJoin(
-			prescriptionsTable,
-			eq(prescriptionSignaturesTable.prescriptionId, prescriptionsTable.id),
-		)
+		.innerJoin(prescriptionsTable, eq(prescriptionSignaturesTable.prescriptionId, prescriptionsTable.id))
 		.where(lookup)
 		.limit(1);
 
@@ -67,26 +61,17 @@ export async function GET(
 		const secretCode = requestUrl.searchParams.get('_secretCode');
 
 		if (!isValidItiSecretCode(secretCode, result.validationToken)) {
-			return Response.json(
-				{ error: 'Código de acesso inválido.' },
-				{ status: 401, headers: publicPdfHeaders },
-			);
+			return Response.json({ error: 'Código de acesso inválido.' }, { status: 401, headers: publicPdfHeaders });
 		}
 
-		return Response.json(
-			createItiPrescriptionResponse(`${getPrescriptionPdfUrl(id)}?raw=1`),
-			{
-				headers: publicPdfHeaders,
-			},
-		);
+		return Response.json(createItiPrescriptionResponse(`${getPrescriptionPdfUrl(id)}?raw=1`), {
+			headers: publicPdfHeaders,
+		});
 	}
 
 	// Mobile browsers can download even inline PDFs. Human navigation uses our
 	// renderer; API clients and the ITI still receive the original signed bytes.
-	if (
-		requestUrl.searchParams.get('raw') !== '1' &&
-		request.headers.get('accept')?.includes('text/html')
-	) {
+	if (requestUrl.searchParams.get('raw') !== '1' && request.headers.get('accept')?.includes('text/html')) {
 		return new Response(null, {
 			status: 307,
 			headers: {
@@ -103,9 +88,7 @@ export async function GET(
 	return new Response(new Uint8Array(result.pdf), {
 		headers: {
 			'Content-Type': 'application/pdf',
-			'Content-Disposition': `inline; filename*=UTF-8''${encodeURIComponent(
-				filename,
-			)}`,
+			'Content-Disposition': `inline; filename*=UTF-8''${encodeURIComponent(filename)}`,
 			...publicPdfHeaders,
 			'X-Content-Type-Options': 'nosniff',
 			'X-PDF-SHA256': result.pdfSha256,

@@ -49,10 +49,8 @@ vi.mock('@/db', () => ({
 vi.mock('@/lib/next-safe-action', () => ({
 	actionClient: {
 		schema: () => ({
-			action:
-				(handler: (args: { parsedInput: unknown }) => unknown) =>
-				(parsedInput: unknown) =>
-					handler({ parsedInput }),
+			action: (handler: (args: { parsedInput: unknown }) => unknown) => (parsedInput: unknown) =>
+				handler({ parsedInput }),
 		}),
 	},
 }));
@@ -279,10 +277,7 @@ describe('prescriptions actions', () => {
 
 			const result = await savePrescriptionDocument(documentInput);
 
-			expect(mocks.assertCanAccessPet).toHaveBeenCalledWith(
-				doctorContext,
-				PET_ID,
-			);
+			expect(mocks.assertCanAccessPet).toHaveBeenCalledWith(doctorContext, PET_ID);
 			expect(mocks.insertValues).toHaveBeenCalledWith(
 				expect.objectContaining({
 					petId: PET_ID,
@@ -351,9 +346,7 @@ describe('prescriptions actions', () => {
 		it('rejects tutor that does not belong to pet', async () => {
 			mocks.dbSelect.mockReturnValueOnce(createLimitChain([]));
 
-			await expect(savePrescriptionDocument(documentInput)).rejects.toThrow(
-				'Tutor não pertence ao paciente',
-			);
+			await expect(savePrescriptionDocument(documentInput)).rejects.toThrow('Tutor não pertence ao paciente');
 
 			expect(mocks.dbInsert).not.toHaveBeenCalled();
 		});
@@ -370,9 +363,7 @@ describe('prescriptions actions', () => {
 				)
 				.mockReturnValueOnce(createLimitChain([]));
 
-			await expect(savePrescriptionDocument(documentInput)).rejects.toThrow(
-				'Paciente não encontrado',
-			);
+			await expect(savePrescriptionDocument(documentInput)).rejects.toThrow('Paciente não encontrado');
 
 			expect(mocks.dbInsert).not.toHaveBeenCalled();
 		});
@@ -383,9 +374,7 @@ describe('prescriptions actions', () => {
 
 			await savePrescriptionDocument(documentInput);
 
-			expect(mocks.sanitizeRichTextHtml).toHaveBeenCalledWith(
-				'<p>Dar a cada 8 horas</p>',
-			);
+			expect(mocks.sanitizeRichTextHtml).toHaveBeenCalledWith('<p>Dar a cada 8 horas</p>');
 			expect(mocks.insertValues).toHaveBeenCalledWith(
 				expect.objectContaining({
 					documentData: expect.objectContaining({
@@ -431,9 +420,7 @@ describe('prescriptions actions', () => {
 				}),
 			);
 
-			expect(mocks.sanitizeRichTextHtml).toHaveBeenCalledWith(
-				'<p>Manter repouso.</p>',
-			);
+			expect(mocks.sanitizeRichTextHtml).toHaveBeenCalledWith('<p>Manter repouso.</p>');
 		});
 	});
 
@@ -459,28 +446,21 @@ describe('prescriptions actions', () => {
 		};
 
 		it('updates unsigned prescription preserving patient snapshot', async () => {
-			mocks.dbSelect
-				.mockReturnValueOnce(createLimitChain([existingPrescription]))
-				.mockReturnValueOnce(
-					createLimitChain([
-						{
-							id: TUTOR_ID,
-							name: 'Maria Silva',
-						},
-					]),
-				);
+			mocks.dbSelect.mockReturnValueOnce(createLimitChain([existingPrescription])).mockReturnValueOnce(
+				createLimitChain([
+					{
+						id: TUTOR_ID,
+						name: 'Maria Silva',
+					},
+				]),
+			);
 
 			mocks.sanitizeRichTextHtml.mockReturnValue('<p>Atualizada</p>');
 
 			const result = await updatePrescriptionDocument(updateInput);
 
-			expect(mocks.assertPrescriptionIsUnsigned).toHaveBeenCalledWith(
-				PRESCRIPTION_ID,
-			);
-			expect(mocks.assertCanAccessPet).toHaveBeenCalledWith(
-				doctorContext,
-				PET_ID,
-			);
+			expect(mocks.assertPrescriptionIsUnsigned).toHaveBeenCalledWith(PRESCRIPTION_ID);
+			expect(mocks.assertCanAccessPet).toHaveBeenCalledWith(doctorContext, PET_ID);
 			expect(mocks.updateSet).toHaveBeenCalledWith(
 				expect.objectContaining({
 					doctorId: DOCTOR_ID,
@@ -518,9 +498,7 @@ describe('prescriptions actions', () => {
 		it('atualiza o título das orientações', async () => {
 			mocks.dbSelect
 				.mockReturnValueOnce(createLimitChain([existingPrescription]))
-				.mockReturnValueOnce(
-					createLimitChain([{ id: TUTOR_ID, name: 'Maria Silva' }]),
-				);
+				.mockReturnValueOnce(createLimitChain([{ id: TUTOR_ID, name: 'Maria Silva' }]));
 
 			const orientationBlocks = [
 				{
@@ -547,21 +525,15 @@ describe('prescriptions actions', () => {
 		it('rejects missing prescription', async () => {
 			mocks.dbSelect.mockReturnValueOnce(createLimitChain([]));
 
-			await expect(updatePrescriptionDocument(updateInput)).rejects.toThrow(
-				'Receita não encontrada',
-			);
+			await expect(updatePrescriptionDocument(updateInput)).rejects.toThrow('Receita não encontrada');
 
 			expect(mocks.assertPrescriptionIsUnsigned).not.toHaveBeenCalled();
 			expect(mocks.dbUpdate).not.toHaveBeenCalled();
 		});
 
 		it('does not update signed prescription', async () => {
-			mocks.dbSelect.mockReturnValueOnce(
-				createLimitChain([existingPrescription]),
-			);
-			mocks.assertPrescriptionIsUnsigned.mockRejectedValue(
-				new Error('Receita assinada não pode ser alterada'),
-			);
+			mocks.dbSelect.mockReturnValueOnce(createLimitChain([existingPrescription]));
+			mocks.assertPrescriptionIsUnsigned.mockRejectedValue(new Error('Receita assinada não pode ser alterada'));
 
 			await expect(updatePrescriptionDocument(updateInput)).rejects.toThrow(
 				'Receita assinada não pode ser alterada',
@@ -609,24 +581,20 @@ describe('prescriptions actions', () => {
 				.mockReturnValueOnce(createLimitChain([existingPrescription]))
 				.mockReturnValueOnce(createLimitChain([]));
 
-			await expect(updatePrescriptionDocument(updateInput)).rejects.toThrow(
-				'Tutor não pertence ao paciente',
-			);
+			await expect(updatePrescriptionDocument(updateInput)).rejects.toThrow('Tutor não pertence ao paciente');
 
 			expect(mocks.dbUpdate).not.toHaveBeenCalled();
 		});
 
 		it('atualiza os blocos de orientações da receita', async () => {
-			mocks.dbSelect
-				.mockReturnValueOnce(createLimitChain([existingPrescription]))
-				.mockReturnValueOnce(
-					createLimitChain([
-						{
-							id: TUTOR_ID,
-							name: 'Maria Silva',
-						},
-					]),
-				);
+			mocks.dbSelect.mockReturnValueOnce(createLimitChain([existingPrescription])).mockReturnValueOnce(
+				createLimitChain([
+					{
+						id: TUTOR_ID,
+						name: 'Maria Silva',
+					},
+				]),
+			);
 
 			const orientationBlocks = [
 				{
@@ -703,10 +671,7 @@ describe('prescriptions actions', () => {
 
 			const result = await getPrescriptionsByPet(PET_ID);
 
-			expect(mocks.assertCanAccessPet).toHaveBeenCalledWith(
-				doctorContext,
-				PET_ID,
-			);
+			expect(mocks.assertCanAccessPet).toHaveBeenCalledWith(doctorContext, PET_ID);
 			expect(result).toEqual(prescriptions);
 			expect(mocks.sanitizeDoctorForCustomer).not.toHaveBeenCalled();
 		});
@@ -714,9 +679,7 @@ describe('prescriptions actions', () => {
 		it('filters prescriptions from other tutors for customer', async () => {
 			mocks.requireAuthContext.mockResolvedValue(customerContext);
 
-			mocks.canAccessTutorScopedData.mockImplementation(
-				(_context, tutorId) => !tutorId || tutorId === TUTOR_ID,
-			);
+			mocks.canAccessTutorScopedData.mockImplementation((_context, tutorId) => !tutorId || tutorId === TUTOR_ID);
 
 			mocks.prescriptionsFindMany.mockResolvedValue([
 				{
@@ -777,14 +740,8 @@ describe('prescriptions actions', () => {
 
 			const result = await getPrescriptionDocumentById(PRESCRIPTION_ID);
 
-			expect(mocks.assertCanAccessPet).toHaveBeenCalledWith(
-				customerContext,
-				PET_ID,
-			);
-			expect(mocks.canAccessTutorScopedData).toHaveBeenCalledWith(
-				customerContext,
-				TUTOR_ID,
-			);
+			expect(mocks.assertCanAccessPet).toHaveBeenCalledWith(customerContext, PET_ID);
+			expect(mocks.canAccessTutorScopedData).toHaveBeenCalledWith(customerContext, TUTOR_ID);
 			expect(result).toEqual(prescription);
 		});
 
@@ -894,19 +851,14 @@ describe('prescriptions actions', () => {
 
 			const result = await getPrescriptionById(PRESCRIPTION_ID);
 
-			expect(mocks.assertCanAccessPet).toHaveBeenCalledWith(
-				doctorContext,
-				PET_ID,
-			);
+			expect(mocks.assertCanAccessPet).toHaveBeenCalledWith(doctorContext, PET_ID);
 			expect(result).toEqual(prescriptionData);
 		});
 
 		it('rejects when prescription does not exist', async () => {
 			mocks.dbSelect.mockReturnValueOnce(createLimitChain([]));
 
-			await expect(getPrescriptionById(PRESCRIPTION_ID)).rejects.toThrow(
-				'Prescrição não encontrada',
-			);
+			await expect(getPrescriptionById(PRESCRIPTION_ID)).rejects.toThrow('Prescrição não encontrada');
 
 			expect(mocks.assertCanAccessPet).not.toHaveBeenCalled();
 		});
@@ -932,9 +884,7 @@ describe('prescriptions actions', () => {
 			});
 			mocks.canAccessTutorScopedData.mockReturnValue(false);
 
-			await expect(getPrescriptionById(PRESCRIPTION_ID)).rejects.toThrow(
-				'Prescrição não encontrada',
-			);
+			await expect(getPrescriptionById(PRESCRIPTION_ID)).rejects.toThrow('Prescrição não encontrada');
 		});
 
 		it('sanitizes customer prescription data', async () => {
@@ -953,12 +903,8 @@ describe('prescriptions actions', () => {
 
 			expect(mocks.sanitizeDoctorForCustomer).toHaveBeenCalledWith(doctor);
 			expect(mocks.sanitizeTutorForCustomer).toHaveBeenCalledWith(ownTutor);
-			expect(mocks.sanitizeTutorForCustomer).not.toHaveBeenCalledWith(
-				otherTutor,
-			);
-			expect(mocks.sanitizeUserForCustomer).toHaveBeenCalledWith(
-				prescriptionData.pet.weightHistory[0].author,
-			);
+			expect(mocks.sanitizeTutorForCustomer).not.toHaveBeenCalledWith(otherTutor);
+			expect(mocks.sanitizeUserForCustomer).toHaveBeenCalledWith(prescriptionData.pet.weightHistory[0].author);
 			expect(result.pet.petTutors).toHaveLength(1);
 			expect(result.pet.petTutors[0].tutor.id).toBe(TUTOR_ID);
 		});

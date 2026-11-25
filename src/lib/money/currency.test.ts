@@ -18,9 +18,7 @@ describe('toCents', () => {
 	});
 
 	it('rejects negative values', () => {
-		expect(() => toCents(-1)).toThrow(
-			'O valor monetário não pode ser negativo.',
-		);
+		expect(() => toCents(-1)).toThrow('O valor monetário não pode ser negativo.');
 	});
 
 	it('rejects NaN', () => {
@@ -28,15 +26,11 @@ describe('toCents', () => {
 	});
 
 	it('rejects infinity', () => {
-		expect(() => toCents(Number.POSITIVE_INFINITY)).toThrow(
-			'Valor monetário inválido.',
-		);
+		expect(() => toCents(Number.POSITIVE_INFINITY)).toThrow('Valor monetário inválido.');
 	});
 
 	it('rejects values larger than the safe integer range', () => {
-		expect(() => toCents(Number.MAX_SAFE_INTEGER)).toThrow(
-			'Valor monetário excede o limite permitido.',
-		);
+		expect(() => toCents(Number.MAX_SAFE_INTEGER)).toThrow('Valor monetário excede o limite permitido.');
 	});
 });
 
@@ -55,8 +49,6 @@ describe('fromCents', () => {
 	});
 
 	it('rejects negative cents', () => {
-		expect(() => fromCents(-100)).toThrow(
-			'O valor em centavos não pode ser negativo.',
-		);
+		expect(() => fromCents(-100)).toThrow('O valor em centavos não pode ser negativo.');
 	});
 });

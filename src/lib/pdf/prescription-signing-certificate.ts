@@ -48,10 +48,7 @@ function getCertificateBag(p12: forge.pkcs12.Pkcs12Pfx): forge.pkcs12.Bag {
 	 * Primeiro tentamos descobrir qual certificado está
 	 * associado à chave privada através do localKeyId.
 	 */
-	const privateKeyBagOids = [
-		forge.pki.oids.pkcs8ShroudedKeyBag,
-		forge.pki.oids.keyBag,
-	];
+	const privateKeyBagOids = [forge.pki.oids.pkcs8ShroudedKeyBag, forge.pki.oids.keyBag];
 
 	let privateKeyLocalKeyId: string | null = null;
 
@@ -70,9 +67,7 @@ function getCertificateBag(p12: forge.pkcs12.Pkcs12Pfx): forge.pkcs12.Bag {
 	}
 
 	if (privateKeyLocalKeyId) {
-		const matchingCertificate = certBags.find(
-			(bag) => getBagLocalKeyIdHex(bag) === privateKeyLocalKeyId,
-		);
+		const matchingCertificate = certBags.find((bag) => getBagLocalKeyIdHex(bag) === privateKeyLocalKeyId);
 
 		if (matchingCertificate?.cert) {
 			return matchingCertificate;
@@ -99,14 +94,10 @@ function getCertificateBag(p12: forge.pkcs12.Pkcs12Pfx): forge.pkcs12.Bag {
 	}
 
 	const certificateSubject = (certificate: forge.pki.Certificate) =>
-		certificate.subject.attributes
-			.map((attribute) => `${attribute.type}=${String(attribute.value)}`)
-			.join('|');
+		certificate.subject.attributes.map((attribute) => `${attribute.type}=${String(attribute.value)}`).join('|');
 
 	const certificateIssuer = (certificate: forge.pki.Certificate) =>
-		certificate.issuer.attributes
-			.map((attribute) => `${attribute.type}=${String(attribute.value)}`)
-			.join('|');
+		certificate.issuer.attributes.map((attribute) => `${attribute.type}=${String(attribute.value)}`).join('|');
 
 	const leafBag = bagsWithCertificate.find((candidate) => {
 		if (!candidate.cert) {
@@ -127,18 +118,13 @@ function getCertificateBag(p12: forge.pkcs12.Pkcs12Pfx): forge.pkcs12.Bag {
 	});
 
 	if (!leafBag?.cert) {
-		throw new Error(
-			'Não foi possível identificar o certificado associado à chave privada do PFX.',
-		);
+		throw new Error('Não foi possível identificar o certificado associado à chave privada do PFX.');
 	}
 
 	return leafBag;
 }
 
-function parseCertificateMetadata(
-	buffer: Buffer,
-	passphrase: string,
-): PrescriptionSigningCertificateMetadata {
+function parseCertificateMetadata(buffer: Buffer, passphrase: string): PrescriptionSigningCertificateMetadata {
 	let p12: forge.pkcs12.Pkcs12Pfx;
 
 	try {
@@ -161,17 +147,11 @@ function parseCertificateMetadata(
 
 	const certificateAsn1 = forge.pki.certificateToAsn1(certificate);
 
-	const certificateDer = Buffer.from(
-		forge.asn1.toDer(certificateAsn1).getBytes(),
-		'binary',
-	);
+	const certificateDer = Buffer.from(forge.asn1.toDer(certificateAsn1).getBytes(), 'binary');
 
 	const x509 = new X509Certificate(certificateDer);
 
-	const fingerprintSha256 = createHash('sha256')
-		.update(certificateDer)
-		.digest('hex')
-		.toUpperCase();
+	const fingerprintSha256 = createHash('sha256').update(certificateDer).digest('hex').toUpperCase();
 
 	const commonName = certificate.subject.getField('CN')?.value;
 
@@ -190,29 +170,19 @@ function parseCertificateMetadata(
 	};
 }
 
-function validateCertificate(
-	metadata: PrescriptionSigningCertificateMetadata,
-	at: Date,
-): void {
+function validateCertificate(metadata: PrescriptionSigningCertificateMetadata, at: Date): void {
 	if (at < metadata.validFrom) {
-		throw new Error(
-			'O certificado digital ainda não está dentro do período de validade.',
-		);
+		throw new Error('O certificado digital ainda não está dentro do período de validade.');
 	}
 
 	if (at > metadata.validTo) {
-		throw new Error(
-			'O certificado digital utilizado para assinatura está expirado.',
-		);
+		throw new Error('O certificado digital utilizado para assinatura está expirado.');
 	}
 
-	const configuredFingerprint =
-		process.env.PRESCRIPTION_SIGNING_CERTIFICATE_SHA256;
+	const configuredFingerprint = process.env.PRESCRIPTION_SIGNING_CERTIFICATE_SHA256;
 
 	if (!configuredFingerprint) {
-		throw new Error(
-			'PRESCRIPTION_SIGNING_CERTIFICATE_SHA256 não foi configurado.',
-		);
+		throw new Error('PRESCRIPTION_SIGNING_CERTIFICATE_SHA256 não foi configurado.');
 	}
 
 	const expected = normalizeFingerprint(configuredFingerprint);

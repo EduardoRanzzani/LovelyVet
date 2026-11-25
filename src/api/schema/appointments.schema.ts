@@ -11,23 +11,22 @@ import {
 } from '@/db/schema';
 import z from 'zod';
 
-export type AppointmentsWithRelations =
-	typeof appointmentsTable.$inferSelect & {
-		pet: typeof petsTable.$inferSelect & {
-			petTutors: {
-				tutor: typeof customersTable.$inferSelect & {
-					user: typeof usersTable.$inferSelect;
-				};
-			}[];
-		};
-		doctor: typeof doctorsTable.$inferSelect & {
-			user: typeof usersTable.$inferSelect;
-		};
-		items: (typeof appointmentItemsTable.$inferSelect & {
-			service: typeof servicesTable.$inferSelect;
-		})[];
-		productItems: (typeof appointmentProductItemsTable.$inferSelect & { product: typeof productsTable.$inferSelect })[];
+export type AppointmentsWithRelations = typeof appointmentsTable.$inferSelect & {
+	pet: typeof petsTable.$inferSelect & {
+		petTutors: {
+			tutor: typeof customersTable.$inferSelect & {
+				user: typeof usersTable.$inferSelect;
+			};
+		}[];
 	};
+	doctor: typeof doctorsTable.$inferSelect & {
+		user: typeof usersTable.$inferSelect;
+	};
+	items: (typeof appointmentItemsTable.$inferSelect & {
+		service: typeof servicesTable.$inferSelect;
+	})[];
+	productItems: (typeof appointmentProductItemsTable.$inferSelect & { product: typeof productsTable.$inferSelect })[];
+};
 
 export const createAppointmentSchema = z.object({
 	id: z.uuid().optional().nullable(),
@@ -36,19 +35,9 @@ export const createAppointmentSchema = z.object({
 	doctorId: z.uuid().nonempty({ message: 'Selecione o veterinário' }),
 	scheduledAt: z.date('A data e hora são obrigatórias'),
 	status: z
-		.enum([
-			'pending',
-			'confirmed',
-			'in_progress',
-			'completed',
-			'cancelled',
-			'no_show',
-		])
+		.enum(['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show'])
 		.nonoptional({ message: 'O status é obrigatório' }),
-	totalPriceInCents: z
-		.number()
-		.finite('O preço informado é inválido')
-		.min(0, 'O preço não pode ser negativo'),
+	totalPriceInCents: z.number().finite('O preço informado é inválido').min(0, 'O preço não pode ser negativo'),
 	notes: z.string().optional().nullable(),
 	services: z.array(z.uuid()).nonempty({ message: 'Selecione o serviço' }),
 });
@@ -57,20 +46,17 @@ export type CreateAppointmentSchema = z.infer<typeof createAppointmentSchema>;
 
 export type AppointmentListItem = {
 	linkedReminder?: { id: string; petId: string; title: string; serviceId: string | null } | null;
-} & Omit<
-	AppointmentsWithRelations,
-	'doctor' | 'pet'
-> & {
-	doctor: {
-		id: string;
-		user: { name: string };
+} & Omit<AppointmentsWithRelations, 'doctor' | 'pet'> & {
+		doctor: {
+			id: string;
+			user: { name: string };
+		};
+		pet: {
+			id: string;
+			name: string;
+			petTutors: { tutor: { id?: string; user: { name: string } } }[];
+		};
 	};
-	pet: {
-		id: string;
-		name: string;
-		petTutors: { tutor: { id?: string; user: { name: string } } }[];
-	};
-};
 
 export const getDoctorAvailabilitySchema = z
 	.object({
@@ -90,23 +76,26 @@ export const getDoctorAvailabilitySchema = z
 		}
 	});
 
-export type GetDoctorAvailabilitySchema = z.infer<
-	typeof getDoctorAvailabilitySchema
->;
+export type GetDoctorAvailabilitySchema = z.infer<typeof getDoctorAvailabilitySchema>;
 
 // Reagendamento não recebe itens, valores, paciente, veterinário ou status do cliente.
-export const rescheduleAppointmentSchema = z.object({
-	id: z.uuid(),
-	scheduledAt: z.date(),
-}).strict();
+export const rescheduleAppointmentSchema = z
+	.object({
+		id: z.uuid(),
+		scheduledAt: z.date(),
+	})
+	.strict();
 
 export type RescheduleAppointmentSchema = z.infer<typeof rescheduleAppointmentSchema>;
 
-export const rescheduleAvailabilitySchema = z.object({
-	id: z.uuid(),
-	dayStart: z.date(),
-	dayEnd: z.date(),
-}).strict().refine(({ dayStart, dayEnd }) =>
-	dayEnd > dayStart && dayEnd.getTime() - dayStart.getTime() <= 25 * 60 * 60 * 1000,
-	{ message: 'Período inválido', path: ['dayEnd'] },
-);
+export const rescheduleAvailabilitySchema = z
+	.object({
+		id: z.uuid(),
+		dayStart: z.date(),
+		dayEnd: z.date(),
+	})
+	.strict()
+	.refine(
+		({ dayStart, dayEnd }) => dayEnd > dayStart && dayEnd.getTime() - dayStart.getTime() <= 25 * 60 * 60 * 1000,
+		{ message: 'Período inválido', path: ['dayEnd'] },
+	);

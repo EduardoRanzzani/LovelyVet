@@ -39,8 +39,7 @@ describe('generatePrescriptionPdf — paginação do texto rico', () => {
 		const data = createDocument(
 			Array.from(
 				{ length: 65 },
-				(_, index) =>
-					`<p>Instrução ${index + 1} com texto para teste de paginação.</p>`,
+				(_, index) => `<p>Instrução ${index + 1} com texto para teste de paginação.</p>`,
 			).join(''),
 		);
 
@@ -54,11 +53,7 @@ describe('generatePrescriptionPdf — paginação do texto rico', () => {
 	});
 
 	it('página assinada reserva mais espaço de rodapé', async () => {
-		const data = createDocument(
-			Array.from({ length: 45 }, () => '<p>Uma linha de orientação.</p>').join(
-				'',
-			),
-		);
+		const data = createDocument(Array.from({ length: 45 }, () => '<p>Uma linha de orientação.</p>').join(''));
 		const issuedAt = new Date('2026-11-19T12:00:00-04:00');
 
 		const unsigned = await generatePrescriptionPdf({
@@ -74,9 +69,7 @@ describe('generatePrescriptionPdf — paginação do texto rico', () => {
 		const unsignedPdf = await PDFDocument.load(unsigned);
 		const signedPdf = await PDFDocument.load(signed);
 
-		expect(signedPdf.getPageCount()).toBeGreaterThanOrEqual(
-			unsignedPdf.getPageCount(),
-		);
+		expect(signedPdf.getPageCount()).toBeGreaterThanOrEqual(unsignedPdf.getPageCount());
 	});
 
 	it('aceita orientações com linhas vazias, justificação e palavras longas', async () => {
@@ -88,8 +81,7 @@ describe('generatePrescriptionPdf — paginação do texto rico', () => {
 		data.orientationBlocks = [
 			{
 				title: 'Cuidados após o atendimento',
-				content:
-					'<p>Água à vontade.</p><p><br></p><p>Reavaliação em 7 dias.</p>',
+				content: '<p>Água à vontade.</p><p><br></p><p>Reavaliação em 7 dias.</p>',
 			},
 		];
 

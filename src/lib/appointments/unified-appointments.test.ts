@@ -22,10 +22,7 @@ const reminder: ClinicalReminderListItem = {
 describe('mergeUnifiedAppointments', () => {
 	it('exibe ambos os tipos na mesma lista', () => {
 		const entries = mergeUnifiedAppointments([appointment], [reminder]);
-		expect(entries.map(({ kind }) => kind)).toEqual([
-			'appointment',
-			'care_reminder',
-		]);
+		expect(entries.map(({ kind }) => kind)).toEqual(['appointment', 'care_reminder']);
 	});
 
 	it('preserva o lembrete como retorno sem gerar cobrança', () => {

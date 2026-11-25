@@ -8,11 +8,7 @@ import SearchInput from '@/components/list/search-input';
 import TableComponent from '@/components/list/table-component';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { handleNavigation } from '@/lib/utils';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -48,9 +44,7 @@ const ClinicsListClient = ({ clinics }: ClinicsListClientProps) => {
 
 	const renderRow = (clinic: Clinics) => {
 		const fullAddress = `${clinic.address}, ${clinic.addressNumber} - ${clinic.neighborhood}, ${clinic.city}/${clinic.state}`;
-		const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-			fullAddress,
-		)}`;
+		const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`;
 
 		return (
 			<TableRow key={clinic.id}>
@@ -66,15 +60,9 @@ const ClinicsListClient = ({ clinics }: ClinicsListClientProps) => {
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<Button asChild variant={'outline'} className='2xl:size-9'>
-									<Link
-										href={googleMapsUrl}
-										target='_blank'
-										rel='noopener noreferrer'
-									>
+									<Link href={googleMapsUrl} target='_blank' rel='noopener noreferrer'>
 										<GoogleMapsIcon />
-										<span className='flex 2xl:hidden'>
-											Abrir no Google Maps
-										</span>
+										<span className='flex 2xl:hidden'>Abrir no Google Maps</span>
 									</Link>
 								</Button>
 							</TooltipTrigger>
@@ -86,9 +74,7 @@ const ClinicsListClient = ({ clinics }: ClinicsListClientProps) => {
 
 				<TableCell className='w-20 space-x-2'>
 					<span className='text-sm font-semibold'>
-						<span className='text-sm'>
-							{formatCurrencyFromCents(clinic.defaultShiftPriceInCents)}
-						</span>
+						<span className='text-sm'>{formatCurrencyFromCents(clinic.defaultShiftPriceInCents)}</span>
 					</span>
 				</TableCell>
 
@@ -101,9 +87,7 @@ const ClinicsListClient = ({ clinics }: ClinicsListClientProps) => {
 				<TableCell className='w-20 space-x-2'>
 					<EditButton
 						tooltip={`Editar '${clinic.name}'`}
-						renderForm={(close) => (
-							<ClinicFormClient clinic={clinic} onSuccess={close} />
-						)}
+						renderForm={(close) => <ClinicFormClient clinic={clinic} onSuccess={close} />}
 					/>
 				</TableCell>
 			</TableRow>
@@ -113,9 +97,7 @@ const ClinicsListClient = ({ clinics }: ClinicsListClientProps) => {
 	const renderMobile = (clinic: Clinics) => {
 		const fullAddress = `${clinic.address}, ${clinic.addressNumber} - ${clinic.neighborhood}, ${clinic.city}/${clinic.state}`;
 
-		const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-			fullAddress,
-		)}`;
+		const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`;
 
 		return (
 			<div key={clinic.id} className='flex flex-col gap-4'>
@@ -136,9 +118,7 @@ const ClinicsListClient = ({ clinics }: ClinicsListClientProps) => {
 
 					<EditButton
 						tooltip={`Editar '${clinic.name}'`}
-						renderForm={(close) => (
-							<ClinicFormClient clinic={clinic} onSuccess={close} />
-						)}
+						renderForm={(close) => <ClinicFormClient clinic={clinic} onSuccess={close} />}
 					/>
 				</div>
 
@@ -181,10 +161,7 @@ const ClinicsListClient = ({ clinics }: ClinicsListClientProps) => {
 			<div className='flex flex-col lg:flex-row items-center justify-between gap-4'>
 				<SearchInput />
 
-				<AddButton
-					text='Adicionar Clínica'
-					renderForm={(close) => <ClinicFormClient onSuccess={close} />}
-				/>
+				<AddButton text='Adicionar Clínica' renderForm={(close) => <ClinicFormClient onSuccess={close} />} />
 			</div>
 
 			<TableComponent

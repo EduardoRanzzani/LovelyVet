@@ -36,10 +36,7 @@ interface DoctorFormClientProps {
 	onSuccess?: () => void;
 }
 
-const toWeekDayValue = (
-	value: number | null | undefined,
-	fallback: WeekDayValue,
-): WeekDayValue => {
+const toWeekDayValue = (value: number | null | undefined, fallback: WeekDayValue): WeekDayValue => {
 	if (value === null || value === undefined) {
 		return fallback;
 	}
@@ -51,9 +48,7 @@ const toWeekDayValue = (
 
 const DoctorFormClient = ({ doctor, onSuccess }: DoctorFormClientProps) => {
 	const form = useForm<CreateDoctorWithUserSchema>({
-		resolver: zodResolver(
-			createDoctorWithUserSchema,
-		) as Resolver<CreateDoctorWithUserSchema>,
+		resolver: zodResolver(createDoctorWithUserSchema) as Resolver<CreateDoctorWithUserSchema>,
 		shouldUnregister: true,
 		defaultValues: {
 			name: doctor?.user?.name || '',
@@ -69,12 +64,8 @@ const DoctorFormClient = ({ doctor, onSuccess }: DoctorFormClientProps) => {
 			availableFromWeekDay: toWeekDayValue(doctor?.availableFromWeekDay, '1'),
 			availableToWeekDay: toWeekDayValue(doctor?.availableToWeekDay, '5'),
 			// Horários costumam vir como "HH:mm:ss" do banco, mas o select pode esperar "HH:mm"
-			availableFromTime: doctor?.availableFromTime
-				? doctor.availableFromTime.substring(0, 5)
-				: '08:00',
-			availableToTime: doctor?.availableToTime
-				? doctor.availableToTime.substring(0, 5)
-				: '19:00',
+			availableFromTime: doctor?.availableFromTime ? doctor.availableFromTime.substring(0, 5) : '08:00',
+			availableToTime: doctor?.availableToTime ? doctor.availableToTime.substring(0, 5) : '19:00',
 		},
 	});
 
@@ -87,11 +78,7 @@ const DoctorFormClient = ({ doctor, onSuccess }: DoctorFormClientProps) => {
 
 	const upsertDoctorAction = useAction(upsertDoctor, {
 		onSuccess: () => {
-			toast.success(
-				doctor
-					? 'Veterinário atualizado com sucesso!'
-					: 'Veterinário cadastrado com sucesso!',
-			);
+			toast.success(doctor ? 'Veterinário atualizado com sucesso!' : 'Veterinário cadastrado com sucesso!');
 			form.reset();
 			onSuccess?.();
 		},
@@ -116,14 +103,9 @@ const DoctorFormClient = ({ doctor, onSuccess }: DoctorFormClientProps) => {
 	};
 
 	return (
-		<DialogContent
-			onInteractOutside={(e) => e.preventDefault()}
-			showCloseButton={false}
-		>
+		<DialogContent onInteractOutside={(e) => e.preventDefault()} showCloseButton={false}>
 			<DialogHeader>
-				<DialogTitle>
-					{doctor ? 'Editar Veterinário' : 'Cadastrar Veterinário'}
-				</DialogTitle>
+				<DialogTitle>{doctor ? 'Editar Veterinário' : 'Cadastrar Veterinário'}</DialogTitle>
 				<DialogDescription>
 					{doctor
 						? 'Atualize as informações do Veterinário selecionado'

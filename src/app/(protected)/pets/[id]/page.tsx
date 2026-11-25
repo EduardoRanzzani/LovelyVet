@@ -37,9 +37,7 @@ const PetDetailsPage = async ({ params }: PetDetailsPageProps) => {
 
 	const doctors = canManagePets ? await getDoctors() : [];
 	const vaccineServices = canManagePets
-		? (await getVaccineServices()).filter(
-				(service) => !service.specieId || service.specieId === pet.breed.specieId,
-			)
+		? (await getVaccineServices()).filter((service) => !service.specieId || service.specieId === pet.breed.specieId)
 		: [];
 	const speciesPromise = getSpecies();
 	const breedsPromise = getBreeds();

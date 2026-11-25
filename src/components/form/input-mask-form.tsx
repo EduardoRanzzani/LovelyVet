@@ -51,8 +51,7 @@ const InputFormMask = <T extends FieldValues>({
 				render={({ field: { onChange, onBlur: rhfOnBlur, value, ref } }) => {
 					// SOLUÇÃO PARA O ERRO DE TIPO (readonly string[]):
 					// Forçamos o valor a ser string ou number, que é o que o PatternFormat exige.
-					const val =
-						typeof value === 'string' || typeof value === 'number' ? value : '';
+					const val = typeof value === 'string' || typeof value === 'number' ? value : '';
 
 					return (
 						<PatternFormat

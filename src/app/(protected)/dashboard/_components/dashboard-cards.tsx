@@ -3,35 +3,13 @@
 import { monthNames } from '@/api/config/consts';
 import { AppointmentsWithRelations } from '@/api/schema/appointments.schema';
 import { CustomersWithRelations } from '@/api/schema/customers.schema';
-import {
-	formatPetTutorNames,
-	PetsWithRelations,
-} from '@/api/schema/pets.schema';
+import { formatPetTutorNames, PetsWithRelations } from '@/api/schema/pets.schema';
 import { ShiftsWithRelations } from '@/api/schema/shifts.schema';
-import {
-	Accordion,
-	AccordionContent,
-	AccordionItem,
-	AccordionTrigger,
-} from '@/components/ui/accordion';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
-import {
-	Card,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from '@/components/ui/card';
-import {
-	Dialog,
-	DialogContent,
-	DialogTitle,
-	DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatCurrencyFromCents } from '@/helpers/currency';
 import { addMonths, format, setMonth, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -56,12 +34,7 @@ interface DashboardCardsProps {
 	createdCustomers: CustomersWithRelations[];
 }
 
-const DashboardCards = ({
-	shifts,
-	appointments,
-	createdPets,
-	createdCustomers,
-}: DashboardCardsProps) => {
+const DashboardCards = ({ shifts, appointments, createdPets, createdCustomers }: DashboardCardsProps) => {
 	const [showValues, setShowValues] = useState<boolean>(false);
 
 	const searchParams = useSearchParams();
@@ -70,12 +43,9 @@ const DashboardCards = ({
 
 	const monthParam = searchParams.get('month');
 
-	const monthIndex = monthParam
-		? monthNames.indexOf(monthParam.toLowerCase())
-		: -1;
+	const monthIndex = monthParam ? monthNames.indexOf(monthParam.toLowerCase()) : -1;
 
-	const currentMonth =
-		monthIndex >= 0 ? setMonth(new Date(), monthIndex) : new Date();
+	const currentMonth = monthIndex >= 0 ? setMonth(new Date(), monthIndex) : new Date();
 
 	const nonPaidShifts = shifts.filter((shift) => !shift.isPaid);
 	const nonPaidAppointments = appointments.filter((appointment) => {
@@ -86,12 +56,9 @@ const DashboardCards = ({
 		return acc + (shift.amountInCents ?? 0);
 	}, 0);
 
-	const nonPaidAppointmentsAmountInCents = nonPaidAppointments.reduce(
-		(acc, appointment) => {
-			return acc + (appointment.totalPriceInCents ?? 0);
-		},
-		0,
-	);
+	const nonPaidAppointmentsAmountInCents = nonPaidAppointments.reduce((acc, appointment) => {
+		return acc + (appointment.totalPriceInCents ?? 0);
+	}, 0);
 
 	const onMonthChange = (newDate: Date) => {
 		const monthIndex = newDate.getMonth();
@@ -139,9 +106,7 @@ const DashboardCards = ({
 	const allShiftsGrouped = groupShiftsByClinic(shifts);
 	const nonPaidShiftsGrouped = groupShiftsByClinic(nonPaidShifts);
 
-	const RenderClinicAccordion = (
-		groupedData: ReturnType<typeof groupShiftsByClinic>,
-	) => {
+	const RenderClinicAccordion = (groupedData: ReturnType<typeof groupShiftsByClinic>) => {
 		const entries = Object.entries(groupedData);
 
 		if (entries.length === 0) {
@@ -153,17 +118,9 @@ const DashboardCards = ({
 		}
 
 		return (
-			<Accordion
-				type='single'
-				className='w-full flex flex-col gap-2'
-				collapsible
-			>
+			<Accordion type='single' className='w-full flex flex-col gap-2' collapsible>
 				{entries.map(([clinicName, data]) => (
-					<AccordionItem
-						key={clinicName}
-						value={clinicName}
-						className='border rounded-lg px-3 bg-muted/5'
-					>
+					<AccordionItem key={clinicName} value={clinicName} className='border rounded-lg px-3 bg-muted/5'>
 						<AccordionTrigger className='hover:no-underline py-3'>
 							<div className='flex items-center justify-between w-full pr-4'>
 								<div className='flex flex-col text-left'>
@@ -187,15 +144,11 @@ const DashboardCards = ({
 									className='flex justify-between items-center pl-2 border-l-2 border-primary/20'
 								>
 									<div className='flex flex-row gap-2 items-center'>
-										<span className='text-xs text-muted-foreground'>
-											{reqData.count}x
-										</span>
+										<span className='text-xs text-muted-foreground'>{reqData.count}x</span>
 										<span className='text-xs font-medium'>{requester}</span>
 									</div>
 									<span className='text-xs font-mono'>
-										{showValues
-											? formatCurrencyFromCents(reqData.total)
-											: '••••'}
+										{showValues ? formatCurrencyFromCents(reqData.total) : '••••'}
 									</span>
 								</div>
 							))}
@@ -222,16 +175,10 @@ const DashboardCards = ({
 								onClick={() => setShowValues((prev) => !prev)}
 								aria-label={showValues ? 'Ocultar valores' : 'Mostrar valores'}
 							>
-								{showValues ? (
-									<EyeIcon className='w-4 h-4' />
-								) : (
-									<EyeClosedIcon className='w-4 h-4' />
-								)}
+								{showValues ? <EyeIcon className='w-4 h-4' /> : <EyeClosedIcon className='w-4 h-4' />}
 							</Button>
 						</TooltipTrigger>
-						<TooltipContent>
-							{showValues ? 'Esconder valores' : 'Mostrar valores'}
-						</TooltipContent>
+						<TooltipContent>{showValues ? 'Esconder valores' : 'Mostrar valores'}</TooltipContent>
 					</Tooltip>
 
 					<Button
@@ -264,23 +211,16 @@ const DashboardCards = ({
 					<CardDescription>
 						<h1 className='text-center font-bold text-3xl'>
 							<Dialog>
-								<DialogTrigger className='font-bold cursor-pointer'>
-									{shifts.length}
-								</DialogTrigger>
+								<DialogTrigger className='font-bold cursor-pointer'>{shifts.length}</DialogTrigger>
 								<DialogContent>
 									<DialogTitle>Valores por Clínica</DialogTitle>
-									<div className='flex flex-col gap-3'>
-										{RenderClinicAccordion(allShiftsGrouped)}
-									</div>
+									<div className='flex flex-col gap-3'>{RenderClinicAccordion(allShiftsGrouped)}</div>
 									<div className='flex justify-end w-full border rounded-lg bg-muted/10 p-3 gap-4'>
 										<h1 className='font-bold'>Total:</h1>
 										<h1 className='font-mono font-semibold'>
 											{showValues
 												? formatCurrencyFromCents(
-														shifts.reduce(
-															(acc, s) => acc + (s.amountInCents ?? 0),
-															0,
-														),
+														shifts.reduce((acc, s) => acc + (s.amountInCents ?? 0), 0),
 													)
 												: '••••'}
 										</h1>
@@ -309,9 +249,7 @@ const DashboardCards = ({
 									<div className='flex justify-end w-full border rounded-lg bg-muted/10 p-3 gap-4 mt-2'>
 										<h1 className='font-bold'>Total Pendente:</h1>
 										<h1 className='font-mono font-semibold'>
-											{showValues
-												? formatCurrencyFromCents(nonPaidAmountInCents)
-												: '••••'}
+											{showValues ? formatCurrencyFromCents(nonPaidAmountInCents) : '••••'}
 										</h1>
 									</div>
 								</DialogContent>
@@ -347,9 +285,7 @@ const DashboardCards = ({
 						<CardTitle>Total de Agendamentos</CardTitle>
 					</CardHeader>
 					<CardDescription>
-						<h1 className='text-center font-bold text-3xl'>
-							{appointments.length}
-						</h1>
+						<h1 className='text-center font-bold text-3xl'>{appointments.length}</h1>
 					</CardDescription>
 				</Card>
 
@@ -358,9 +294,7 @@ const DashboardCards = ({
 						<CardTitle>Total de Agendamentos não pagos</CardTitle>
 					</CardHeader>
 					<CardDescription>
-						<h1 className='text-center font-bold text-3xl'>
-							{nonPaidAppointments.length}
-						</h1>
+						<h1 className='text-center font-bold text-3xl'>{nonPaidAppointments.length}</h1>
 					</CardDescription>
 				</Card>
 
@@ -393,19 +327,14 @@ const DashboardCards = ({
 					<CardDescription>
 						<h1 className='text-center font-bold text-3xl'>
 							<Dialog>
-								<DialogTrigger className='font-bold cursor-pointer'>
-									{createdPets.length}
-								</DialogTrigger>
+								<DialogTrigger className='font-bold cursor-pointer'>{createdPets.length}</DialogTrigger>
 								<DialogContent>
 									<DialogTitle>Pets Cadastrados</DialogTitle>
 									<div className='flex flex-col gap-4 overflow-scroll max-h-100'>
 										{createdPets.length > 0 ? (
 											createdPets
 												.slice()
-												.sort(
-													(a, b) =>
-														b.createdAt.getTime() - a.createdAt.getTime(),
-												)
+												.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 												.map((pet) => (
 													<div
 														key={pet.id}
@@ -422,12 +351,8 @@ const DashboardCards = ({
 																)}
 															</div>
 															<div className='flex flex-col'>
-																<h2 className='text-sm font-bold'>
-																	{pet.name}
-																</h2>
-																<p className='text-xs'>
-																	{formatPetTutorNames(pet)}
-																</p>
+																<h2 className='text-sm font-bold'>{pet.name}</h2>
+																<p className='text-xs'>{formatPetTutorNames(pet)}</p>
 															</div>
 														</div>
 													</div>
@@ -462,10 +387,7 @@ const DashboardCards = ({
 										{createdCustomers.length > 0 ? (
 											createdCustomers
 												.slice()
-												.sort(
-													(a, b) =>
-														b.createdAt.getTime() - a.createdAt.getTime(),
-												)
+												.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 												.map((customer) => (
 													<div
 														key={customer.id}

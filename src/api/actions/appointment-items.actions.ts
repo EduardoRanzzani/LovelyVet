@@ -28,10 +28,7 @@ const updateAppointmentItemsSchema = z
 		services: z.array(line).max(100),
 		products: z.array(line).max(100),
 	})
-	.refine(
-		(v) => v.services.length + v.products.length > 0,
-		'Inclua ao menos um item.',
-	);
+	.refine((v) => v.services.length + v.products.length > 0, 'Inclua ao menos um item.');
 
 export const updateAppointmentItems = actionClient
 	.schema(updateAppointmentItemsSchema)
@@ -40,29 +37,22 @@ export const updateAppointmentItems = actionClient
 		requireStaff(context);
 		await requireAccessibleAppointment(context, parsedInput.appointmentId);
 		if (
-			new Set(parsedInput.services.map((s) => s.id)).size !==
-				parsedInput.services.length ||
-			new Set(parsedInput.products.map((s) => s.id)).size !==
-				parsedInput.products.length
+			new Set(parsedInput.services.map((s) => s.id)).size !== parsedInput.services.length ||
+			new Set(parsedInput.products.map((s) => s.id)).size !== parsedInput.products.length
 		) {
-			throw new Error(
-				'Itens duplicados não são permitidos: ajuste a quantidade.',
-			);
+			throw new Error('Itens duplicados não são permitidos: ajuste a quantidade.');
 		}
 		return db
 			.transaction(async (tx) => {
 				// Lock no banco impede dois editores de alterarem os mesmos itens simultaneamente.
-				await tx.execute(
-					sql`SELECT id FROM appointments WHERE id = ${parsedInput.appointmentId} FOR UPDATE`,
-				);
+				await tx.execute(sql`SELECT id FROM appointments WHERE id = ${parsedInput.appointmentId} FOR UPDATE`);
 				const appointment = await tx.query.appointmentsTable.findFirst({
 					where: eq(appointmentsTable.id, parsedInput.appointmentId),
 					with: { pet: { with: { breed: true } } },
 				});
 				if (
 					!appointment ||
-					(context.role === 'doctor' &&
-						appointment.doctorId !== context.doctorId) ||
+					(context.role === 'doctor' && appointment.doctorId !== context.doctorId) ||
 					appointment.isPaid ||
 					['cancelled', 'no_show'].includes(appointment.status)
 				) {
@@ -73,24 +63,18 @@ export const updateAppointmentItems = actionClient
 					columns: { id: true },
 				});
 				if (issuedCharge)
-					throw new Error(
-						'Atendimento com cobrança emitida não pode ter seus itens alterados.',
-					);
+					throw new Error('Atendimento com cobrança emitida não pode ter seus itens alterados.');
 				const linkedVaccines = await tx.query.vaccinesTable.findMany({
 					columns: { serviceId: true },
 					where: eq(vaccinesTable.appointmentId, appointment.id),
 				});
 				const vaccineServices = new Set(
-					linkedVaccines
-						.map((v) => v.serviceId)
-						.filter((id): id is string => Boolean(id)),
+					linkedVaccines.map((v) => v.serviceId).filter((id): id is string => Boolean(id)),
 				);
 				for (const id of vaccineServices) {
 					const line = parsedInput.services.find((s) => s.id === id);
 					if (!line || line.quantity !== 1)
-						throw new Error(
-							'O serviço da vacina aplicada deve ser preservado com quantidade 1.',
-						);
+						throw new Error('O serviço da vacina aplicada deve ser preservado com quantidade 1.');
 				}
 				const [services, products] = await Promise.all([
 					parsedInput.services.length
@@ -112,69 +96,38 @@ export const updateAppointmentItems = actionClient
 							})
 						: Promise.resolve([]),
 				]);
-				if (
-					services.length !== parsedInput.services.length ||
-					products.length !== parsedInput.products.length
-				)
+				if (services.length !== parsedInput.services.length || products.length !== parsedInput.products.length)
 					throw new Error('Há itens inexistentes no catálogo.');
-				if (
-					services.some(
-						(service) =>
-							service.specieId &&
-							service.specieId !== appointment.pet.breed.specieId,
-					)
-				)
+				if (services.some((service) => service.specieId && service.specieId !== appointment.pet.breed.specieId))
 					throw new Error('Serviço incompatível com a espécie do paciente.');
-				const productActiveIds = new Set(
-					products.filter((p) => p.active).map((p) => p.id),
-				);
+				const productActiveIds = new Set(products.filter((p) => p.active).map((p) => p.id));
 				const existingServices = await tx.query.appointmentItemsTable.findMany({
 					where: eq(appointmentItemsTable.appointmentId, appointment.id),
 				});
 				for (const vaccineId of vaccineServices) {
-					const original = existingServices.find(
-						(item) => item.serviceId === vaccineId,
-					);
-					const submitted = parsedInput.services.find(
-						(item) => item.id === vaccineId,
-					);
+					const original = existingServices.find((item) => item.serviceId === vaccineId);
+					const submitted = parsedInput.services.find((item) => item.id === vaccineId);
 					if (
 						!original ||
 						!submitted ||
 						submitted.unitPriceInCents !== original.priceAtTimeInCents ||
 						submitted.discountInCents !== original.discountInCents
 					) {
-						throw new Error(
-							'Valor da vacina clínica vinculada deve ser preservado.',
-						);
+						throw new Error('Valor da vacina clínica vinculada deve ser preservado.');
 					}
 				}
-				const existingProducts =
-					await tx.query.appointmentProductItemsTable.findMany({
-						where: eq(
-							appointmentProductItemsTable.appointmentId,
-							appointment.id,
-						),
-					});
+				const existingProducts = await tx.query.appointmentProductItemsTable.findMany({
+					where: eq(appointmentProductItemsTable.appointmentId, appointment.id),
+				});
 				for (const line of parsedInput.products) {
-					if (
-						!productActiveIds.has(line.id) &&
-						!existingProducts.some((p) => p.productId === line.id)
-					)
+					if (!productActiveIds.has(line.id) && !existingProducts.some((p) => p.productId === line.id))
 						throw new Error('Produto inativo não pode ser adicionado.');
 				}
-				const totalPriceInCents = totalForItems([
-					...parsedInput.services,
-					...parsedInput.products,
-				]);
-				await tx
-					.delete(appointmentItemsTable)
-					.where(eq(appointmentItemsTable.appointmentId, appointment.id));
+				const totalPriceInCents = totalForItems([...parsedInput.services, ...parsedInput.products]);
+				await tx.delete(appointmentItemsTable).where(eq(appointmentItemsTable.appointmentId, appointment.id));
 				await tx
 					.delete(appointmentProductItemsTable)
-					.where(
-						eq(appointmentProductItemsTable.appointmentId, appointment.id),
-					);
+					.where(eq(appointmentProductItemsTable.appointmentId, appointment.id));
 				if (parsedInput.services.length)
 					await tx.insert(appointmentItemsTable).values(
 						parsedInput.services.map((line) => ({

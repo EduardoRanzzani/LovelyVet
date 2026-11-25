@@ -43,9 +43,7 @@ const SpeciesListClient = ({ species }: SpeciesListClientProps) => {
 		},
 		onError: (err) => {
 			console.error('Erro ao deletar espécie:', err);
-			toast.error(
-				'Ocorreu um erro ao tentar deletar a espécie. Tente novamente mais tarde.',
-			);
+			toast.error('Ocorreu um erro ao tentar deletar a espécie. Tente novamente mais tarde.');
 		},
 	});
 
@@ -61,15 +59,10 @@ const SpeciesListClient = ({ species }: SpeciesListClientProps) => {
 				<TableCell className='w-20 space-x-2'>
 					<EditButton
 						tooltip={`Editar '${specie.name}'`}
-						renderForm={(close) => (
-							<SpecieFormClient specie={specie} onSuccess={close} />
-						)}
+						renderForm={(close) => <SpecieFormClient specie={specie} onSuccess={close} />}
 					/>
 
-					<DeleteAlertButton
-						tooltip={`Deletar '${specie.name}'`}
-						action={() => handleDelete(specie.id)}
-					/>
+					<DeleteAlertButton tooltip={`Deletar '${specie.name}'`} action={() => handleDelete(specie.id)} />
 				</TableCell>
 			</TableRow>
 		);
@@ -86,9 +79,7 @@ const SpeciesListClient = ({ species }: SpeciesListClientProps) => {
 					<span className='flex flex-col gap-2'>
 						<EditButton
 							tooltip={`Editar '${specie.name}'`}
-							renderForm={(close) => (
-								<SpecieFormClient specie={specie} onSuccess={close} />
-							)}
+							renderForm={(close) => <SpecieFormClient specie={specie} onSuccess={close} />}
 						/>
 
 						<DeleteAlertButton action={() => handleDelete(specie.id)} />
@@ -103,10 +94,7 @@ const SpeciesListClient = ({ species }: SpeciesListClientProps) => {
 			<div className='flex flex-col lg:flex-row items-center justify-between gap-4'>
 				<SearchInput />
 
-				<AddButton
-					text='Adicionar Espécie'
-					renderForm={(close) => <SpecieFormClient onSuccess={close} />}
-				/>
+				<AddButton text='Adicionar Espécie' renderForm={(close) => <SpecieFormClient onSuccess={close} />} />
 			</div>
 
 			{deleteSpecieAction.isPending && <LoadingDialog />}

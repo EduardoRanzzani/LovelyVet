@@ -3,14 +3,29 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import type { SQL } from 'drizzle-orm';
 
-const mocks = vi.hoisted(() => ({ auth: vi.fn(), find: vi.fn(), update: vi.fn(), set: vi.fn(), where: vi.fn(), returning: vi.fn(), upload: vi.fn(), discard: vi.fn(), revalidate: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+	auth: vi.fn(),
+	find: vi.fn(),
+	update: vi.fn(),
+	set: vi.fn(),
+	where: vi.fn(),
+	returning: vi.fn(),
+	upload: vi.fn(),
+	discard: vi.fn(),
+	revalidate: vi.fn(),
+}));
 vi.mock('@/db', async () => {
 	const { QueryBuilder } = await import('drizzle-orm/pg-core');
 	const qb = new QueryBuilder();
-	return { db: { select: qb.select.bind(qb), query: { petsTable: { findFirst: mocks.find } }, update: mocks.update } };
+	return {
+		db: { select: qb.select.bind(qb), query: { petsTable: { findFirst: mocks.find } }, update: mocks.update },
+	};
 });
 vi.mock('@/lib/security/auth-context', () => ({ requireAuthContext: mocks.auth }));
-vi.mock('@/lib/pets/pet-photo-storage', () => ({ uploadTutorPetPhoto: mocks.upload, discardUnattachedTutorPhoto: mocks.discard }));
+vi.mock('@/lib/pets/pet-photo-storage', () => ({
+	uploadTutorPetPhoto: mocks.upload,
+	discardUnattachedTutorPhoto: mocks.discard,
+}));
 vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidate }));
 import { updateTutorPetPhoto } from './pet-photo.actions';
 
@@ -23,7 +38,8 @@ function request(operation = 'upload', id = petId) {
 	form.set('petId', id);
 	form.set('operation', operation);
 	form.set('expectedPhoto', original);
-	if (operation === 'upload') form.set('file', new File([Uint8Array.from([255,216,255,0])], 'pet.jpg', { type: 'image/jpeg' }));
+	if (operation === 'upload')
+		form.set('file', new File([Uint8Array.from([255, 216, 255, 0])], 'pet.jpg', { type: 'image/jpeg' }));
 	return form;
 }
 
@@ -38,7 +54,7 @@ describe('alteração exclusiva da foto pelo tutor', () => {
 		mocks.where.mockReturnValue({ returning: mocks.returning });
 		mocks.returning.mockResolvedValue([{ photo: url }]);
 	});
-	it.each(['admin', 'doctor'])('não amplia a permissão de %s por esta action', async role => {
+	it.each(['admin', 'doctor'])('não amplia a permissão de %s por esta action', async (role) => {
 		mocks.auth.mockResolvedValue({ role, customerId: tutorId });
 		expect((await updateTutorPetPhoto(request())).success).toBe(false);
 		expect(mocks.find).not.toHaveBeenCalled();

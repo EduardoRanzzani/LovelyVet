@@ -19,12 +19,7 @@ export const ClientProviders = ({ children }: ClientProvidersProps) => {
 
 	return (
 		<QueryClientProvider client={queryClient}>
-			<Toaster
-				closeButton={false}
-				position='bottom-center'
-				richColors
-				theme='light'
-			/>
+			<Toaster closeButton={false} position='bottom-center' richColors theme='light' />
 			<TooltipProvider>{children}</TooltipProvider>
 		</QueryClientProvider>
 	);

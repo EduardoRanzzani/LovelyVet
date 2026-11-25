@@ -9,31 +9,54 @@ import { and, inArray } from 'drizzle-orm';
 
 // Retorna apenas cobranças de atendimentos autorizados; evita exposição cruzada entre veterinárias.
 export async function getBillingOverviews(appointmentIds: string[]) {
- const context = await requireAuthContext();
- requireStaff(context);
- if (appointmentIds.length > 100) throw new Error('Quantidade de atendimentos excede o limite');
- if (!appointmentIds.length) return {} as Record<string, BillingOverview>;
- const permittedAppointments = await db.select({ id: appointmentsTable.id }).from(appointmentsTable).where(and(
-  inArray(appointmentsTable.id, appointmentIds),
-  buildAppointmentAccessCondition(context),
- ));
- const ids = permittedAppointments.map((item) => item.id);
- if (!ids.length) return {} as Record<string, BillingOverview>;
- const charges = await db.select().from(appointmentChargesTable).where(inArray(appointmentChargesTable.appointmentId, ids));
- const payments = charges.length ? await db.select().from(chargePaymentsTable).where(inArray(chargePaymentsTable.chargeId, charges.map((item) => item.id))) : [];
- const result: Record<string, BillingOverview> = {};
- for (const charge of charges) {
-  const chargePayments = payments.filter((item) => item.chargeId === charge.id);
-  result[charge.appointmentId] = {
-   id: charge.id, customerId: charge.customerId,
-   ...calculateChargeBalance(charge.totalInCents, chargePayments, charge.status === 'void'),
-   payments: chargePayments.map((p) => ({ id: p.id, amountInCents: p.amountInCents, method: p.method, receivedAt: p.receivedAt.toISOString() })),
-  };
- }
- return result;
+	const context = await requireAuthContext();
+	requireStaff(context);
+	if (appointmentIds.length > 100) throw new Error('Quantidade de atendimentos excede o limite');
+	if (!appointmentIds.length) return {} as Record<string, BillingOverview>;
+	const permittedAppointments = await db
+		.select({ id: appointmentsTable.id })
+		.from(appointmentsTable)
+		.where(and(inArray(appointmentsTable.id, appointmentIds), buildAppointmentAccessCondition(context)));
+	const ids = permittedAppointments.map((item) => item.id);
+	if (!ids.length) return {} as Record<string, BillingOverview>;
+	const charges = await db
+		.select()
+		.from(appointmentChargesTable)
+		.where(inArray(appointmentChargesTable.appointmentId, ids));
+	const payments = charges.length
+		? await db
+				.select()
+				.from(chargePaymentsTable)
+				.where(
+					inArray(
+						chargePaymentsTable.chargeId,
+						charges.map((item) => item.id),
+					),
+				)
+		: [];
+	const result: Record<string, BillingOverview> = {};
+	for (const charge of charges) {
+		const chargePayments = payments.filter((item) => item.chargeId === charge.id);
+		result[charge.appointmentId] = {
+			id: charge.id,
+			customerId: charge.customerId,
+			...calculateChargeBalance(charge.totalInCents, chargePayments, charge.status === 'void'),
+			payments: chargePayments.map((p) => ({
+				id: p.id,
+				amountInCents: p.amountInCents,
+				method: p.method,
+				receivedAt: p.receivedAt.toISOString(),
+			})),
+		};
+	}
+	return result;
 }
 export type BillingOverview = {
- id: string; customerId: string; totalInCents: number; paidInCents: number; balanceInCents: number;
- status: 'pending' | 'partial' | 'paid' | 'void';
- payments: { id: string; amountInCents: number; method: string; receivedAt: string }[];
+	id: string;
+	customerId: string;
+	totalInCents: number;
+	paidInCents: number;
+	balanceInCents: number;
+	status: 'pending' | 'partial' | 'paid' | 'void';
+	payments: { id: string; amountInCents: number; method: string; receivedAt: string }[];
 };

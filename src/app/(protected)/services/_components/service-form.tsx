@@ -1,9 +1,5 @@
 import { upsertService } from '@/api/actions/services.actions';
-import {
-	createServiceSchema,
-	CreateServiceSchema,
-	ServicesWithRelations,
-} from '@/api/schema/services.schema';
+import { createServiceSchema, CreateServiceSchema, ServicesWithRelations } from '@/api/schema/services.schema';
 import { Species } from '@/api/schema/species.schema';
 import InputForm from '@/components/form/input-form';
 import MoneyInputForm from '@/components/form/money-input-form';
@@ -32,11 +28,7 @@ interface ServiceFormClientProps {
 	onSuccess?: () => void;
 }
 
-const ServiceFormClient = ({
-	service,
-	species,
-	onSuccess,
-}: ServiceFormClientProps) => {
+const ServiceFormClient = ({ service, species, onSuccess }: ServiceFormClientProps) => {
 	const form = useForm<CreateServiceSchema>({
 		resolver: zodResolver(createServiceSchema),
 		shouldUnregister: true,
@@ -45,10 +37,7 @@ const ServiceFormClient = ({
 			isVaccine: service?.isVaccine ?? false,
 			description: service?.description || '',
 			specieId: service?.specieId || '',
-			price:
-				service?.priceInCents !== undefined
-					? fromCents(service.priceInCents)
-					: 0,
+			price: service?.priceInCents !== undefined ? fromCents(service.priceInCents) : 0,
 		},
 	});
 
@@ -72,18 +61,11 @@ const ServiceFormClient = ({
 	});
 
 	return (
-		<DialogContent
-			onInteractOutside={(e) => e.preventDefault()}
-			showCloseButton={false}
-		>
+		<DialogContent onInteractOutside={(e) => e.preventDefault()} showCloseButton={false}>
 			<DialogHeader>
-				<DialogTitle>
-					{service ? 'Editar Serviço' : 'Cadastrar Serviço'}
-				</DialogTitle>
+				<DialogTitle>{service ? 'Editar Serviço' : 'Cadastrar Serviço'}</DialogTitle>
 				<DialogDescription>
-					{service
-						? 'Atualize as informações do serviço selecionado'
-						: 'Adicione um novo serviço ao sistema'}
+					{service ? 'Atualize as informações do serviço selecionado' : 'Adicione um novo serviço ao sistema'}
 				</DialogDescription>
 			</DialogHeader>
 
@@ -154,11 +136,7 @@ const ServiceFormClient = ({
 							</Button>
 						</DialogClose>
 
-						<Button
-							type='submit'
-							disabled={upsertServiceAction.isPending}
-							className='flex-1'
-						>
+						<Button type='submit' disabled={upsertServiceAction.isPending} className='flex-1'>
 							{upsertServiceAction.isPending ? (
 								<Loader2Icon className='h-5 w-5 animate-spin' />
 							) : (

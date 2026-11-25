@@ -18,8 +18,7 @@ import { eq, sql } from 'drizzle-orm';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 
-const createValidationToken = (): string =>
-	randomBytes(6).toString('hex').toUpperCase();
+const createValidationToken = (): string => randomBytes(6).toString('hex').toUpperCase();
 
 export const signPrescriptionDocument = actionClient
 	.schema(signPrescriptionDocumentSchema)
@@ -70,25 +69,17 @@ export const signPrescriptionDocument = actionClient
 			}
 
 			if (prescription.doctorId !== REGINA_DOCTOR_ID) {
-				throw new Error(
-					'Esta receita não pertence à veterinária vinculada ao certificado.',
-				);
+				throw new Error('Esta receita não pertence à veterinária vinculada ao certificado.');
 			}
 
 			if (!prescription.documentData) {
-				throw new Error(
-					'Esta receita não possui dados estruturados para assinatura.',
-				);
+				throw new Error('Esta receita não possui dados estruturados para assinatura.');
 			}
 
-			const existingSignature =
-				await tx.query.prescriptionSignaturesTable.findFirst({
-					where: eq(
-						prescriptionSignaturesTable.prescriptionId,
-						prescription.id,
-					),
-					columns: { id: true },
-				});
+			const existingSignature = await tx.query.prescriptionSignaturesTable.findFirst({
+				where: eq(prescriptionSignaturesTable.prescriptionId, prescription.id),
+				columns: { id: true },
+			});
 
 			if (existingSignature) {
 				throw new Error('Esta receita já foi assinada digitalmente.');
@@ -190,8 +181,7 @@ export const signPrescriptionDocument = actionClient
 						id: prescriptionSignaturesTable.id,
 					});
 			} catch (error) {
-				const cause =
-					error instanceof Error && 'cause' in error ? error.cause : undefined;
+				const cause = error instanceof Error && 'cause' in error ? error.cause : undefined;
 
 				console.error('[SIGN] Falha ao persistir assinatura:', {
 					prescriptionId: prescription.id,
@@ -199,10 +189,7 @@ export const signPrescriptionDocument = actionClient
 					pdfSize: signedPdf.length,
 					pdfSha256,
 					certificateCommonName: certificate.commonName,
-					error:
-						error instanceof Error
-							? error.message.split('\n')[0]
-							: String(error),
+					error: error instanceof Error ? error.message.split('\n')[0] : String(error),
 					cause,
 				});
 

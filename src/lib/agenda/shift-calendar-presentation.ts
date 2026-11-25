@@ -6,10 +6,7 @@ export const isNightShift = (startAt: Date | string): boolean => {
 	return hour >= 18 || hour < 6;
 };
 
-export const startsOnCalendarDay = (
-	startAt: Date | string,
-	day: Date,
-): boolean => {
+export const startsOnCalendarDay = (startAt: Date | string, day: Date): boolean => {
 	return isSameDay(new Date(startAt), day);
 };
 

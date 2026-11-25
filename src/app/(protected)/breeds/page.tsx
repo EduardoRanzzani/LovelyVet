@@ -39,9 +39,7 @@ const BreedsPage = async ({ searchParams }: BreedsPageProps) => {
 			</PageHeader>
 
 			<PageContent>
-				<PageDescription>
-					Listagem de todos as raças de pets cadastradas no sistema
-				</PageDescription>
+				<PageDescription>Listagem de todos as raças de pets cadastradas no sistema</PageDescription>
 				<Suspense
 					fallback={
 						<>

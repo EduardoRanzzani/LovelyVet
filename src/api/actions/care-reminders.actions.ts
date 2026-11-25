@@ -117,12 +117,7 @@ export const updateCareReminderStatus = actionClient
 				completedAt: parsedInput.status === 'completed' ? new Date() : null,
 				updatedAt: new Date(),
 			})
-			.where(
-				and(
-					eq(careRemindersTable.id, reminder.id),
-					eq(careRemindersTable.status, 'pending'),
-				),
-			)
+			.where(and(eq(careRemindersTable.id, reminder.id), eq(careRemindersTable.status, 'pending')))
 			.returning();
 
 		if (!updatedReminder) {
@@ -165,27 +160,18 @@ export const deleteFinalizedCareReminder = actionClient
 		}
 
 		if (reminder.status === 'pending') {
-			throw new Error(
-				'Lembretes pendentes não podem ser excluídos por esta ação.',
-			);
+			throw new Error('Lembretes pendentes não podem ser excluídos por esta ação.');
 		}
 
 		const [deletedReminder] = await db
 			.delete(careRemindersTable)
-			.where(
-				and(
-					eq(careRemindersTable.id, reminder.id),
-					eq(careRemindersTable.status, reminder.status),
-				),
-			)
+			.where(and(eq(careRemindersTable.id, reminder.id), eq(careRemindersTable.status, reminder.status)))
 			.returning({
 				id: careRemindersTable.id,
 			});
 
 		if (!deletedReminder) {
-			throw new Error(
-				'O lembrete foi alterado ou excluído por outra operação.',
-			);
+			throw new Error('O lembrete foi alterado ou excluído por outra operação.');
 		}
 
 		revalidatePath('/agenda');

@@ -36,9 +36,7 @@ const DoctorsPage = async ({ searchParams }: DoctorsPageProps) => {
 			</PageHeader>
 
 			<PageContent>
-				<PageDescription>
-					Listagem de todos os veterinários cadastrados no sistema
-				</PageDescription>
+				<PageDescription>Listagem de todos os veterinários cadastrados no sistema</PageDescription>
 				<Suspense
 					fallback={
 						<>

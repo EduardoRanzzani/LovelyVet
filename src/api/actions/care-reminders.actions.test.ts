@@ -30,9 +30,7 @@ vi.mock('@/lib/next-safe-action', () => ({
 	actionClient: {
 		schema: () => ({
 			action:
-				(
-					handler: (args: { parsedInput: { id: string } }) => Promise<unknown>,
-				) =>
+				(handler: (args: { parsedInput: { id: string } }) => Promise<unknown>) =>
 				(parsedInput: { id: string }) =>
 					handler({ parsedInput }),
 		}),
@@ -147,12 +145,17 @@ describe('deleteFinalizedCareReminder', () => {
 	});
 });
 
-
 describe('rescheduleCareReminder', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		mocks.requireAuthContext.mockResolvedValue({ role: 'doctor', doctorId: DOCTOR_ID });
-		mocks.findFirst.mockResolvedValue({ id: ID, petId: PET_ID, doctorId: DOCTOR_ID, status: 'pending', dueDate: '2026-11-22' });
+		mocks.findFirst.mockResolvedValue({
+			id: ID,
+			petId: PET_ID,
+			doctorId: DOCTOR_ID,
+			status: 'pending',
+			dueDate: '2026-11-22',
+		});
 		mocks.dbUpdate.mockReturnValue({ set: mocks.updateSet });
 		mocks.updateSet.mockReturnValue({ where: mocks.updateWhere });
 		mocks.updateWhere.mockReturnValue({ returning: mocks.updateReturning });
@@ -160,31 +163,53 @@ describe('rescheduleCareReminder', () => {
 	});
 
 	it('reagenda uma pendência sem criar vacina ou atendimento', async () => {
-		await expect(rescheduleCareReminder({ id: ID, dueDate: '2026-11-24' })).resolves.toEqual({ success: true, dueDate: '2026-11-24' });
+		await expect(rescheduleCareReminder({ id: ID, dueDate: '2026-11-24' })).resolves.toEqual({
+			success: true,
+			dueDate: '2026-11-24',
+		});
 		expect(mocks.updateSet).toHaveBeenCalledWith(expect.objectContaining({ dueDate: '2026-11-24' }));
 		expect(mocks.revalidatePath).toHaveBeenCalledWith('/agenda');
 		expect(mocks.revalidatePath).toHaveBeenCalledWith('/appointments');
 	});
 
 	it('não altera lembrete finalizado', async () => {
-		mocks.findFirst.mockResolvedValue({ id: ID, petId: PET_ID, doctorId: DOCTOR_ID, status: 'completed', dueDate: '2026-11-22' });
-		await expect(rescheduleCareReminder({ id: ID, dueDate: '2026-11-24' })).rejects.toThrow('Apenas lembretes pendentes');
+		mocks.findFirst.mockResolvedValue({
+			id: ID,
+			petId: PET_ID,
+			doctorId: DOCTOR_ID,
+			status: 'completed',
+			dueDate: '2026-11-22',
+		});
+		await expect(rescheduleCareReminder({ id: ID, dueDate: '2026-11-24' })).rejects.toThrow(
+			'Apenas lembretes pendentes',
+		);
 		expect(mocks.dbUpdate).not.toHaveBeenCalled();
 	});
 
 	it('impede reagendamento de outro veterinário', async () => {
-		mocks.findFirst.mockResolvedValue({ id: ID, petId: PET_ID, doctorId: '44444444-4444-4444-8444-444444444444', status: 'pending', dueDate: '2026-11-22' });
+		mocks.findFirst.mockResolvedValue({
+			id: ID,
+			petId: PET_ID,
+			doctorId: '44444444-4444-4444-8444-444444444444',
+			status: 'pending',
+			dueDate: '2026-11-22',
+		});
 		await expect(rescheduleCareReminder({ id: ID, dueDate: '2026-11-24' })).rejects.toThrow('permissão');
 		expect(mocks.dbUpdate).not.toHaveBeenCalled();
 	});
 
 	it('impede sobrescrever alteração concorrente', async () => {
 		mocks.updateReturning.mockResolvedValue([]);
-		await expect(rescheduleCareReminder({ id: ID, dueDate: '2026-11-24' })).rejects.toThrow('alterado por outra operação');
+		await expect(rescheduleCareReminder({ id: ID, dueDate: '2026-11-24' })).rejects.toThrow(
+			'alterado por outra operação',
+		);
 	});
 
 	it('não faz update se a data já é igual', async () => {
-		await expect(rescheduleCareReminder({ id: ID, dueDate: '2026-11-22' })).resolves.toEqual({ success: true, dueDate: '2026-11-22' });
+		await expect(rescheduleCareReminder({ id: ID, dueDate: '2026-11-22' })).resolves.toEqual({
+			success: true,
+			dueDate: '2026-11-22',
+		});
 		expect(mocks.dbUpdate).not.toHaveBeenCalled();
 	});
 });

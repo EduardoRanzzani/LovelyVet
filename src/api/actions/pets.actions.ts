@@ -24,31 +24,13 @@ import { filterPetForViewer } from '@/lib/security/pet-visibility';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { normalizePagination } from '@/lib/pagination';
 import type { SQL } from 'drizzle-orm';
-import {
-	and,
-	asc,
-	countDistinct,
-	desc,
-	eq,
-	gte,
-	ilike,
-	inArray,
-	lte,
-	or,
-} from 'drizzle-orm';
+import { and, asc, countDistinct, desc, eq, gte, ilike, inArray, lte, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
 import { monthNames, PaginatedData } from '../config/consts';
-import {
-	createPetWithTutorAndBreedSchema,
-	PetOption,
-	PetsWithRelations,
-} from '../schema/pets.schema';
+import { createPetWithTutorAndBreedSchema, PetOption, PetsWithRelations } from '../schema/pets.schema';
 
-const buildPetsListWhere = (
-	context: AuthContext,
-	search?: string,
-): SQL | undefined => {
+const buildPetsListWhere = (context: AuthContext, search?: string): SQL | undefined => {
 	const parts: SQL[] = [];
 	const accessCondition = buildPetAccessCondition(context);
 
@@ -65,10 +47,7 @@ const buildPetsListWhere = (
 				ilike(petsTable.color, s),
 				inArray(
 					petsTable.breedId,
-					db
-						.select({ id: breedsTable.id })
-						.from(breedsTable)
-						.where(ilike(breedsTable.name, s)),
+					db.select({ id: breedsTable.id }).from(breedsTable).where(ilike(breedsTable.name, s)),
 				),
 				inArray(
 					petsTable.breedId,
@@ -83,10 +62,7 @@ const buildPetsListWhere = (
 					db
 						.select({ petId: petTutorsTable.petId })
 						.from(petTutorsTable)
-						.innerJoin(
-							customersTable,
-							eq(petTutorsTable.customerId, customersTable.id),
-						)
+						.innerJoin(customersTable, eq(petTutorsTable.customerId, customersTable.id))
 						.innerJoin(usersTable, eq(customersTable.userId, usersTable.id))
 						.where(ilike(usersTable.name, s)),
 				),
@@ -97,9 +73,7 @@ const buildPetsListWhere = (
 	return parts.length ? and(...parts) : undefined;
 };
 
-export const getCreatedPets = async (
-	monthName?: string,
-): Promise<PetsWithRelations[]> => {
+export const getCreatedPets = async (monthName?: string): Promise<PetsWithRelations[]> => {
 	const context = await requireAuthContext();
 	requireStaff(context);
 	const accessCondition = buildPetAccessCondition(context);
@@ -107,9 +81,7 @@ export const getCreatedPets = async (
 	const now = new Date();
 	const year = now.getFullYear();
 
-	const monthIndex = monthName
-		? monthNames.indexOf(monthName.toLowerCase())
-		: now.getMonth();
+	const monthIndex = monthName ? monthNames.indexOf(monthName.toLowerCase()) : now.getMonth();
 
 	const safeMonthIndex = monthIndex === -1 ? now.getMonth() : monthIndex;
 
@@ -118,11 +90,7 @@ export const getCreatedPets = async (
 	const endRange = endOfMonth(referenceDate);
 
 	const pets = await db.query.petsTable.findMany({
-		where: and(
-			accessCondition,
-			lte(petsTable.createdAt, endRange),
-			gte(petsTable.createdAt, startRange),
-		),
+		where: and(accessCondition, lte(petsTable.createdAt, endRange), gte(petsTable.createdAt, startRange)),
 		with: {
 			petTutors: {
 				with: {
@@ -148,9 +116,7 @@ export const getCreatedPets = async (
 	return pets as PetsWithRelations[];
 };
 
-export const getPetById = async (
-	id: string,
-): Promise<PetsWithRelations | null> => {
+export const getPetById = async (id: string): Promise<PetsWithRelations | null> => {
 	const context = await requireAuthContext();
 
 	const pet = await db.query.petsTable.findFirst({
@@ -177,7 +143,8 @@ export const getPetById = async (
 				orderBy: desc(appointmentsTable.scheduledAt),
 				with: {
 					doctor: { with: { user: true } },
-					items: { with: { service: true } }, productItems: { with: { product: true } },
+					items: { with: { service: true } },
+					productItems: { with: { product: true } },
 				},
 			},
 			vaccines: {
@@ -254,9 +221,7 @@ export const getPetsPaginated = async (
 
 	const totalCount = Number(totalCountResult[0]?.value ?? 0);
 
-	const visibleData = (data as PetsWithRelations[]).map((pet) =>
-		filterPetForViewer(context, pet),
-	);
+	const visibleData = (data as PetsWithRelations[]).map((pet) => filterPetForViewer(context, pet));
 
 	return {
 		data: visibleData,
@@ -269,22 +234,32 @@ export const getPetsPaginated = async (
 	};
 };
 
-export const upsertPet = actionClient
-	.schema(createPetWithTutorAndBreedSchema)
-	.action(async ({ parsedInput }) => {
-		const context = await requireAuthContext();
-		requireStaff(context);
+export const upsertPet = actionClient.schema(createPetWithTutorAndBreedSchema).action(async ({ parsedInput }) => {
+	const context = await requireAuthContext();
+	requireStaff(context);
 
-		const isNewRegistration = !parsedInput.id;
-		const tutorIds = [...new Set(parsedInput.customerIds)];
+	const isNewRegistration = !parsedInput.id;
+	const tutorIds = [...new Set(parsedInput.customerIds)];
 
-		const authorId = context.userId;
+	const authorId = context.userId;
 
-		const petResult = await db.transaction(async (tx) => {
-			const [insertedPet] = await tx
-				.insert(petsTable)
-				.values({
-					id: parsedInput.id ?? undefined,
+	const petResult = await db.transaction(async (tx) => {
+		const [insertedPet] = await tx
+			.insert(petsTable)
+			.values({
+				id: parsedInput.id ?? undefined,
+				name: parsedInput.name,
+				birthDate: format(parsedInput.birthDate, 'yyyy-MM-dd'),
+				breedId: parsedInput.breedId,
+				sterile: parsedInput.sterile ?? false,
+				status: parsedInput.status ?? 'alive',
+				photo: parsedInput.photo,
+				color: parsedInput.color,
+				gender: parsedInput.gender,
+			})
+			.onConflictDoUpdate({
+				target: petsTable.id,
+				set: {
 					name: parsedInput.name,
 					birthDate: format(parsedInput.birthDate, 'yyyy-MM-dd'),
 					breedId: parsedInput.breedId,
@@ -293,108 +268,89 @@ export const upsertPet = actionClient
 					photo: parsedInput.photo,
 					color: parsedInput.color,
 					gender: parsedInput.gender,
-				})
-				.onConflictDoUpdate({
-					target: petsTable.id,
-					set: {
-						name: parsedInput.name,
-						birthDate: format(parsedInput.birthDate, 'yyyy-MM-dd'),
-						breedId: parsedInput.breedId,
-						sterile: parsedInput.sterile ?? false,
-						status: parsedInput.status ?? 'alive',
-						photo: parsedInput.photo,
-						color: parsedInput.color,
-						gender: parsedInput.gender,
-						updatedAt: new Date(),
-					},
-				})
-				.returning();
+					updatedAt: new Date(),
+				},
+			})
+			.returning();
 
-			if (!insertedPet) throw new Error('Erro ao salvar o pet');
+		if (!insertedPet) throw new Error('Erro ao salvar o pet');
 
-			await tx
-				.delete(petTutorsTable)
-				.where(eq(petTutorsTable.petId, insertedPet.id));
+		await tx.delete(petTutorsTable).where(eq(petTutorsTable.petId, insertedPet.id));
 
-			if (tutorIds.length > 0) {
-				await tx.insert(petTutorsTable).values(
-					tutorIds.map((customerId) => ({
-						petId: insertedPet.id,
-						customerId,
-					})),
-				);
-			}
-
-			const newWeightInGrams = Math.round(parsedInput.weightInGrams * 1000);
-
-			const latestWeight = isNewRegistration
-				? null
-				: await tx.query.petWeightsTable.findFirst({
-						where: eq(petWeightsTable.petId, insertedPet.id),
-						orderBy: [desc(petWeightsTable.measuredAt)],
-					});
-
-			const shouldRegisterWeight =
-				isNewRegistration ||
-				!latestWeight ||
-				latestWeight.weightInGrams !== newWeightInGrams;
-
-			if (shouldRegisterWeight) {
-				await tx.insert(petWeightsTable).values({
+		if (tutorIds.length > 0) {
+			await tx.insert(petTutorsTable).values(
+				tutorIds.map((customerId) => ({
 					petId: insertedPet.id,
-					weightInGrams: newWeightInGrams,
-					authorId,
-					measuredAt: new Date(),
-				});
-			}
-
-			return insertedPet;
-		});
-
-		if (isNewRegistration) {
-			const emailed = new Set<string>();
-			for (const customerId of tutorIds) {
-				const tutor = await db.query.customersTable.findFirst({
-					where: eq(customersTable.id, customerId),
-					with: {
-						user: true,
-					},
-				});
-
-				const email = tutor?.user?.email;
-				if (email && !emailed.has(email)) {
-					emailed.add(email);
-					const firstName =
-						tutor!.user!.name.split(/\s+/)[0] ?? tutor!.user!.name;
-					await sendEmailMessage({
-						to: email,
-						subject: 'Novo Pet Adicionado',
-						body: `Olá, ${firstName}!\nO pet ${petResult.name} foi adicionado ao seu cadastro.`,
-					});
-				}
-			}
+					customerId,
+				})),
+			);
 		}
 
-		revalidatePath('/pets');
-		return petResult;
+		const newWeightInGrams = Math.round(parsedInput.weightInGrams * 1000);
+
+		const latestWeight = isNewRegistration
+			? null
+			: await tx.query.petWeightsTable.findFirst({
+					where: eq(petWeightsTable.petId, insertedPet.id),
+					orderBy: [desc(petWeightsTable.measuredAt)],
+				});
+
+		const shouldRegisterWeight =
+			isNewRegistration || !latestWeight || latestWeight.weightInGrams !== newWeightInGrams;
+
+		if (shouldRegisterWeight) {
+			await tx.insert(petWeightsTable).values({
+				petId: insertedPet.id,
+				weightInGrams: newWeightInGrams,
+				authorId,
+				measuredAt: new Date(),
+			});
+		}
+
+		return insertedPet;
 	});
 
-export const deletePet = actionClient
-	.schema(z.object({ id: z.uuid() }))
-	.action(async ({ parsedInput }) => {
-		const context = await requireAuthContext();
-		requireStaff(context);
+	if (isNewRegistration) {
+		const emailed = new Set<string>();
+		for (const customerId of tutorIds) {
+			const tutor = await db.query.customersTable.findFirst({
+				where: eq(customersTable.id, customerId),
+				with: {
+					user: true,
+				},
+			});
 
-		const pet = await db.query.petsTable.findFirst({
-			where: eq(petsTable.id, parsedInput.id),
-		});
+			const email = tutor?.user?.email;
+			if (email && !emailed.has(email)) {
+				emailed.add(email);
+				const firstName = tutor!.user!.name.split(/\s+/)[0] ?? tutor!.user!.name;
+				await sendEmailMessage({
+					to: email,
+					subject: 'Novo Pet Adicionado',
+					body: `Olá, ${firstName}!\nO pet ${petResult.name} foi adicionado ao seu cadastro.`,
+				});
+			}
+		}
+	}
 
-		if (!pet) throw new Error('Pet não encontrado');
+	revalidatePath('/pets');
+	return petResult;
+});
 
-		await db.delete(petsTable).where(eq(petsTable.id, parsedInput.id));
+export const deletePet = actionClient.schema(z.object({ id: z.uuid() })).action(async ({ parsedInput }) => {
+	const context = await requireAuthContext();
+	requireStaff(context);
 
-		revalidatePath('/pets');
+	const pet = await db.query.petsTable.findFirst({
+		where: eq(petsTable.id, parsedInput.id),
 	});
+
+	if (!pet) throw new Error('Pet não encontrado');
+
+	await db.delete(petsTable).where(eq(petsTable.id, parsedInput.id));
+
+	revalidatePath('/pets');
+});
 
 export const getPetHistory = async (petId: string) => {
 	const context = await requireAuthContext();
@@ -418,7 +374,8 @@ export const getPetHistory = async (petId: string) => {
 				orderBy: desc(appointmentsTable.scheduledAt),
 				with: {
 					doctor: { with: { user: true } },
-					items: { with: { service: true } }, productItems: { with: { product: true } },
+					items: { with: { service: true } },
+					productItems: { with: { product: true } },
 				},
 			},
 			vaccines: {
@@ -474,10 +431,7 @@ export const getPetsForSelection = async (): Promise<PetOption[]> => {
 		name: pet.name,
 		breed: pet.breed,
 		petTutors: pet.petTutors
-			.filter(
-				({ tutor }) =>
-					context.role !== 'customer' || tutor.id === context.customerId,
-			)
+			.filter(({ tutor }) => context.role !== 'customer' || tutor.id === context.customerId)
 			.map(({ tutor }) => ({
 				tutor: { user: { name: tutor.user.name } },
 			})),

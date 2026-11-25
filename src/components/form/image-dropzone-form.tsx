@@ -68,9 +68,7 @@ const DropzoneForm = <T extends FieldValues>({
 							description={description}
 						/>
 
-						{error && (
-							<p className='text-xs text-destructive font-medium'>{error}</p>
-						)}
+						{error && <p className='text-xs text-destructive font-medium'>{error}</p>}
 					</div>
 				);
 			}}
@@ -88,14 +86,7 @@ interface ContentProps {
 	onRemove: () => void;
 }
 
-const DropzoneContent = ({
-	value,
-	isUploading,
-	error,
-	description,
-	onDrop,
-	onRemove,
-}: ContentProps) => {
+const DropzoneContent = ({ value, isUploading, error, description, onDrop, onRemove }: ContentProps) => {
 	const { getRootProps, getInputProps, isDragActive } = useDropzone({
 		onDrop,
 		accept: { 'image/*': ['.jpeg', '.jpg', '.png', '.webp'] },
@@ -109,9 +100,7 @@ const DropzoneContent = ({
 			className={cn(
 				'relative flex flex-col items-center justify-center min-h-30 rounded-md border border-dashed transition-all cursor-pointer overflow-hidden',
 				'bg-zinc-50/50 dark:bg-zinc-900/20 hover:bg-zinc-100 dark:hover:bg-zinc-800/50',
-				isDragActive
-					? 'border-primary bg-primary/5'
-					: 'border-zinc-300 dark:border-zinc-800',
+				isDragActive ? 'border-primary bg-primary/5' : 'border-zinc-300 dark:border-zinc-800',
 				error ? 'border-destructive' : '',
 				isUploading && 'opacity-60 cursor-not-allowed',
 			)}
@@ -121,9 +110,7 @@ const DropzoneContent = ({
 			{isUploading ? (
 				<div className='flex flex-col items-center gap-2'>
 					<Loader2Icon className='w-6 h-6 animate-spin text-primary' />
-					<span className='text-xs text-muted-foreground font-medium'>
-						Enviando...
-					</span>
+					<span className='text-xs text-muted-foreground font-medium'>Enviando...</span>
 				</div>
 			) : value ? (
 				<div className='relative group w-full h-full p-2 flex items-center justify-center'>
@@ -154,13 +141,9 @@ const DropzoneContent = ({
 						<CloudUploadIcon className='w-5 h-5 text-zinc-500' />
 					</div>
 					<p className='text-sm font-medium'>
-						{isDragActive
-							? 'Solte a imagem aqui'
-							: 'Arraste ou clique para upload'}
+						{isDragActive ? 'Solte a imagem aqui' : 'Arraste ou clique para upload'}
 					</p>
-					<p className='text-[10px] text-muted-foreground mt-1'>
-						{description}
-					</p>
+					<p className='text-[10px] text-muted-foreground mt-1'>{description}</p>
 				</div>
 			)}
 		</div>

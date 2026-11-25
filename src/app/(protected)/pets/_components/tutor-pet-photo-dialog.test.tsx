@@ -6,7 +6,9 @@ const mocks = vi.hoisted(() => ({ update: vi.fn(), refresh: vi.fn(), success: vi
 vi.mock('@/api/actions/pet-photo.actions', () => ({ updateTutorPetPhoto: mocks.update }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
 vi.mock('sonner', () => ({ toast: { success: mocks.success } }));
-vi.mock('next/image', () => ({ default: ({ alt, src }: { alt: string; src: string }) => <span role='img' aria-label={alt} data-src={src} /> }));
+vi.mock('next/image', () => ({
+	default: ({ alt, src }: { alt: string; src: string }) => <span role='img' aria-label={alt} data-src={src} />,
+}));
 
 const petId = '11111111-1111-4111-8111-111111111111';
 const photo = 'https://res.cloudinary.com/example/image/upload/old.jpg';
@@ -22,10 +24,13 @@ describe('modal de foto do pet', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		createObjectURL.mockReturnValue('blob:photo-preview');
-		vi.stubGlobal('URL', class extends URL {
-			static createObjectURL = createObjectURL;
-			static revokeObjectURL = revokeObjectURL;
-		});
+		vi.stubGlobal(
+			'URL',
+			class extends URL {
+				static createObjectURL = createObjectURL;
+				static revokeObjectURL = revokeObjectURL;
+			},
+		);
 	});
 	afterEach(() => {
 		cleanup();
@@ -42,7 +47,10 @@ describe('modal de foto do pet', () => {
 		const file = imageFile();
 		select(file);
 		expect(createObjectURL).toHaveBeenCalledWith(file);
-		expect(screen.getByRole('img', { name: 'Prévia da nova foto do pet' })).toHaveAttribute('data-src', 'blob:photo-preview');
+		expect(screen.getByRole('img', { name: 'Prévia da nova foto do pet' })).toHaveAttribute(
+			'data-src',
+			'blob:photo-preview',
+		);
 		expect(screen.getByRole('button', { name: 'Salvar foto' })).toBeEnabled();
 		expect(mocks.update).not.toHaveBeenCalled();
 	});
@@ -52,7 +60,10 @@ describe('modal de foto do pet', () => {
 		select(imageFile('first.png'));
 		select(imageFile('second.png'));
 		expect(revokeObjectURL).toHaveBeenCalledWith('blob:first');
-		expect(screen.getByRole('img', { name: 'Prévia da nova foto do pet' })).toHaveAttribute('data-src', 'blob:second');
+		expect(screen.getByRole('img', { name: 'Prévia da nova foto do pet' })).toHaveAttribute(
+			'data-src',
+			'blob:second',
+		);
 		fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
 		expect(revokeObjectURL).toHaveBeenCalledWith('blob:second');
 		fireEvent.click(screen.getByRole('button', { name: 'Gerenciar foto de Teste' }));
@@ -70,7 +81,10 @@ describe('modal de foto do pet', () => {
 		expect(screen.getByRole('button', { name: 'Salvar foto' })).toBeDisabled();
 	});
 	it('envia o arquivo original somente ao salvar e libera a prévia após sucesso', async () => {
-		mocks.update.mockResolvedValue({ success: true, photo: 'https://res.cloudinary.com/example/image/upload/new.png' });
+		mocks.update.mockResolvedValue({
+			success: true,
+			photo: 'https://res.cloudinary.com/example/image/upload/new.png',
+		});
 		open(photo);
 		select(imageFile());
 		fireEvent.click(screen.getByRole('button', { name: 'Salvar foto' }));
@@ -118,7 +132,9 @@ describe('modal de foto do pet', () => {
 	});
 	it('rejeita formato não permitido sem enviar o arquivo', () => {
 		open(null);
-		fireEvent.change(screen.getByLabelText('Selecionar nova foto'), { target: { files: [new File(['x'], 'x.svg', { type: 'image/svg+xml' })] } });
+		fireEvent.change(screen.getByLabelText('Selecionar nova foto'), {
+			target: { files: [new File(['x'], 'x.svg', { type: 'image/svg+xml' })] },
+		});
 		expect(screen.getByRole('alert')).toHaveTextContent('JPG, PNG ou WebP');
 		expect(screen.getByRole('button', { name: 'Salvar foto' })).toBeDisabled();
 		expect(mocks.update).not.toHaveBeenCalled();

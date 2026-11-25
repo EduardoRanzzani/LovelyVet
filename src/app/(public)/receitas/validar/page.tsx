@@ -14,8 +14,8 @@ export default function PrescriptionValidationStartPage() {
 						<div>
 							<h1 className='text-xl font-semibold'>Validar receita</h1>
 							<p className='mt-2 text-sm leading-6 text-muted-foreground'>
-								Digite o token exibido no PDF assinado para consultar o
-								registro e verificar a integridade do documento.
+								Digite o token exibido no PDF assinado para consultar o registro e verificar a
+								integridade do documento.
 							</p>
 						</div>
 					</div>
@@ -23,8 +23,7 @@ export default function PrescriptionValidationStartPage() {
 					<PrescriptionTokenForm />
 
 					<p className='mt-6 text-xs leading-5 text-muted-foreground'>
-						A validação criptográfica completa do PDF também está disponível
-						no{' '}
+						A validação criptográfica completa do PDF também está disponível no{' '}
 						<a
 							href='https://validar.iti.gov.br/'
 							target='_blank'

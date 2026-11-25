@@ -2,11 +2,7 @@ import { upsertShift } from '@/api/actions/shifts.actions';
 import { REGINA_DOCTOR_ID } from '@/api/config/consts';
 import { DoctorsWithRelations } from '@/api/schema/doctors.schema';
 import { ClinicShiftOption } from '@/api/schema/clinics.schema';
-import {
-	createShiftSchema,
-	CreateShiftSchema,
-	ShiftsWithRelations,
-} from '@/api/schema/shifts.schema';
+import { createShiftSchema, CreateShiftSchema, ShiftsWithRelations } from '@/api/schema/shifts.schema';
 import DateTimePickerForm from '@/components/form/datetimepicker-form';
 import InputForm from '@/components/form/input-form';
 import MoneyInputForm from '@/components/form/money-input-form';
@@ -38,32 +34,20 @@ interface ShiftFormProps {
 	onSuccess?: () => void;
 }
 
-const ShiftFormClient = ({
-	shift,
-	doctors,
-	clinics,
-	selectedDate,
-	onSuccess,
-}: ShiftFormProps) => {
+const ShiftFormClient = ({ shift, doctors, clinics, selectedDate, onSuccess }: ShiftFormProps) => {
 	const defaultShiftTime = 12;
-	const shiftStart = shift?.startTime
-		? new Date(shift.startTime)
-		: selectedDate || new Date();
+	const shiftStart = shift?.startTime ? new Date(shift.startTime) : selectedDate || new Date();
 	const shiftEnd = shift?.endTime ? new Date(shift.endTime) : null;
 
 	// Calcula a duração se o shift existir, senão usa o padrão
-	const calculatedDuration: string = shiftEnd
-		? differenceInHours(shiftEnd, shiftStart).toString()
-		: '12'; // fallback padrão
+	const calculatedDuration: string = shiftEnd ? differenceInHours(shiftEnd, shiftStart).toString() : '12'; // fallback padrão
 
 	const form = useForm<CreateShiftSchema>({
 		resolver: zodResolver(createShiftSchema),
 		defaultValues: {
 			doctorId: shift?.doctorId || REGINA_DOCTOR_ID,
 			clinicId: shift?.clinicId ?? '',
-			startTime: shift?.startTime
-				? new Date(shift.startTime)
-				: selectedDate || new Date(),
+			startTime: shift?.startTime ? new Date(shift.startTime) : selectedDate || new Date(),
 			duration: calculatedDuration,
 			requesterName: shift?.requesterName || undefined,
 			amountInCents:
@@ -74,9 +58,7 @@ const ShiftFormClient = ({
 		},
 	});
 
-	const availableClinics = clinics.filter(
-		(clinic) => clinic.isActive || clinic.id === shift?.clinicId,
-	);
+	const availableClinics = clinics.filter((clinic) => clinic.isActive || clinic.id === shift?.clinicId);
 
 	const formSubmit = (data: CreateShiftSchema) => {
 		upsertShiftAction.execute({
@@ -98,18 +80,11 @@ const ShiftFormClient = ({
 	});
 
 	return (
-		<DialogContent
-			onInteractOutside={(e) => e.preventDefault()}
-			showCloseButton={false}
-		>
+		<DialogContent onInteractOutside={(e) => e.preventDefault()} showCloseButton={false}>
 			<DialogHeader>
-				<DialogTitle>
-					{shift ? 'Editar Plantão' : 'Cadastrar Plantão'}
-				</DialogTitle>
+				<DialogTitle>{shift ? 'Editar Plantão' : 'Cadastrar Plantão'}</DialogTitle>
 				<DialogDescription>
-					{shift
-						? 'Edite as informações do seu plantão selecionado'
-						: 'Adicione um novo plantão na agenda'}
+					{shift ? 'Edite as informações do seu plantão selecionado' : 'Adicione um novo plantão na agenda'}
 				</DialogDescription>
 			</DialogHeader>
 
@@ -154,31 +129,23 @@ const ShiftFormClient = ({
 							error={form.formState.errors.clinicId?.message}
 							options={availableClinics.map((clinic) => ({
 								value: clinic.id,
-								label: clinic.isActive
-									? clinic.name
-									: `${clinic.name} (inativa)`,
+								label: clinic.isActive ? clinic.name : `${clinic.name} (inativa)`,
 							}))}
 							onSelect={(value) => {
 								if (typeof value !== 'string') {
 									return;
 								}
 
-								const selectedClinic = clinics.find(
-									(clinic) => clinic.id === value,
-								);
+								const selectedClinic = clinics.find((clinic) => clinic.id === value);
 
 								if (!selectedClinic) {
 									return;
 								}
 
-								form.setValue(
-									'amountInCents',
-									fromCents(selectedClinic.defaultShiftPriceInCents),
-									{
-										shouldDirty: true,
-										shouldValidate: true,
-									},
-								);
+								form.setValue('amountInCents', fromCents(selectedClinic.defaultShiftPriceInCents), {
+									shouldDirty: true,
+									shouldValidate: true,
+								});
 							}}
 						/>
 

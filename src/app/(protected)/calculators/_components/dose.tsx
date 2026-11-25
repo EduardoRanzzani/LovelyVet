@@ -2,13 +2,7 @@
 
 import InputForm from '@/components/form/input-form';
 import { Button } from '@/components/ui/button';
-import {
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from '@/components/ui/dialog';
+import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form } from '@/components/ui/form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CalculatorIcon } from 'lucide-react';
@@ -20,9 +14,7 @@ const formData = z.object({
 	weight: z.string().min(1, { message: 'Peso obrigatório para o cálculo' }),
 	dose: z.string().min(1, { message: 'Dose obrigatória para o cálculo' }),
 	solute: z.string().min(1, { message: 'Solução obrigatória para o cálculo' }),
-	solvent: z
-		.string()
-		.min(1, { message: 'Solvente obrigatório para o cálculo' }),
+	solvent: z.string().min(1, { message: 'Solvente obrigatório para o cálculo' }),
 });
 
 const DoseCalculation = () => {
@@ -37,8 +29,7 @@ const DoseCalculation = () => {
 		let concentration: number = Number(data.solute) / Number(data.solvent);
 		concentration = concentration * 1000; // converting to mcg
 
-		const tax: number =
-			(Number(data.weight) * Number(data.dose) * 60) / concentration;
+		const tax: number = (Number(data.weight) * Number(data.dose) * 60) / concentration;
 
 		setResult(tax.toFixed(2));
 	};
@@ -48,16 +39,12 @@ const DoseCalculation = () => {
 			<DialogHeader>
 				<DialogTitle>Dosagem Noradrenalina</DialogTitle>
 				<DialogDescription>
-					Preencha os campos abaixo para saber a dosagem necessária para a bomba
-					de infusão
+					Preencha os campos abaixo para saber a dosagem necessária para a bomba de infusão
 				</DialogDescription>
 			</DialogHeader>
 
 			<Form {...form}>
-				<form
-					onSubmit={form.handleSubmit(calculateDose)}
-					className='flex flex-col gap-2'
-				>
+				<form onSubmit={form.handleSubmit(calculateDose)} className='flex flex-col gap-2'>
 					<div className='flex flex-col lg:flex-row items-center justify-center gap-2'>
 						<InputForm
 							register={form.register}
@@ -105,9 +92,7 @@ const DoseCalculation = () => {
 			</Form>
 
 			<DialogFooter className='mt-6'>
-				<h1 className='font-semibold text-center w-full'>
-					Resultado: {result} ml/h
-				</h1>
+				<h1 className='font-semibold text-center w-full'>Resultado: {result} ml/h</h1>
 			</DialogFooter>
 		</DialogContent>
 	);

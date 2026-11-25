@@ -10,9 +10,7 @@ const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 const ALLOWED_FOLDERS = new Set(['pets', 'doctors']);
 
-export const uploadImageAction = async (
-	formData: FormData,
-): Promise<string> => {
+export const uploadImageAction = async (formData: FormData): Promise<string> => {
 	const context = await requireAuthContext();
 
 	requireStaff(context);

@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-	getShiftCalendarClass,
-	isNightShift,
-	startsOnCalendarDay,
-} from './shift-calendar-presentation';
+import { getShiftCalendarClass, isNightShift, startsOnCalendarDay } from './shift-calendar-presentation';
 
 describe('shift-calendar-presentation', () => {
 	it('identifica plantão diurno', () => {
@@ -27,14 +23,10 @@ describe('shift-calendar-presentation', () => {
 	});
 
 	it('utiliza azul-marinho no plantão noturno', () => {
-		expect(getShiftCalendarClass(new Date(2026, 10, 27, 19))).toContain(
-			'bg-blue-950',
-		);
+		expect(getShiftCalendarClass(new Date(2026, 10, 27, 19))).toContain('bg-blue-950');
 	});
 
 	it('utiliza amarelo no plantão diurno', () => {
-		expect(getShiftCalendarClass(new Date(2026, 10, 28, 7))).toContain(
-			'bg-amber-100',
-		);
+		expect(getShiftCalendarClass(new Date(2026, 10, 28, 7))).toContain('bg-amber-100');
 	});
 });

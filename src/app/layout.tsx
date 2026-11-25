@@ -24,9 +24,7 @@ export default function RootLayout({
 	return (
 		<ClerkProvider localization={ptBR} dynamic>
 			<html lang='pt-BR' suppressHydrationWarning>
-				<body
-					className={`${poppins.className} antialiased md:subpixel-antialiased`}
-				>
+				<body className={`${poppins.className} antialiased md:subpixel-antialiased`}>
 					<ClientProviders>{children}</ClientProviders>
 				</body>
 			</html>

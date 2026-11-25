@@ -33,9 +33,7 @@ const EditorToolbar = ({ editor }: { editor: Editor }) => {
 			alignRight: editor.isActive({ textAlign: 'right' }),
 			alignJustify: editor.isActive({ textAlign: 'justify' }),
 
-			fontSize: editor.getAttributes('textStyle').fontSize as
-				| string
-				| undefined,
+			fontSize: editor.getAttributes('textStyle').fontSize as string | undefined,
 
 			canUndo: editor.can().undo(),
 			canRedo: editor.can().redo(),
@@ -85,9 +83,7 @@ const EditorToolbar = ({ editor }: { editor: Editor }) => {
 				<MinusIcon className='size-4' />
 			</ToolbarButton>
 
-			<span className='min-w-12 text-center text-xs font-medium tabular-nums'>
-				{currentSize}px
-			</span>
+			<span className='min-w-12 text-center text-xs font-medium tabular-nums'>{currentSize}px</span>
 
 			<ToolbarButton
 				title='Aumentar fonte'

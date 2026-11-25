@@ -42,10 +42,7 @@ async function loadFinancialReport(context: AuthContext, month: string, customer
 			petName: petsTable.name,
 		})
 		.from(appointmentChargesTable)
-		.innerJoin(
-			appointmentsTable,
-			eq(appointmentChargesTable.appointmentId, appointmentsTable.id),
-		)
+		.innerJoin(appointmentsTable, eq(appointmentChargesTable.appointmentId, appointmentsTable.id))
 		.innerJoin(petsTable, eq(appointmentsTable.petId, petsTable.id))
 		.where(condition);
 	const paymentRows = charges.length
@@ -58,14 +55,8 @@ async function loadFinancialReport(context: AuthContext, month: string, customer
 					receivedAt: chargePaymentsTable.receivedAt,
 				})
 				.from(chargePaymentsTable)
-				.innerJoin(
-					appointmentChargesTable,
-					eq(chargePaymentsTable.chargeId, appointmentChargesTable.id),
-				)
-				.innerJoin(
-					appointmentsTable,
-					eq(appointmentChargesTable.appointmentId, appointmentsTable.id),
-				)
+				.innerJoin(appointmentChargesTable, eq(chargePaymentsTable.chargeId, appointmentChargesTable.id))
+				.innerJoin(appointmentsTable, eq(appointmentChargesTable.appointmentId, appointmentsTable.id))
 				.where(condition)
 		: [];
 	return buildFinancialReport(charges, paymentRows, start, end);
@@ -80,19 +71,8 @@ export async function getFinancialCustomerNames(ids: readonly string[]) {
 		.select({ id: customersTable.id, name: usersTable.name })
 		.from(customersTable)
 		.innerJoin(usersTable, eq(customersTable.userId, usersTable.id))
-		.innerJoin(
-			appointmentChargesTable,
-			eq(appointmentChargesTable.customerId, customersTable.id),
-		)
-		.innerJoin(
-			appointmentsTable,
-			eq(appointmentChargesTable.appointmentId, appointmentsTable.id),
-		)
-		.where(
-			and(
-				inArray(customersTable.id, [...ids]),
-				buildAppointmentAccessCondition(context),
-			),
-		);
+		.innerJoin(appointmentChargesTable, eq(appointmentChargesTable.customerId, customersTable.id))
+		.innerJoin(appointmentsTable, eq(appointmentChargesTable.appointmentId, appointmentsTable.id))
+		.where(and(inArray(customersTable.id, [...ids]), buildAppointmentAccessCondition(context)));
 	return Object.fromEntries(rows.map((row) => [row.id, row.name]));
 }

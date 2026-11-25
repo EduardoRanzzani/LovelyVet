@@ -34,9 +34,7 @@ const formatDate = (date: Date): string => {
 	}).format(date);
 };
 
-export default async function PrescriptionValidationPage({
-	params,
-}: PrescriptionValidationPageProps) {
+export default async function PrescriptionValidationPage({ params }: PrescriptionValidationPageProps) {
 	const { id } = await params;
 	const lookup = z.uuid().safeParse(id).success
 		? eq(prescriptionSignaturesTable.id, id)
@@ -61,21 +59,16 @@ export default async function PrescriptionValidationPage({
 							</div>
 
 							<div className='space-y-2'>
-								<h1 className='text-xl font-semibold'>
-									Assinatura não encontrada
-								</h1>
+								<h1 className='text-xl font-semibold'>Assinatura não encontrada</h1>
 
 								<p className='text-sm leading-6 text-muted-foreground'>
-									Não foi encontrado nenhum registro de assinatura digital para
-									o código informado.
+									Não foi encontrado nenhum registro de assinatura digital para o código informado.
 								</p>
 							</div>
 						</div>
 
 						<div className='p-4 mt-6 border rounded-lg bg-muted/30'>
-							<p className='text-xs font-medium text-muted-foreground'>
-								Identificador consultado
-							</p>
+							<p className='text-xs font-medium text-muted-foreground'>Identificador consultado</p>
 
 							<p className='mt-1 font-mono text-xs break-all'>{id}</p>
 						</div>
@@ -85,9 +78,7 @@ export default async function PrescriptionValidationPage({
 		);
 	}
 
-	const computedPdfSha256 = createHash('sha256')
-		.update(signature.pdf)
-		.digest('hex');
+	const computedPdfSha256 = createHash('sha256').update(signature.pdf).digest('hex');
 
 	const storedPdfSha256 = signature.pdfSha256.toLowerCase();
 
@@ -99,8 +90,7 @@ export default async function PrescriptionValidationPage({
 
 	const certificateValidTo = new Date(signature.certificateValidTo);
 
-	const certificateWasValidAtSigning =
-		signedAt >= certificateValidFrom && signedAt <= certificateValidTo;
+	const certificateWasValidAtSigning = signedAt >= certificateValidFrom && signedAt <= certificateValidTo;
 
 	const documentData = signature.prescription.documentData;
 
@@ -130,14 +120,10 @@ export default async function PrescriptionValidationPage({
 						</div>
 
 						<div className='min-w-0 space-y-1'>
-							<p className='text-sm font-medium text-muted-foreground'>
-								Validação de receita
-							</p>
+							<p className='text-sm font-medium text-muted-foreground'>Validação de receita</p>
 
 							<h1 className='text-2xl font-semibold'>
-								{integrityOk
-									? 'Registro de assinatura confirmado'
-									: 'Inconsistência encontrada'}
+								{integrityOk ? 'Registro de assinatura confirmado' : 'Inconsistência encontrada'}
 							</h1>
 
 							<p className='text-sm leading-6 text-muted-foreground'>
@@ -163,17 +149,10 @@ export default async function PrescriptionValidationPage({
 
 						<ValidationField
 							label='Tipo'
-							value={
-								documentData?.isControlled
-									? 'Receituário Controlado'
-									: 'Receituário'
-							}
+							value={documentData?.isControlled ? 'Receituário Controlado' : 'Receituário'}
 						/>
 
-						<ValidationField
-							label='Assinada em'
-							value={formatDateTime(signedAt)}
-						/>
+						<ValidationField label='Assinada em' value={formatDateTime(signedAt)} />
 					</div>
 				</div>
 
@@ -181,26 +160,14 @@ export default async function PrescriptionValidationPage({
 					<h2 className='mb-5 font-semibold'>Certificado digital</h2>
 
 					<div className='space-y-5'>
-						<ValidationField
-							label='Titular do certificado'
-							value={signature.certificateCommonName}
-						/>
+						<ValidationField label='Titular do certificado' value={signature.certificateCommonName} />
 
-						<ValidationField
-							label='Emissor'
-							value={signature.certificateIssuer}
-						/>
+						<ValidationField label='Emissor' value={signature.certificateIssuer} />
 
 						<div className='grid gap-5 sm:grid-cols-2'>
-							<ValidationField
-								label='Válido desde'
-								value={formatDate(certificateValidFrom)}
-							/>
+							<ValidationField label='Válido desde' value={formatDate(certificateValidFrom)} />
 
-							<ValidationField
-								label='Válido até'
-								value={formatDate(certificateValidTo)}
-							/>
+							<ValidationField label='Válido até' value={formatDate(certificateValidTo)} />
 						</div>
 
 						<ValidationStatus
@@ -214,28 +181,13 @@ export default async function PrescriptionValidationPage({
 					<h2 className='mb-5 font-semibold'>Integridade do documento</h2>
 
 					<div className='space-y-5'>
-						<ValidationStatus
-							label='Hash do PDF armazenado confere'
-							valid={isPdfIntegrityValid}
-						/>
+						<ValidationStatus label='Hash do PDF armazenado confere' valid={isPdfIntegrityValid} />
 
-						<ValidationField
-							label='SHA-256'
-							value={signature.pdfSha256}
-							monospace
-						/>
+						<ValidationField label='SHA-256' value={signature.pdfSha256} monospace />
 
-						<ValidationField
-							label='Token de validação'
-							value={signature.validationToken}
-							monospace
-						/>
+						<ValidationField label='Token de validação' value={signature.validationToken} monospace />
 
-						<ValidationField
-							label='Identificador da assinatura'
-							value={signature.id}
-							monospace
-						/>
+						<ValidationField label='Identificador da assinatura' value={signature.id} monospace />
 
 						<ValidationField
 							label='Fingerprint SHA-256 do certificado'
@@ -253,9 +205,8 @@ export default async function PrescriptionValidationPage({
 
 				<div className='p-4 border rounded-xl bg-background/70'>
 					<p className='text-xs leading-5 text-muted-foreground'>
-						Esta página confirma o registro da assinatura e a integridade do PDF
-						armazenado pelo LovelyVet. Para conferir a assinatura criptográfica e
-						a cadeia do certificado, envie o PDF ao{' '}
+						Esta página confirma o registro da assinatura e a integridade do PDF armazenado pelo LovelyVet.
+						Para conferir a assinatura criptográfica e a cadeia do certificado, envie o PDF ao{' '}
 						<a
 							href='https://validar.iti.gov.br/'
 							target='_blank'
@@ -278,11 +229,7 @@ interface ValidationFieldProps {
 	monospace?: boolean;
 }
 
-function ValidationField({
-	label,
-	value,
-	monospace = false,
-}: ValidationFieldProps) {
+function ValidationField({ label, value, monospace = false }: ValidationFieldProps) {
 	return (
 		<div className='min-w-0'>
 			<p className='text-xs font-medium text-muted-foreground'>{label}</p>

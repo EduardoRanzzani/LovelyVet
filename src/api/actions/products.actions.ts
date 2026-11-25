@@ -24,7 +24,11 @@ export const saveProduct = actionClient.schema(productSchema).action(async ({ pa
 	requireStaff(context);
 	const { id, ...data } = parsedInput;
 	if (id) {
-		const [updated] = await db.update(productsTable).set(data).where(eq(productsTable.id, id)).returning({ id: productsTable.id });
+		const [updated] = await db
+			.update(productsTable)
+			.set(data)
+			.where(eq(productsTable.id, id))
+			.returning({ id: productsTable.id });
 		if (!updated) throw new Error('Produto não encontrado.');
 	} else {
 		await db.insert(productsTable).values(data);

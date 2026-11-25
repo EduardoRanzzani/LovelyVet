@@ -28,11 +28,7 @@ export async function signPrescriptionPdf({
 	contactInfo = '',
 	signingTime = new Date(),
 }: SignPrescriptionPdfOptions): Promise<SignPrescriptionPdfResult> {
-	const {
-		buffer: certificate,
-		passphrase,
-		metadata,
-	} = await getPrescriptionSigningCertificate(signingTime);
+	const { buffer: certificate, passphrase, metadata } = await getPrescriptionSigningCertificate(signingTime);
 
 	const pdfDocument = await PDFDocument.load(pdf, {
 		updateMetadata: false,

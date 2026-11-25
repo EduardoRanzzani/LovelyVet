@@ -14,13 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { formatCurrencyFromCents } from '@/helpers/currency';
 import { handleNavigation } from '@/lib/utils';
-import {
-	CatIcon,
-	DogIcon,
-	DollarSignIcon,
-	NotepadTextIcon,
-	PawPrintIcon,
-} from 'lucide-react';
+import { CatIcon, DogIcon, DollarSignIcon, NotepadTextIcon, PawPrintIcon } from 'lucide-react';
 import { useAction } from 'next-safe-action/hooks';
 import { useSearchParams } from 'next/navigation';
 import { use } from 'react';
@@ -62,9 +56,7 @@ const ServicesListClient = ({ services, species }: ServicesListClientProps) => {
 		},
 		onError: (err) => {
 			console.error('Erro ao deletar serviço:', err);
-			toast.error(
-				'Ocorreu um erro ao tentar deletar o serviço. Tente novamente mais tarde.',
-			);
+			toast.error('Ocorreu um erro ao tentar deletar o serviço. Tente novamente mais tarde.');
 		},
 	});
 
@@ -74,29 +66,16 @@ const ServicesListClient = ({ services, species }: ServicesListClientProps) => {
 				<TableCell>{service.name}</TableCell>
 				<TableCell>{formatCurrencyFromCents(service.priceInCents)}</TableCell>
 				<TableCell>{service.specie?.name ?? 'Geral'}</TableCell>
-				<TableCell>
-					{service.description ? (
-						service.description
-					) : (
-						<span className='italic'>---</span>
-					)}
-				</TableCell>
+				<TableCell>{service.description ? service.description : <span className='italic'>---</span>}</TableCell>
 				<TableCell className='w-20 space-x-2'>
 					<EditButton
 						tooltip={`Editar '${service.name}'`}
 						renderForm={(close) => (
-							<ServiceFormClient
-								species={species}
-								service={service}
-								onSuccess={close}
-							/>
+							<ServiceFormClient species={species} service={service} onSuccess={close} />
 						)}
 					/>
 
-					<DeleteAlertButton
-						tooltip={`Deletar '${service.name}'`}
-						action={() => handleDelete(service.id)}
-					/>
+					<DeleteAlertButton tooltip={`Deletar '${service.name}'`} action={() => handleDelete(service.id)} />
 				</TableCell>
 			</TableRow>
 		);
@@ -112,11 +91,7 @@ const ServicesListClient = ({ services, species }: ServicesListClientProps) => {
 						<EditButton
 							tooltip={`Editar '${service.name}'`}
 							renderForm={(close) => (
-								<ServiceFormClient
-									species={species}
-									service={service}
-									onSuccess={close}
-								/>
+								<ServiceFormClient species={species} service={service} onSuccess={close} />
 							)}
 						/>
 
@@ -138,9 +113,7 @@ const ServicesListClient = ({ services, species }: ServicesListClientProps) => {
 							{service.description ? (
 								service.description
 							) : (
-								<span className='italic text-muted-foreground'>
-									Descrição não fornecida
-								</span>
+								<span className='italic text-muted-foreground'>Descrição não fornecida</span>
 							)}
 						</span>
 					</p>
@@ -174,9 +147,7 @@ const ServicesListClient = ({ services, species }: ServicesListClientProps) => {
 						<span className='text-sm font-semibold'>
 							<DollarSignIcon className='h-4 w-4' />
 						</span>
-						<span className='text-sm'>
-							{formatCurrencyFromCents(service.priceInCents)}
-						</span>
+						<span className='text-sm'>{formatCurrencyFromCents(service.priceInCents)}</span>
 					</p>
 				</div>
 			</div>
@@ -190,9 +161,7 @@ const ServicesListClient = ({ services, species }: ServicesListClientProps) => {
 
 				<AddButton
 					text={'Adicionar Serviço'}
-					renderForm={(close) => (
-						<ServiceFormClient species={species} onSuccess={close} />
-					)}
+					renderForm={(close) => <ServiceFormClient species={species} onSuccess={close} />}
 				/>
 			</div>
 

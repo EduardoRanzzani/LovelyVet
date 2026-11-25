@@ -3,10 +3,7 @@ import { petsTable, petTutorsTable } from '@/db/schema';
 import { and, eq, inArray, type SQL } from 'drizzle-orm';
 import type { AuthContext } from './auth-context';
 
-export const buildPetAccessCondition = (
-	context: AuthContext,
-	petId?: string,
-): SQL | undefined => {
+export const buildPetAccessCondition = (context: AuthContext, petId?: string): SQL | undefined => {
 	if (context.role !== 'customer') {
 		return petId ? eq(petsTable.id, petId) : undefined;
 	}
@@ -30,10 +27,7 @@ export const buildPetAccessCondition = (
 	return and(eq(petsTable.id, petId), ownershipCondition);
 };
 
-export const assertCanAccessPet = async (
-	context: AuthContext,
-	petId: string,
-): Promise<void> => {
+export const assertCanAccessPet = async (context: AuthContext, petId: string): Promise<void> => {
 	const pet = await db.query.petsTable.findFirst({
 		columns: {
 			id: true,

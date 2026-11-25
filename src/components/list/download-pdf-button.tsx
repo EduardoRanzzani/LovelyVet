@@ -24,9 +24,7 @@ export function DownloadPdfButton({ recipeId }: DownloadPdfButtonProps) {
 
 			const contentType = response.headers.get('content-type');
 			if (contentType && contentType.includes('text/html')) {
-				throw new Error(
-					'A requisição foi redirecionada para HTML. Verifique a chave de autenticação.',
-				);
+				throw new Error('A requisição foi redirecionada para HTML. Verifique a chave de autenticação.');
 			}
 
 			const blob = await response.blob();
@@ -40,8 +38,7 @@ export function DownloadPdfButton({ recipeId }: DownloadPdfButtonProps) {
 			a.remove();
 			window.URL.revokeObjectURL(url);
 		} catch (error: unknown) {
-			const message =
-				error instanceof Error ? error.message : 'Erro ao baixar receita.';
+			const message = error instanceof Error ? error.message : 'Erro ao baixar receita.';
 			console.error(error);
 			toast.error(message);
 		} finally {
@@ -50,17 +47,8 @@ export function DownloadPdfButton({ recipeId }: DownloadPdfButtonProps) {
 	};
 
 	return (
-		<Button
-			onClick={handleDownload}
-			disabled={loading}
-			variant='outline'
-			size='sm'
-		>
-			{loading ? (
-				<Loader2Icon className='w-4 h-4 mr-2 animate-spin' />
-			) : (
-				<FileIcon className='w-4 h-4 mr-2' />
-			)}
+		<Button onClick={handleDownload} disabled={loading} variant='outline' size='sm'>
+			{loading ? <Loader2Icon className='w-4 h-4 mr-2 animate-spin' /> : <FileIcon className='w-4 h-4 mr-2' />}
 			Download
 		</Button>
 	);

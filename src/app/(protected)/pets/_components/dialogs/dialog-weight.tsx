@@ -1,8 +1,5 @@
 import { insertPetWeight } from '@/api/actions/pet-weights.actions';
-import {
-	createPetWeightSchema,
-	CreatePetWeightSchema,
-} from '@/api/schema/pet-weight.schema';
+import { createPetWeightSchema, CreatePetWeightSchema } from '@/api/schema/pet-weight.schema';
 import WeightInputForm from '@/components/form/weight-input-form';
 import { Button } from '@/components/ui/button';
 import {
@@ -73,21 +70,14 @@ const DialogWeight = ({ petId }: DialogWeightProps) => {
 				</Button>
 			</DialogTrigger>
 
-			<DialogContent
-				onInteractOutside={(e) => e.preventDefault()}
-				showCloseButton={false}
-			>
+			<DialogContent onInteractOutside={(e) => e.preventDefault()} showCloseButton={false}>
 				<DialogHeader>
 					<DialogTitle>Novo Peso</DialogTitle>
 					<DialogDescription>Informe o peso do paciente</DialogDescription>
 				</DialogHeader>
 
 				<Form {...form}>
-					<form
-						id='weightForm'
-						onSubmit={form.handleSubmit(formSubmit)}
-						className='flex flex-col gap-2'
-					>
+					<form id='weightForm' onSubmit={form.handleSubmit(formSubmit)} className='flex flex-col gap-2'>
 						<input type='hidden' {...form.register('petId')} />
 
 						<WeightInputForm

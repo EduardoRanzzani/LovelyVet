@@ -9,9 +9,7 @@ interface ClinicalDocumentPrintPageProps {
 	}>;
 }
 
-export default async function ClinicalDocumentPrintPage({
-	params,
-}: ClinicalDocumentPrintPageProps) {
+export default async function ClinicalDocumentPrintPage({ params }: ClinicalDocumentPrintPageProps) {
 	await connection();
 
 	const { id } = await params;

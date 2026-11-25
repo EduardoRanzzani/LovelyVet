@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-	assertIntervalWithinDoctorWorkingHours,
-	isIntervalWithinDoctorWorkingHours,
-} from './doctor-working-hours';
+import { assertIntervalWithinDoctorWorkingHours, isIntervalWithinDoctorWorkingHours } from './doctor-working-hours';
 
 const doctor = {
 	availableFromWeekDay: 1,
@@ -116,8 +113,6 @@ describe('assertIntervalWithinDoctorWorkingHours', () => {
 				},
 				doctor,
 			),
-		).toThrow(
-			'O horário selecionado está fora do horário de atendimento deste veterinário.',
-		);
+		).toThrow('O horário selecionado está fora do horário de atendimento deste veterinário.');
 	});
 });

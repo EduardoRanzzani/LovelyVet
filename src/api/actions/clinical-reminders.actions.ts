@@ -35,12 +35,7 @@ export const getClinicalRemindersPaginated = async (
 					db
 						.select({ id: petsTable.id })
 						.from(petsTable)
-						.where(
-							and(
-								eq(petsTable.id, careRemindersTable.petId),
-								ilike(petsTable.name, `%${keyword}%`),
-							),
-						),
+						.where(and(eq(petsTable.id, careRemindersTable.petId), ilike(petsTable.name, `%${keyword}%`))),
 				)
 			: undefined,
 	);
@@ -60,10 +55,7 @@ export const getClinicalRemindersPaginated = async (
 									.select({ id: petsTable.id })
 									.from(petsTable)
 									.where(
-										and(
-											eq(petsTable.id, reminder.petId),
-											ilike(petsTable.name, `%${keyword}%`),
-										),
+										and(eq(petsTable.id, reminder.petId), ilike(petsTable.name, `%${keyword}%`)),
 									),
 							)
 						: undefined,

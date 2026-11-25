@@ -6,13 +6,7 @@ import { ShiftsWithRelations } from '@/api/schema/shifts.schema';
 import { CustomCalendar } from '@/components/ui/custom-calendar';
 import { Dialog } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import {
-	endOfDay,
-	format,
-	isSameDay,
-	isWithinInterval,
-	startOfDay,
-} from 'date-fns';
+import { endOfDay, format, isSameDay, isWithinInterval, startOfDay } from 'date-fns';
 import { ClockIcon, HospitalIcon, MoonIcon, SunIcon } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ClinicShiftOption } from '@/api/schema/clinics.schema';
@@ -25,11 +19,7 @@ interface ShiftsCalendarClientProps {
 	clinics: ClinicShiftOption[];
 }
 
-const ShiftsCalendarClient = ({
-	shiftsPromise,
-	doctors,
-	clinics,
-}: ShiftsCalendarClientProps) => {
+const ShiftsCalendarClient = ({ shiftsPromise, doctors, clinics }: ShiftsCalendarClientProps) => {
 	const shifts = use(shiftsPromise);
 	const searchParams = useSearchParams();
 	const router = useRouter();
@@ -37,9 +27,7 @@ const ShiftsCalendarClient = ({
 
 	const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
 	const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-	const [selectedShift, setSelectedShift] = useState<
-		ShiftsWithRelations | undefined
-	>(undefined);
+	const [selectedShift, setSelectedShift] = useState<ShiftsWithRelations | undefined>(undefined);
 
 	const currentMonth = resolveShiftMonth(searchParams.get('month'));
 
@@ -57,11 +45,7 @@ const ShiftsCalendarClient = ({
 	};
 
 	const onDutyDates = useMemo(() => {
-		const uniqueStartDates = new Set(
-			shifts.map((shift) =>
-				startOfDay(new Date(shift.startTime)).toISOString(),
-			),
-		);
+		const uniqueStartDates = new Set(shifts.map((shift) => startOfDay(new Date(shift.startTime)).toISOString()));
 		return Array.from(uniqueStartDates).map((dateStr) => new Date(dateStr));
 	}, [shifts]);
 
@@ -94,11 +78,7 @@ const ShiftsCalendarClient = ({
 							)}
 						>
 							<span className='flex gap-2'>
-								{isNight ? (
-									<MoonIcon className='w-3 h-3' />
-								) : (
-									<SunIcon className='w-3 h-3' />
-								)}
+								{isNight ? <MoonIcon className='w-3 h-3' /> : <SunIcon className='w-3 h-3' />}
 								<HospitalIcon className='w-3 h-3' />
 							</span>
 						</div>
@@ -168,11 +148,7 @@ const ShiftsCalendarClient = ({
 										'flex items-center gap-2',
 									)}
 								>
-									{isNight ? (
-										<MoonIcon className='w-3 h-3' />
-									) : (
-										<SunIcon className='w-3 h-3' />
-									)}
+									{isNight ? <MoonIcon className='w-3 h-3' /> : <SunIcon className='w-3 h-3' />}
 									<span className='truncate'>{shift.clinicName}</span>
 								</span>
 							</div>
@@ -185,13 +161,9 @@ const ShiftsCalendarClient = ({
 									)}
 								>
 									<ClockIcon className='w-3 h-3' />
-									{isStart
-										? 'Entrada: ' + format(new Date(shift.startTime), 'HH:mm')
-										: ''}
+									{isStart ? 'Entrada: ' + format(new Date(shift.startTime), 'HH:mm') : ''}
 									{isStart && isEnd && ' - '}
-									{isEnd
-										? 'Saída: ' + format(new Date(shift.endTime), 'HH:mm')
-										: ''}
+									{isEnd ? 'Saída: ' + format(new Date(shift.endTime), 'HH:mm') : ''}
 									{!isStart && !isEnd && 'Continuação'}
 								</span>
 							</div>
@@ -230,9 +202,7 @@ const ShiftsCalendarClient = ({
 
 				{isFormOpen && (
 					<ShiftFormClient
-						key={
-							selectedShift?.id || selectedDate?.toISOString() || 'new-shift'
-						}
+						key={selectedShift?.id || selectedDate?.toISOString() || 'new-shift'}
 						shift={selectedShift}
 						doctors={doctors}
 						clinics={clinics}

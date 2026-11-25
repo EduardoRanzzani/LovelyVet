@@ -1,8 +1,6 @@
 import { formatDate } from 'date-fns';
 
-export const formatVaccineNextDose = (
-	nextDoseDate: Date | string | null | undefined,
-): string => {
+export const formatVaccineNextDose = (nextDoseDate: Date | string | null | undefined): string => {
 	if (!nextDoseDate) {
 		return 'Sem próxima dose prevista';
 	}

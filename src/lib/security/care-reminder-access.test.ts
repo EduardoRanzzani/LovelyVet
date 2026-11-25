@@ -39,15 +39,15 @@ describe('buildCareReminderAccessCondition', () => {
 	});
 
 	it('bloqueia veterinário sem perfil', () => {
-		expect(() =>
-			buildCareReminderAccessCondition({ ...base, role: 'doctor' }),
-		).toThrow('Perfil de veterinário não encontrado');
+		expect(() => buildCareReminderAccessCondition({ ...base, role: 'doctor' })).toThrow(
+			'Perfil de veterinário não encontrado',
+		);
 	});
 
 	it('bloqueia tutor sem perfil', () => {
-		expect(() =>
-			buildCareReminderAccessCondition({ ...base, role: 'customer' }),
-		).toThrow('Perfil de cliente não encontrado');
+		expect(() => buildCareReminderAccessCondition({ ...base, role: 'customer' })).toThrow(
+			'Perfil de cliente não encontrado',
+		);
 	});
 
 	it('exige associação do tutor com o pet', () => {

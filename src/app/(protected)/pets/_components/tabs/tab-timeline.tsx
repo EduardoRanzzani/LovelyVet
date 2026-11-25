@@ -9,11 +9,7 @@ interface TabTimelineProps {
 	onDelete: (item: TimelineItem) => void;
 }
 
-const TabTimeline = ({
-	historyEvents,
-	canDelete,
-	onDelete,
-}: TabTimelineProps) => {
+const TabTimeline = ({ historyEvents, canDelete, onDelete }: TabTimelineProps) => {
 	return (
 		<TabsContent value='timeline' className='min-w-0'>
 			<div className='my-2 flex min-w-0 items-center justify-between gap-2 border-b pb-3 sm:pb-4'>
@@ -27,11 +23,7 @@ const TabTimeline = ({
 				</Badge>
 			</div>
 
-			<PetTimelineClient
-				historyEvents={historyEvents}
-				canDelete={canDelete}
-				onDelete={onDelete}
-			/>
+			<PetTimelineClient historyEvents={historyEvents} canDelete={canDelete} onDelete={onDelete} />
 		</TabsContent>
 	);
 };

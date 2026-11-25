@@ -18,20 +18,14 @@ interface PrescriptionItemsPageProps {
 	searchParams: Promise<{ page?: string; filter?: string; keyword?: string }>;
 }
 
-const PrescriptionsItemsPage = async ({
-	searchParams,
-}: PrescriptionItemsPageProps) => {
+const PrescriptionsItemsPage = async ({ searchParams }: PrescriptionItemsPageProps) => {
 	await requirePageAccess('/prescriptions-items');
 
 	const params = await searchParams;
 	const page = Number(params.page) || 1;
 	const filter = params.filter || '';
 
-	const dataPromise = getPrescriptionsItemsPaginated(
-		page,
-		MAX_PAGE_SIZE,
-		filter,
-	);
+	const dataPromise = getPrescriptionsItemsPaginated(page, MAX_PAGE_SIZE, filter);
 
 	return (
 		<PageContainer>
@@ -43,8 +37,8 @@ const PrescriptionsItemsPage = async ({
 
 			<PageContent>
 				<PageDescription>
-					Cadastro de itens que podem ser adicionados às receitas para facilitar
-					o preenchimento e padronização dos tratamentos prescritos.
+					Cadastro de itens que podem ser adicionados às receitas para facilitar o preenchimento e
+					padronização dos tratamentos prescritos.
 				</PageDescription>
 				<Suspense
 					fallback={

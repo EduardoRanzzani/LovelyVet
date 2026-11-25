@@ -7,23 +7,15 @@ describe('getClerkEnvironment', () => {
 		vi.unstubAllEnvs();
 	});
 
-	it.each(['development', 'production'] as const)(
-		'accepts the %s environment',
-		(environment) => {
-			vi.stubEnv('CLERK_ENVIRONMENT', environment);
+	it.each(['development', 'production'] as const)('accepts the %s environment', (environment) => {
+		vi.stubEnv('CLERK_ENVIRONMENT', environment);
 
-			expect(getClerkEnvironment()).toBe(environment);
-		},
-	);
+		expect(getClerkEnvironment()).toBe(environment);
+	});
 
-	it.each([undefined, '', 'test', 'prod']) (
-		'rejects invalid environment %j',
-		(environment) => {
-			vi.stubEnv('CLERK_ENVIRONMENT', environment ?? '');
+	it.each([undefined, '', 'test', 'prod'])('rejects invalid environment %j', (environment) => {
+		vi.stubEnv('CLERK_ENVIRONMENT', environment ?? '');
 
-			expect(() => getClerkEnvironment()).toThrow(
-				'CLERK_ENVIRONMENT deve ser "development" ou "production".',
-			);
-		},
-	);
+		expect(() => getClerkEnvironment()).toThrow('CLERK_ENVIRONMENT deve ser "development" ou "production".');
+	});
 });

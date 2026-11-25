@@ -1,10 +1,6 @@
 'use client';
 
-import {
-	cancelAppointmentCharge,
-	createAppointmentCharge,
-	recordChargePayment,
-} from '@/api/actions/billing.actions';
+import { cancelAppointmentCharge, createAppointmentCharge, recordChargePayment } from '@/api/actions/billing.actions';
 import type { AppointmentListItem } from '@/api/schema/appointments.schema';
 import MoneyInputForm from '@/components/form/money-input-form';
 import SelectForm from '@/components/form/select-form';
@@ -61,9 +57,7 @@ export default function AppointmentBillingEditor({
 }) {
 	const router = useRouter();
 	const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-	const tutors = appointment.pet.petTutors.filter(({ tutor }) =>
-		Boolean(tutor.id),
-	);
+	const tutors = appointment.pet.petTutors.filter(({ tutor }) => Boolean(tutor.id));
 	const form = useForm<BillingForm>({
 		defaultValues: {
 			customerId: tutors[0]?.tutor.id ?? '',
@@ -85,8 +79,7 @@ export default function AppointmentBillingEditor({
 			toast.success('Cobrança emitida');
 			refresh();
 		},
-		onError: ({ error }) =>
-			toast.error(error.serverError ?? 'Não foi possível emitir a cobrança.'),
+		onError: ({ error }) => toast.error(error.serverError ?? 'Não foi possível emitir a cobrança.'),
 	});
 	const payment = useAction(recordChargePayment, {
 		onSuccess: () => {
@@ -94,10 +87,7 @@ export default function AppointmentBillingEditor({
 			toast.success('Pagamento registrado');
 			refresh();
 		},
-		onError: ({ error }) =>
-			toast.error(
-				error.serverError ?? 'Não foi possível registrar o pagamento.',
-			),
+		onError: ({ error }) => toast.error(error.serverError ?? 'Não foi possível registrar o pagamento.'),
 	});
 	const cancel = useAction(cancelAppointmentCharge, {
 		onSuccess: () => {
@@ -105,18 +95,11 @@ export default function AppointmentBillingEditor({
 			toast.success('Cobrança cancelada');
 			refresh();
 		},
-		onError: ({ error }) =>
-			toast.error(error.serverError ?? 'Não foi possível cancelar a cobrança.'),
+		onError: ({ error }) => toast.error(error.serverError ?? 'Não foi possível cancelar a cobrança.'),
 	});
 	const isPending = create.isPending || payment.isPending || cancel.isPending;
-	const cents =
-		typeof amount === 'number' && Number.isFinite(amount)
-			? Math.round(amount * 100)
-			: 0;
-	const validAmount =
-		Number.isSafeInteger(cents) &&
-		cents > 0 &&
-		cents <= (billing?.balanceInCents ?? 0);
+	const cents = typeof amount === 'number' && Number.isFinite(amount) ? Math.round(amount * 100) : 0;
+	const validAmount = Number.isSafeInteger(cents) && cents > 0 && cents <= (billing?.balanceInCents ?? 0);
 	const cannotBillReason =
 		appointment.status !== 'completed'
 			? 'Conclua o atendimento antes de emitir a cobrança.'
@@ -131,10 +114,7 @@ export default function AppointmentBillingEditor({
 	const recordPayment = () => {
 		if (!validAmount || payment.isPending) return;
 		const signature = `${appointment.id}:${cents}:${method}`;
-		const key =
-			operationRef.current?.signature === signature
-				? operationRef.current.key
-				: crypto.randomUUID();
+		const key = operationRef.current?.signature === signature ? operationRef.current.key : crypto.randomUUID();
 		operationRef.current = { signature, key };
 		payment.execute({
 			appointmentId: appointment.id,
@@ -149,16 +129,14 @@ export default function AppointmentBillingEditor({
 			<DialogHeader>
 				<DialogTitle>Financeiro do atendimento</DialogTitle>
 				<DialogDescription>
-					{appointment.pet.name} —{' '}
-					{formatCurrencyFromCents(appointment.totalPriceInCents)}. Cobranças e
+					{appointment.pet.name} — {formatCurrencyFromCents(appointment.totalPriceInCents)}. Cobranças e
 					pagamentos são lançamentos manuais.
 				</DialogDescription>
 			</DialogHeader>
 			{!billing ? (
 				<div className='space-y-4'>
 					<p className='text-sm text-muted-foreground'>
-						Selecione o tutor responsável. Emitir uma cobrança não registra
-						pagamento.
+						Selecione o tutor responsável. Emitir uma cobrança não registra pagamento.
 					</p>
 					<SelectForm<BillingForm>
 						label='Tutor responsável'
@@ -177,19 +155,14 @@ export default function AppointmentBillingEditor({
 						placeholder='Selecione o tutor'
 					/>
 					{cannotBillReason && (
-						<p
-							role='status'
-							className='text-sm text-amber-700 dark:text-amber-300'
-						>
+						<p role='status' className='text-sm text-amber-700 dark:text-amber-300'>
 							{cannotBillReason}
 						</p>
 					)}
 					<Button
 						type='button'
 						disabled={isPending || Boolean(cannotBillReason)}
-						onClick={() =>
-							create.execute({ appointmentId: appointment.id, customerId })
-						}
+						onClick={() => create.execute({ appointmentId: appointment.id, customerId })}
 					>
 						{create.isPending ? 'Emitindo...' : 'Emitir cobrança'}
 					</Button>
@@ -216,9 +189,7 @@ export default function AppointmentBillingEditor({
 					<section className='space-y-2 text-sm'>
 						<strong>Histórico de recebimentos</strong>
 						{billing.payments.length === 0 ? (
-							<p className='text-muted-foreground'>
-								Nenhum pagamento registrado.
-							</p>
+							<p className='text-muted-foreground'>Nenhum pagamento registrado.</p>
 						) : (
 							billing.payments.map((p) => (
 								<p key={p.id} className='wrap-break-word'>
@@ -251,11 +222,7 @@ export default function AppointmentBillingEditor({
 									Informe um valor positivo que não ultrapasse o saldo.
 								</p>
 							)}
-							<Button
-								type='button'
-								disabled={isPending || !validAmount}
-								onClick={recordPayment}
-							>
+							<Button type='button' disabled={isPending || !validAmount} onClick={recordPayment}>
 								{payment.isPending ? 'Registrando...' : 'Registrar recebimento'}
 							</Button>
 						</div>
@@ -270,11 +237,7 @@ export default function AppointmentBillingEditor({
 							}}
 						>
 							<AlertDialogTrigger asChild>
-								<Button
-									type='button'
-									variant='destructive'
-									disabled={isPending}
-								>
+								<Button type='button' variant='destructive' disabled={isPending}>
 									Cancelar cobrança
 								</Button>
 							</AlertDialogTrigger>
@@ -284,21 +247,17 @@ export default function AppointmentBillingEditor({
 									<AlertDialogTitle>Cancelar cobrança?</AlertDialogTitle>
 
 									<AlertDialogDescription>
-										Esta operação cancelará a cobrança vinculada ao atendimento.
-										O registro permanecerá no histórico financeiro para
-										auditoria.
+										Esta operação cancelará a cobrança vinculada ao atendimento. O registro
+										permanecerá no histórico financeiro para auditoria.
 									</AlertDialogDescription>
 								</AlertDialogHeader>
 
 								<p className='text-sm text-muted-foreground'>
-									Cobranças com pagamentos registrados não podem ser canceladas
-									por esta operação.
+									Cobranças com pagamentos registrados não podem ser canceladas por esta operação.
 								</p>
 
 								<AlertDialogFooter>
-									<AlertDialogCancel disabled={cancel.isPending}>
-										Voltar
-									</AlertDialogCancel>
+									<AlertDialogCancel disabled={cancel.isPending}>Voltar</AlertDialogCancel>
 
 									<Button
 										type='button'
@@ -310,9 +269,7 @@ export default function AppointmentBillingEditor({
 											});
 										}}
 									>
-										{cancel.isPending
-											? 'Cancelando...'
-											: 'Confirmar cancelamento'}
+										{cancel.isPending ? 'Cancelando...' : 'Confirmar cancelamento'}
 									</Button>
 								</AlertDialogFooter>
 							</AlertDialogContent>
@@ -320,8 +277,8 @@ export default function AppointmentBillingEditor({
 					)}
 					{billing.status === 'void' && (
 						<p className='text-xs text-muted-foreground'>
-							Cobrança cancelada: mantida no histórico para auditoria. A
-							exclusão física do atendimento continua bloqueada.
+							Cobrança cancelada: mantida no histórico para auditoria. A exclusão física do atendimento
+							continua bloqueada.
 						</p>
 					)}
 				</div>

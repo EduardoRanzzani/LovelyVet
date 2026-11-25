@@ -16,14 +16,10 @@ export async function getPrescriptionSignatureSummary(prescriptionId: string) {
 	});
 }
 
-export async function assertPrescriptionIsUnsigned(
-	prescriptionId: string,
-): Promise<void> {
+export async function assertPrescriptionIsUnsigned(prescriptionId: string): Promise<void> {
 	const signature = await getPrescriptionSignatureSummary(prescriptionId);
 
 	if (signature) {
-		throw new Error(
-			'Esta receita foi assinada digitalmente e não pode mais ser alterada.',
-		);
+		throw new Error('Esta receita foi assinada digitalmente e não pode mais ser alterada.');
 	}
 }

@@ -52,10 +52,8 @@ vi.mock('@/db', () => ({
 vi.mock('@/lib/next-safe-action', () => ({
 	actionClient: {
 		schema: () => ({
-			action:
-				(handler: (args: { parsedInput: unknown }) => unknown) =>
-				(parsedInput: unknown) =>
-					handler({ parsedInput }),
+			action: (handler: (args: { parsedInput: unknown }) => unknown) => (parsedInput: unknown) =>
+				handler({ parsedInput }),
 		}),
 	},
 }));
@@ -159,10 +157,7 @@ describe('deleteTimelineItem', () => {
 
 		expect(mocks.transaction).toHaveBeenCalledTimes(1);
 
-		expect(mocks.transactionDelete).toHaveBeenNthCalledWith(
-			1,
-			careRemindersTable,
-		);
+		expect(mocks.transactionDelete).toHaveBeenNthCalledWith(1, careRemindersTable);
 
 		expect(mocks.transactionDelete).toHaveBeenNthCalledWith(2, vaccinesTable);
 
@@ -302,9 +297,7 @@ describe('deleteTimelineItem', () => {
 			id: ITEM_ID,
 			petId: PET_ID,
 		});
-		mocks.assertPrescriptionIsUnsigned.mockRejectedValue(
-			new Error('Prescrição assinada não pode ser excluída'),
-		);
+		mocks.assertPrescriptionIsUnsigned.mockRejectedValue(new Error('Prescrição assinada não pode ser excluída'));
 
 		await expect(
 			deleteTimelineItem({
@@ -317,27 +310,24 @@ describe('deleteTimelineItem', () => {
 		expect(mocks.dbDelete).not.toHaveBeenCalled();
 	});
 
-	it.each(['referral', 'exam_request'] as const)(
-		'deletes %s from pet timeline',
-		async (type) => {
-			mocks.clinicalDocumentFindFirst.mockResolvedValue({
-				id: ITEM_ID,
-				petId: PET_ID,
-				type,
-			});
+	it.each(['referral', 'exam_request'] as const)('deletes %s from pet timeline', async (type) => {
+		mocks.clinicalDocumentFindFirst.mockResolvedValue({
+			id: ITEM_ID,
+			petId: PET_ID,
+			type,
+		});
 
-			await deleteTimelineItem({
-				id: ITEM_ID,
-				petId: PET_ID,
-				type,
-			});
+		await deleteTimelineItem({
+			id: ITEM_ID,
+			petId: PET_ID,
+			type,
+		});
 
-			expect(mocks.clinicalDocumentFindFirst).toHaveBeenCalledTimes(1);
-			expect(mocks.dbDelete).toHaveBeenCalledWith(clinicalDocumentsTable);
-			expect(mocks.deleteWhere).toHaveBeenCalledTimes(1);
-			expect(mocks.revalidatePath).toHaveBeenCalledWith(`/pets/${PET_ID}`);
-		},
-	);
+		expect(mocks.clinicalDocumentFindFirst).toHaveBeenCalledTimes(1);
+		expect(mocks.dbDelete).toHaveBeenCalledWith(clinicalDocumentsTable);
+		expect(mocks.deleteWhere).toHaveBeenCalledTimes(1);
+		expect(mocks.revalidatePath).toHaveBeenCalledWith(`/pets/${PET_ID}`);
+	});
 
 	it.each(['referral', 'exam_request'] as const)(
 		'rejects %s that does not belong to pet or has different type',

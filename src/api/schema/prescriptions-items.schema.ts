@@ -1,8 +1,7 @@
 import { prescriptionItemsTable } from '@/db/schema';
 import z from 'zod';
 
-export type PrescriptionItemsWithRelations =
-	typeof prescriptionItemsTable.$inferSelect;
+export type PrescriptionItemsWithRelations = typeof prescriptionItemsTable.$inferSelect;
 
 export const createPrescriptionItemSchema = z.object({
 	id: z.uuid().optional().nullable(),
@@ -12,6 +11,4 @@ export const createPrescriptionItemSchema = z.object({
 	orientations: z.string().nonempty({ message: 'Orientações é obrigatório' }),
 });
 
-export type CreatePrescriptionItemSchema = z.infer<
-	typeof createPrescriptionItemSchema
->;
+export type CreatePrescriptionItemSchema = z.infer<typeof createPrescriptionItemSchema>;

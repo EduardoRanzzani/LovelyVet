@@ -11,17 +11,18 @@ vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }));
 vi.mock('./nav-user', () => ({ NavUser: () => null }));
 
 describe('AppSidebar', () => {
- it.each<UserRole>(['admin', 'doctor', 'customer'])(
-  'mostra a versão somente para admin (perfil %s)',
-  (role) => {
-   render(<SidebarProvider><AppSidebar role={role} /></SidebarProvider>);
-   expect(screen.getByText('LovelyVet')).toBeInTheDocument();
-   const version = screen.queryByText(`v. ${packageJson.version}`);
-   if (role === 'admin') {
-    expect(version).toBeInTheDocument();
-   } else {
-    expect(version).not.toBeInTheDocument();
-   }
-  },
- );
+	it.each<UserRole>(['admin', 'doctor', 'customer'])('mostra a versão somente para admin (perfil %s)', (role) => {
+		render(
+			<SidebarProvider>
+				<AppSidebar role={role} />
+			</SidebarProvider>,
+		);
+		expect(screen.getByText('LovelyVet')).toBeInTheDocument();
+		const version = screen.queryByText(`v. ${packageJson.version}`);
+		if (role === 'admin') {
+			expect(version).toBeInTheDocument();
+		} else {
+			expect(version).not.toBeInTheDocument();
+		}
+	});
 });

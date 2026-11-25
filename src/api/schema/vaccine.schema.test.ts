@@ -48,9 +48,7 @@ describe('createVaccineSchema', () => {
 		expect(result.success).toBe(false);
 
 		if (!result.success) {
-			expect(
-				result.error.issues.some((issue) => issue.path[0] === 'daysToNextDose'),
-			).toBe(true);
+			expect(result.error.issues.some((issue) => issue.path[0] === 'daysToNextDose')).toBe(true);
 		}
 	});
 
@@ -98,5 +96,4 @@ describe('createVaccineSchema', () => {
 		});
 		expect(result.success).toBe(false);
 	});
-
 });

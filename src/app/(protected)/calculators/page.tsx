@@ -23,9 +23,7 @@ const CalculatorPage = async () => {
 			</PageHeader>
 
 			<PageContent>
-				<PageDescription>
-					Diversas calculadoras de utilitários para facilitar o dia a dia
-				</PageDescription>
+				<PageDescription>Diversas calculadoras de utilitários para facilitar o dia a dia</PageDescription>
 
 				<Suspense
 					fallback={

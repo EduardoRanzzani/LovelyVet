@@ -8,16 +8,8 @@ import PrescriptionBuilder, {
 	type PrescriptionDraftOrientationBlock,
 } from './prescription-builder';
 import { normalizePrescriptionGroups } from '@/lib/prescriptions/normalize-prescription-groups';
-import PrescriptionPreview, {
-	type PrescriptionPatientData,
-} from './prescription-preview';
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from '@/components/ui/select';
+import PrescriptionPreview, { type PrescriptionPatientData } from './prescription-preview';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRef, useState } from 'react';
 import { REGINA_DOCTOR_ID } from '@/api/config/consts';
 import {
@@ -34,10 +26,7 @@ import { useAction } from 'next-safe-action/hooks';
 import { toast } from 'sonner';
 import type { PrescriptionDocumentData } from '@/api/schema/prescription-document.schema';
 import RichTextDocumentBuilder from './rich-text-document-builder';
-import {
-	savePrescriptionDocument,
-	updatePrescriptionDocument,
-} from '@/api/actions/prescriptions.actions';
+import { savePrescriptionDocument, updatePrescriptionDocument } from '@/api/actions/prescriptions.actions';
 import RichTextClinicalDocument from '@/components/clinical-documents/rich-text-clinical-document';
 import { saveClinicalDocument } from '@/api/actions/clinical-documents.actions';
 import A4DocumentPreview from '@/components/clinical-documents/a4-document-preview';
@@ -103,34 +92,23 @@ export default function ClinicalDocumentBuilder({
 	tutors,
 }: ClinicalDocumentBuilderProps) {
 	const router = useRouter();
-	const [currentPrescriptionId, setCurrentPrescriptionId] =
-		useState(prescriptionId);
-	const [isControlled, setIsControlled] = useState(
-		initialPrescription?.isControlled ?? false,
-	);
+	const [currentPrescriptionId, setCurrentPrescriptionId] = useState(prescriptionId);
+	const [isControlled, setIsControlled] = useState(initialPrescription?.isControlled ?? false);
 	const [signDigitally, setSignDigitally] = useState(false);
-	const [signature, setSignature] = useState<PrescriptionSignatureState | null>(
-		initialSignature ?? null,
-	);
+	const [signature, setSignature] = useState<PrescriptionSignatureState | null>(initialSignature ?? null);
 	const [signatureConfirmOpen, setSignatureConfirmOpen] = useState(false);
 	const isPrescriptionSigned = Boolean(signature);
 	const [referralContent, setReferralContent] = useState('');
 	const referralPrintRef = useRef<HTMLDivElement>(null);
 	const examRequestPrintRef = useRef<HTMLDivElement>(null);
 	const [examRequestContent, setExamRequestContent] = useState('');
-	const [documentType, setDocumentType] =
-		useState<ClinicalDocumentType>('prescription');
-	const [exportingType, setExportingType] =
-		useState<ClinicalDocumentType | null>(null);
-	const [selectedTutorId, setSelectedTutorId] = useState(
-		initialPrescription?.tutor.id ?? tutors[0]?.id ?? '',
-	);
+	const [documentType, setDocumentType] = useState<ClinicalDocumentType>('prescription');
+	const [exportingType, setExportingType] = useState<ClinicalDocumentType | null>(null);
+	const [selectedTutorId, setSelectedTutorId] = useState(initialPrescription?.tutor.id ?? tutors[0]?.id ?? '');
 	const selectedTutor = tutors.find((tutor) => tutor.id === selectedTutorId);
 	const selectedTutorName = selectedTutor?.name ?? '-';
 
-	const [prescriptionGroups, setPrescriptionGroups] = useState<
-		PrescriptionDraftGroup[]
-	>(() => {
+	const [prescriptionGroups, setPrescriptionGroups] = useState<PrescriptionDraftGroup[]>(() => {
 		if (initialPrescription) {
 			return normalizePrescriptionGroups(initialPrescription);
 		}
@@ -143,14 +121,15 @@ export default function ClinicalDocumentBuilder({
 		];
 	});
 
-	const [prescriptionOrientationBlocks, setPrescriptionOrientationBlocks] =
-		useState<PrescriptionDraftOrientationBlock[]>(
-			() =>
-				initialPrescription?.orientationBlocks?.map((block) => ({
-					title: block.title ?? '',
-					content: block.content,
-				})) ?? [],
-		);
+	const [prescriptionOrientationBlocks, setPrescriptionOrientationBlocks] = useState<
+		PrescriptionDraftOrientationBlock[]
+	>(
+		() =>
+			initialPrescription?.orientationBlocks?.map((block) => ({
+				title: block.title ?? '',
+				content: block.content,
+			})) ?? [],
+	);
 
 	const orientationBlocksValid = prescriptionOrientationBlocks.every(
 		(block) =>
@@ -169,26 +148,16 @@ export default function ClinicalDocumentBuilder({
 			(group) =>
 				group.administrationRoute.trim() &&
 				group.items.length > 0 &&
-				group.items.every(
-					(item) =>
-						item.name.trim() &&
-						item.quantity.trim() &&
-						item.orientations.trim(),
-				),
+				group.items.every((item) => item.name.trim() && item.quantity.trim() && item.orientations.trim()),
 		);
 
 	const canExportPrescription = isPrescriptionValid;
 
-	const canSavePrescription =
-		!isPrescriptionSigned && Boolean(selectedTutorId) && isPrescriptionValid;
+	const canSavePrescription = !isPrescriptionSigned && Boolean(selectedTutorId) && isPrescriptionValid;
 
 	const prescriptionPrintRef = useRef<HTMLDivElement>(null);
 
-	const handleExportPdf = async (
-		type: ClinicalDocumentType,
-		element: HTMLDivElement | null,
-		filename: string,
-	) => {
+	const handleExportPdf = async (type: ClinicalDocumentType, element: HTMLDivElement | null, filename: string) => {
 		if (!element || exportingType) return;
 
 		setExportingType(type);
@@ -268,9 +237,7 @@ export default function ClinicalDocumentBuilder({
 				if (!signResult.data?.signatureId) {
 					console.error('Erro ao assinar receita:', signResult);
 
-					throw new Error(
-						signResult.serverError ?? 'Não foi possível assinar a receita.',
-					);
+					throw new Error(signResult.serverError ?? 'Não foi possível assinar a receita.');
 				}
 
 				setSignature({
@@ -283,28 +250,18 @@ export default function ClinicalDocumentBuilder({
 
 				toast.success('Receita salva e assinada digitalmente.');
 			} else {
-				toast.success(
-					currentPrescriptionId
-						? 'Receita atualizada com sucesso!'
-						: 'Receita salva com sucesso!',
-				);
+				toast.success(currentPrescriptionId ? 'Receita atualizada com sucesso!' : 'Receita salva com sucesso!');
 			}
 
 			if (!prescriptionId) {
-				router.replace(
-					`/pets/${petId}/documents/new?prescriptionId=${savedPrescriptionId}`,
-				);
+				router.replace(`/pets/${petId}/documents/new?prescriptionId=${savedPrescriptionId}`);
 			}
 
 			router.refresh();
 		} catch (error) {
 			console.error(error);
 
-			toast.error(
-				error instanceof Error
-					? error.message
-					: 'Não foi possível salvar a receita.',
-			);
+			toast.error(error instanceof Error ? error.message : 'Não foi possível salvar a receita.');
 		}
 	};
 
@@ -330,10 +287,7 @@ export default function ClinicalDocumentBuilder({
 		);
 	};
 
-	const handleSaveRichTextDocument = (
-		type: 'referral' | 'exam_request',
-		content: string,
-	) => {
+	const handleSaveRichTextDocument = (type: 'referral' | 'exam_request', content: string) => {
 		if (!selectedTutorId || !hasRichTextContent(content)) {
 			return;
 		}
@@ -349,9 +303,7 @@ export default function ClinicalDocumentBuilder({
 	return (
 		<div className='mt-6'>
 			<div className='max-w-md mb-6 space-y-2'>
-				<p className='text-sm font-medium'>
-					Tutor que será exibido no documento
-				</p>
+				<p className='text-sm font-medium'>Tutor que será exibido no documento</p>
 
 				<Select value={selectedTutorId} onValueChange={setSelectedTutorId}>
 					<SelectTrigger className='w-full'>
@@ -370,9 +322,7 @@ export default function ClinicalDocumentBuilder({
 
 			<Tabs
 				value={documentType}
-				onValueChange={(value) =>
-					setDocumentType(value as ClinicalDocumentType)
-				}
+				onValueChange={(value) => setDocumentType(value as ClinicalDocumentType)}
 				className='min-w-0'
 			>
 				<div className='flex flex-col min-w-0 gap-4 xl:flex-row xl:items-center xl:justify-between'>
@@ -380,9 +330,7 @@ export default function ClinicalDocumentBuilder({
 						<div className='md:hidden'>
 							<Select
 								value={documentType}
-								onValueChange={(value) =>
-									setDocumentType(value as ClinicalDocumentType)
-								}
+								onValueChange={(value) => setDocumentType(value as ClinicalDocumentType)}
 							>
 								<SelectTrigger className='w-full h-11'>
 									<SelectValue placeholder='Selecione o documento' />
@@ -391,9 +339,7 @@ export default function ClinicalDocumentBuilder({
 								<SelectContent>
 									<SelectItem value='prescription'>Receita</SelectItem>
 									<SelectItem value='referral'>Encaminhamento</SelectItem>
-									<SelectItem value='exam-request'>
-										Solicitação de Exame
-									</SelectItem>
+									<SelectItem value='exam-request'>Solicitação de Exame</SelectItem>
 								</SelectContent>
 							</Select>
 						</div>
@@ -421,11 +367,7 @@ export default function ClinicalDocumentBuilder({
 							<Button
 								type='button'
 								onClick={handleSavePrescription}
-								disabled={
-									!canSavePrescription ||
-									isPrescriptionBusy ||
-									isPrescriptionSigned
-								}
+								disabled={!canSavePrescription || isPrescriptionBusy || isPrescriptionSigned}
 								className='min-w-0 sm:w-40'
 							>
 								{isPrescriptionSigned ? (
@@ -454,15 +396,8 @@ export default function ClinicalDocumentBuilder({
 							</Button>
 
 							{isPrescriptionSigned && currentPrescriptionId ? (
-								<Button
-									type='button'
-									variant='outline'
-									className='min-w-0 sm:w-40'
-									asChild
-								>
-									<a
-										href={`/api/prescriptions/${currentPrescriptionId}/signed-pdf`}
-									>
+								<Button type='button' variant='outline' className='min-w-0 sm:w-40' asChild>
+									<a href={`/api/prescriptions/${currentPrescriptionId}/signed-pdf`}>
 										<DownloadIcon className='size-4' />
 										PDF assinado
 									</a>
@@ -487,9 +422,7 @@ export default function ClinicalDocumentBuilder({
 										<DownloadIcon className='size-4' />
 									)}
 
-									{exportingType === 'prescription'
-										? 'Gerando...'
-										: 'Baixar PDF'}
+									{exportingType === 'prescription' ? 'Gerando...' : 'Baixar PDF'}
 								</Button>
 							)}
 						</div>
@@ -521,13 +454,10 @@ export default function ClinicalDocumentBuilder({
 											/>
 
 											<div className='space-y-1'>
-												<Label htmlFor='controlled-prescription'>
-													Receita controlada
-												</Label>
+												<Label htmlFor='controlled-prescription'>Receita controlada</Label>
 
 												<p className='text-xs text-muted-foreground'>
-													Marque quando a receita for destinada a medicamento
-													controlado.
+													Marque quando a receita for destinada a medicamento controlado.
 												</p>
 											</div>
 										</div>
@@ -537,9 +467,7 @@ export default function ClinicalDocumentBuilder({
 												<Checkbox
 													id='sign-digitally'
 													checked={signDigitally}
-													onCheckedChange={(checked) =>
-														setSignDigitally(checked === true)
-													}
+													onCheckedChange={(checked) => setSignDigitally(checked === true)}
 												/>
 
 												<div className='space-y-1'>
@@ -558,8 +486,8 @@ export default function ClinicalDocumentBuilder({
 
 										{!canSignPrescription && !isPrescriptionSigned && (
 											<p className='text-xs text-muted-foreground'>
-												A assinatura digital só pode ser realizada pela conta da
-												veterinária proprietária do certificado.
+												A assinatura digital só pode ser realizada pela conta da veterinária
+												proprietária do certificado.
 											</p>
 										)}
 
@@ -576,8 +504,7 @@ export default function ClinicalDocumentBuilder({
 												</div>
 
 												<p className='text-xs text-muted-foreground'>
-													Assinada em{' '}
-													{new Date(signature.signedAt).toLocaleString('pt-BR')}
+													Assinada em {new Date(signature.signedAt).toLocaleString('pt-BR')}
 												</p>
 
 												{signature.signedByUser && (
@@ -599,9 +526,7 @@ export default function ClinicalDocumentBuilder({
 											<div className='text-center'>
 												<LockKeyholeIcon className='mx-auto mb-2 size-6 text-muted-foreground' />
 
-												<p className='font-medium'>
-													Receita bloqueada para edição
-												</p>
+												<p className='font-medium'>Receita bloqueada para edição</p>
 
 												<p className='mt-1 text-sm text-muted-foreground'>
 													Este documento já possui assinatura digital.
@@ -617,16 +542,12 @@ export default function ClinicalDocumentBuilder({
 											}
 											onGroupsChange={setPrescriptionGroups}
 											initialOrientationBlocks={
-												initialPrescription?.orientationBlocks?.map(
-													(block) => ({
-														title: block.title ?? '',
-														content: block.content,
-													}),
-												) ?? []
+												initialPrescription?.orientationBlocks?.map((block) => ({
+													title: block.title ?? '',
+													content: block.content,
+												})) ?? []
 											}
-											onOrientationBlocksChange={
-												setPrescriptionOrientationBlocks
-											}
+											onOrientationBlocksChange={setPrescriptionOrientationBlocks}
 										/>
 									)}
 								</div>
@@ -664,8 +585,8 @@ export default function ClinicalDocumentBuilder({
 									<h2 className='text-lg font-semibold'>Encaminhamento</h2>
 
 									<p className='text-sm text-muted-foreground'>
-										Descreva todas as informações necessárias para o
-										profissional que receberá o paciente.
+										Descreva todas as informações necessárias para o profissional que receberá o
+										paciente.
 									</p>
 								</div>
 
@@ -686,10 +607,7 @@ export default function ClinicalDocumentBuilder({
 												`Encaminhamento - ${patient.name}.pdf`,
 											)
 										}
-										disabled={
-											!hasRichTextContent(referralContent) ||
-											exportingType !== null
-										}
+										disabled={!hasRichTextContent(referralContent) || exportingType !== null}
 										className={'w-full lg:w-60'}
 									>
 										{exportingType === 'referral' ? (
@@ -697,16 +615,12 @@ export default function ClinicalDocumentBuilder({
 										) : (
 											<DownloadIcon className='size-4' />
 										)}
-										{exportingType === 'referral'
-											? 'Gerando PDF...'
-											: 'Baixar PDF'}
+										{exportingType === 'referral' ? 'Gerando PDF...' : 'Baixar PDF'}
 									</Button>
 
 									<Button
 										type='button'
-										onClick={() =>
-											handleSaveRichTextDocument('referral', referralContent)
-										}
+										onClick={() => handleSaveRichTextDocument('referral', referralContent)}
 										disabled={
 											!selectedTutorId ||
 											!hasRichTextContent(referralContent) ||
@@ -755,13 +669,10 @@ export default function ClinicalDocumentBuilder({
 						<div className='grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(500px,0.9fr)]'>
 							<div className='min-w-0 p-3 border rounded-xl bg-card sm:p-6'>
 								<div className='mb-6'>
-									<h2 className='text-lg font-semibold'>
-										Solicitação de Exame
-									</h2>
+									<h2 className='text-lg font-semibold'>Solicitação de Exame</h2>
 
 									<p className='text-sm text-muted-foreground'>
-										Informe os exames solicitados e todas as orientações
-										necessárias.
+										Informe os exames solicitados e todas as orientações necessárias.
 									</p>
 								</div>
 
@@ -782,10 +693,7 @@ export default function ClinicalDocumentBuilder({
 												`Solicitação de Exame - ${patient.name}.pdf`,
 											)
 										}
-										disabled={
-											!hasRichTextContent(examRequestContent) ||
-											exportingType !== null
-										}
+										disabled={!hasRichTextContent(examRequestContent) || exportingType !== null}
 										className={'w-full lg:w-60'}
 									>
 										{exportingType === 'exam-request' ? (
@@ -793,19 +701,12 @@ export default function ClinicalDocumentBuilder({
 										) : (
 											<DownloadIcon className='size-4' />
 										)}
-										{exportingType === 'exam-request'
-											? 'Gerando PDF...'
-											: 'Baixar PDF'}
+										{exportingType === 'exam-request' ? 'Gerando PDF...' : 'Baixar PDF'}
 									</Button>
 
 									<Button
 										type='button'
-										onClick={() =>
-											handleSaveRichTextDocument(
-												'exam_request',
-												examRequestContent,
-											)
-										}
+										onClick={() => handleSaveRichTextDocument('exam_request', examRequestContent)}
 										disabled={
 											!selectedTutorId ||
 											!hasRichTextContent(examRequestContent) ||
@@ -815,9 +716,7 @@ export default function ClinicalDocumentBuilder({
 									>
 										<SaveIcon className='size-4' />
 
-										{saveClinicalDocumentAction.isExecuting
-											? 'Salvando...'
-											: 'Salvar solicitação'}
+										{saveClinicalDocumentAction.isExecuting ? 'Salvando...' : 'Salvar solicitação'}
 									</Button>
 								</div>
 							</div>
@@ -850,15 +749,10 @@ export default function ClinicalDocumentBuilder({
 				</TabsContent>
 			</Tabs>
 
-			<AlertDialog
-				open={signatureConfirmOpen}
-				onOpenChange={setSignatureConfirmOpen}
-			>
+			<AlertDialog open={signatureConfirmOpen} onOpenChange={setSignatureConfirmOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>
-							Assinar esta receita digitalmente?
-						</AlertDialogTitle>
+						<AlertDialogTitle>Assinar esta receita digitalmente?</AlertDialogTitle>
 
 						<AlertDialogDescription>
 							{signingAsAdministrator

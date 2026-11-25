@@ -4,31 +4,14 @@ import { getPrescriptionsItems } from '@/api/actions/prescriptions-items.actions
 import type { PrescriptionItemsWithRelations } from '@/api/schema/prescriptions-items.schema';
 import InputForm from '@/components/form/input-form';
 import TextEditorForm from '@/components/form/text-editor-form';
-import {
-	Accordion,
-	AccordionContent,
-	AccordionItem,
-	AccordionTrigger,
-} from '@/components/ui/accordion';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PlusIcon, Trash2Icon } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import {
-	type Control,
-	type UseFormRegister,
-	useFieldArray,
-	useForm,
-	useWatch,
-} from 'react-hook-form';
+import { type Control, type UseFormRegister, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 
 export interface PrescriptionDraftItem {
@@ -58,9 +41,7 @@ interface PrescriptionBuilderProps {
 	initialGroups?: PrescriptionDraftGroup[];
 	initialOrientationBlocks?: PrescriptionDraftOrientationBlock[];
 	onGroupsChange?: (groups: PrescriptionDraftGroup[]) => void;
-	onOrientationBlocksChange?: (
-		blocks: PrescriptionDraftOrientationBlock[],
-	) => void;
+	onOrientationBlocksChange?: (blocks: PrescriptionDraftOrientationBlock[]) => void;
 }
 
 export default function PrescriptionBuilder({
@@ -76,10 +57,7 @@ export default function PrescriptionBuilder({
 	const form = useForm<PrescriptionDraft>({
 		defaultValues: {
 			orientationBlocks: initialOrientationBlocks,
-			groups:
-				initialGroups.length > 0
-					? initialGroups
-					: [{ administrationRoute: '', items: [] }],
+			groups: initialGroups.length > 0 ? initialGroups : [{ administrationRoute: '', items: [] }],
 		},
 	});
 
@@ -168,26 +146,17 @@ export default function PrescriptionBuilder({
 				))}
 			</div>
 
-			<Button
-				type='button'
-				variant='outline'
-				onClick={handleAddGroup}
-				className='w-full'
-			>
+			<Button type='button' variant='outline' onClick={handleAddGroup} className='w-full'>
 				<PlusIcon className='size-4' />
 				Adicionar modo de uso
 			</Button>
 
 			<div className='space-y-4'>
 				{orientationFields.map((field, index) => (
-					<section
-						key={field.id}
-						className='rounded-xl border bg-card p-3 sm:p-5'
-					>
+					<section key={field.id} className='rounded-xl border bg-card p-3 sm:p-5'>
 						<div className='mb-4 flex items-center justify-between gap-3'>
 							<h4 className='min-w-0 truncate font-semibold'>
-								{orientationBlocks?.[index]?.title?.trim() ||
-									`Bloco de orientação ${index + 1}`}
+								{orientationBlocks?.[index]?.title?.trim() || `Bloco de orientação ${index + 1}`}
 							</h4>
 
 							<Button
@@ -223,12 +192,7 @@ export default function PrescriptionBuilder({
 				))}
 			</div>
 
-			<Button
-				type='button'
-				variant='outline'
-				onClick={handleAddOrientationBlock}
-				className='w-full'
-			>
+			<Button type='button' variant='outline' onClick={handleAddOrientationBlock} className='w-full'>
 				<PlusIcon className='size-4' />
 				Adicionar orientações
 			</Button>
@@ -277,9 +241,7 @@ function PrescriptionGroupEditor({
 			return;
 		}
 
-		const item = catalog.find(
-			(catalogItem) => catalogItem.id === selectedCatalogItem,
-		);
+		const item = catalog.find((catalogItem) => catalogItem.id === selectedCatalogItem);
 
 		if (!item) {
 			return;
@@ -352,9 +314,7 @@ function PrescriptionGroupEditor({
 						<SelectTrigger className='w-full'>
 							<SelectValue
 								placeholder={
-									isLoadingCatalog
-										? 'Carregando medicamentos...'
-										: 'Selecione um medicamento'
+									isLoadingCatalog ? 'Carregando medicamentos...' : 'Selecione um medicamento'
 								}
 							/>
 						</SelectTrigger>
@@ -381,12 +341,7 @@ function PrescriptionGroupEditor({
 					Adicionar
 				</Button>
 
-				<Button
-					type='button'
-					variant='outline'
-					onClick={handleAddBlank}
-					className='w-full lg:flex-1'
-				>
+				<Button type='button' variant='outline' onClick={handleAddBlank} className='w-full lg:flex-1'>
 					<PlusIcon className='size-4' />
 					Medicamento avulso
 				</Button>
@@ -398,8 +353,7 @@ function PrescriptionGroupEditor({
 						<p className='font-medium'>Nenhum medicamento neste bloco</p>
 
 						<p className='mt-1 text-sm text-muted-foreground'>
-							Adicione um medicamento para{' '}
-							{administrationRoute?.trim() || 'este modo de uso'}.
+							Adicione um medicamento para {administrationRoute?.trim() || 'este modo de uso'}.
 						</p>
 					</div>
 				</div>
@@ -421,17 +375,11 @@ function PrescriptionGroupEditor({
 									<div className='flex min-w-0 flex-1 flex-col text-left'>
 										<span className='truncate font-semibold'>
 											Medicamento {itemIndex + 1}
-											{items?.[itemIndex]?.name
-												? ` · ${items[itemIndex].name}`
-												: ''}
+											{items?.[itemIndex]?.name ? ` · ${items[itemIndex].name}` : ''}
 										</span>
 
 										<span className='truncate text-xs font-normal text-muted-foreground'>
-											{[
-												items?.[itemIndex]?.pharmacy,
-
-												items?.[itemIndex]?.quantity,
-											]
+											{[items?.[itemIndex]?.pharmacy, items?.[itemIndex]?.quantity]
 												.filter(Boolean)
 												.join(' · ') || 'Toque para preencher os dados'}
 										</span>
@@ -456,9 +404,7 @@ function PrescriptionGroupEditor({
 										<Label>Medicamento</Label>
 
 										<Input
-											{...register(
-												`groups.${groupIndex}.items.${itemIndex}.name` as const,
-											)}
+											{...register(`groups.${groupIndex}.items.${itemIndex}.name` as const)}
 											placeholder='Nome do medicamento'
 										/>
 									</div>
@@ -467,9 +413,7 @@ function PrescriptionGroupEditor({
 										<Label>Farmácia</Label>
 
 										<Input
-											{...register(
-												`groups.${groupIndex}.items.${itemIndex}.pharmacy` as const,
-											)}
+											{...register(`groups.${groupIndex}.items.${itemIndex}.pharmacy` as const)}
 											placeholder='Farm. veterinária'
 										/>
 									</div>
@@ -478,9 +422,7 @@ function PrescriptionGroupEditor({
 										<Label>Quantidade</Label>
 
 										<Input
-											{...register(
-												`groups.${groupIndex}.items.${itemIndex}.quantity` as const,
-											)}
+											{...register(`groups.${groupIndex}.items.${itemIndex}.quantity` as const)}
 											placeholder='Ex.: 1 cx.'
 										/>
 									</div>
@@ -488,9 +430,7 @@ function PrescriptionGroupEditor({
 
 								<div className='mt-4'>
 									<TextEditorForm
-										name={
-											`groups.${groupIndex}.items.${itemIndex}.orientations` as const
-										}
+										name={`groups.${groupIndex}.items.${itemIndex}.orientations` as const}
 										control={control}
 										label='Orientações'
 										placeholder='Administrar...'

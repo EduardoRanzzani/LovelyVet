@@ -8,11 +8,7 @@ import { requireStaff } from '@/lib/security/authorization';
 import { assertCanAccessPet } from '@/lib/security/pet-access';
 import { desc, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-import {
-	createPetWeightSchema,
-	PetWeight,
-	PetWeightWithRelations,
-} from '../schema/pet-weight.schema';
+import { createPetWeightSchema, PetWeight, PetWeightWithRelations } from '../schema/pet-weight.schema';
 
 export const getPetWeights = async (): Promise<PetWeightWithRelations[]> => {
 	const context = await requireAuthContext();
@@ -32,9 +28,7 @@ export const getPetWeights = async (): Promise<PetWeightWithRelations[]> => {
 	return weightHistory as PetWeightWithRelations[];
 };
 
-export const getLastPetWeight = async (
-	petId: string,
-): Promise<PetWeight | null> => {
+export const getLastPetWeight = async (petId: string): Promise<PetWeight | null> => {
 	const context = await requireAuthContext();
 	await assertCanAccessPet(context, petId);
 
@@ -46,21 +40,19 @@ export const getLastPetWeight = async (
 	return lastWeight as PetWeight;
 };
 
-export const insertPetWeight = actionClient
-	.schema(createPetWeightSchema)
-	.action(async ({ parsedInput }) => {
-		const context = await requireAuthContext();
+export const insertPetWeight = actionClient.schema(createPetWeightSchema).action(async ({ parsedInput }) => {
+	const context = await requireAuthContext();
 
-		requireStaff(context);
-		await assertCanAccessPet(context, parsedInput.petId);
+	requireStaff(context);
+	await assertCanAccessPet(context, parsedInput.petId);
 
-		await db.insert(petWeightsTable).values({
-			petId: parsedInput.petId,
-			weightInGrams: Math.round(parsedInput.weightInGrams * 1000),
-			authorId: context.userId,
-			measuredAt: new Date(),
-			createdAt: new Date(),
-		});
-
-		revalidatePath(`/pets/${parsedInput.petId}`);
+	await db.insert(petWeightsTable).values({
+		petId: parsedInput.petId,
+		weightInGrams: Math.round(parsedInput.weightInGrams * 1000),
+		authorId: context.userId,
+		measuredAt: new Date(),
+		createdAt: new Date(),
 	});
+
+	revalidatePath(`/pets/${parsedInput.petId}`);
+});

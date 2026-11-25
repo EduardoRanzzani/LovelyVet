@@ -40,13 +40,7 @@ interface PetFormClientProps {
 	onSuccess?: () => void;
 }
 
-const PetFormClient = ({
-	pet,
-	species,
-	breeds,
-	customers,
-	onSuccess,
-}: PetFormClientProps) => {
+const PetFormClient = ({ pet, species, breeds, customers, onSuccess }: PetFormClientProps) => {
 	const form = useForm<CreatePetWithTutorAndBreedSchema>({
 		resolver: zodResolver(createPetWithTutorAndBreedSchema),
 		shouldUnregister: true,
@@ -128,27 +122,18 @@ const PetFormClient = ({
 	});
 
 	return (
-		<DialogContent
-			onInteractOutside={(e) => e.preventDefault()}
-			showCloseButton={false}
-		>
+		<DialogContent onInteractOutside={(e) => e.preventDefault()} showCloseButton={false}>
 			<DialogHeader>
 				<DialogTitle>{pet ? 'Atualizar Pet' : 'Cadastrar Pet'}</DialogTitle>
 				<DialogDescription>
-					{pet
-						? 'Atualize as informações do pet selecionado'
-						: 'Adicione um novo pet ao sistema'}
+					{pet ? 'Atualize as informações do pet selecionado' : 'Adicione um novo pet ao sistema'}
 				</DialogDescription>
 			</DialogHeader>
 
 			<Form {...form}>
 				<form onSubmit={form.handleSubmit(formSubmit)}>
 					<div className='flex max-h-[calc(100dvh-12rem)] min-w-0 flex-col gap-2 overflow-y-auto px-1'>
-						<input
-							type='text'
-							{...form.register('status')}
-							className='hidden'
-						/>
+						<input type='text' {...form.register('status')} className='hidden' />
 
 						<div className='w-full flex flex-col lg:flex-row gap-4'>
 							<InputForm
@@ -282,11 +267,7 @@ const PetFormClient = ({
 							</Button>
 						</DialogClose>
 
-						<Button
-							type='submit'
-							disabled={upsertPetAction.isPending}
-							className='flex-1'
-						>
+						<Button type='submit' disabled={upsertPetAction.isPending} className='flex-1'>
 							{upsertPetAction.isPending ? (
 								<Loader2Icon className='h-5 w-5 animate-spin' />
 							) : (

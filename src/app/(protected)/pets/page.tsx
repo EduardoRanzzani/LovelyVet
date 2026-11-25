@@ -46,9 +46,7 @@ const PetsPage = async ({ searchParams }: PetsPageProps) => {
 			</PageHeader>
 
 			<PageContent>
-				<PageDescription>
-					Listagem de todos os pets cadastrados no sistema
-				</PageDescription>
+				<PageDescription>Listagem de todos os pets cadastrados no sistema</PageDescription>
 				<Suspense
 					fallback={
 						<>

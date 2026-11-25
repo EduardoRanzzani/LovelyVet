@@ -32,18 +32,14 @@ export function PrescriptionPdfViewer({ url }: { url: string }) {
 					const page = await pdf.getPage(pageNumber);
 					if (disposed) return;
 					const viewport = page.getViewport({ scale: 1 });
-					const scale =
-						(900 / viewport.width) * Math.min(window.devicePixelRatio || 1, 2);
+					const scale = (900 / viewport.width) * Math.min(window.devicePixelRatio || 1, 2);
 					const scaledViewport = page.getViewport({ scale });
 					const canvas = document.createElement('canvas');
 					canvas.width = Math.ceil(scaledViewport.width);
 					canvas.height = Math.ceil(scaledViewport.height);
 					canvas.className = 'block h-auto w-full bg-white shadow-sm';
 					canvas.setAttribute('role', 'img');
-					canvas.setAttribute(
-						'aria-label',
-						`Página ${pageNumber} de ${pdf.numPages} da receita`,
-					);
+					canvas.setAttribute('aria-label', `Página ${pageNumber} de ${pdf.numPages} da receita`);
 					container?.appendChild(canvas);
 					renderTask = page.render({ canvas, viewport: scaledViewport });
 					await renderTask.promise;
@@ -68,15 +64,9 @@ export function PrescriptionPdfViewer({ url }: { url: string }) {
 		<>
 			{status === 'loading' && <p role='status'>Carregando receita…</p>}
 			{status === 'error' && (
-				<p role='alert'>
-					Não foi possível exibir a receita. Atualize a página para tentar novamente.
-				</p>
+				<p role='alert'>Não foi possível exibir a receita. Atualize a página para tentar novamente.</p>
 			)}
-			<div
-				ref={containerRef}
-				className='space-y-4'
-				aria-label='Páginas da receita'
-			/>
+			<div ref={containerRef} className='space-y-4' aria-label='Páginas da receita' />
 		</>
 	);
 }

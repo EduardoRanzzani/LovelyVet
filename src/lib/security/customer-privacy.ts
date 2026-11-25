@@ -27,18 +27,14 @@ export const sanitizeUserForCustomer = <T extends UserWithEmail>(user: T): T => 
 	email: '',
 });
 
-export const sanitizeDoctorForCustomer = <T extends DoctorWithPrivateData>(
-	doctor: T,
-): T => ({
+export const sanitizeDoctorForCustomer = <T extends DoctorWithPrivateData>(doctor: T): T => ({
 	...doctor,
 	phone: '',
 	cpf: '',
 	user: sanitizeUserForCustomer(doctor.user),
 });
 
-export const sanitizeTutorForCustomer = <T extends TutorWithPrivateData>(
-	tutor: T,
-): T => ({
+export const sanitizeTutorForCustomer = <T extends TutorWithPrivateData>(tutor: T): T => ({
 	...tutor,
 	phone: '',
 	cpf: '',
@@ -56,10 +52,7 @@ export const sanitizeTutorForCustomer = <T extends TutorWithPrivateData>(
  * Em pets compartilhados, acesso ao pet não implica acesso aos documentos
  * nominais emitidos para outro tutor.
  */
-export const canAccessTutorScopedData = (
-	context: AuthContext,
-	tutorId: string | null | undefined,
-): boolean => {
+export const canAccessTutorScopedData = (context: AuthContext, tutorId: string | null | undefined): boolean => {
 	if (context.role !== 'customer') {
 		return true;
 	}

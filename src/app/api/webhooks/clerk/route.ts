@@ -11,9 +11,8 @@ const SIGNING_SECRET = process.env.CLERK_WEBHOOK_SECRET;
 
 const getPrimaryEmail = (data: UserJSON): string => {
 	const email =
-		data.email_addresses.find(
-			(address) => address.id === data.primary_email_address_id,
-		)?.email_address ?? data.email_addresses[0]?.email_address;
+		data.email_addresses.find((address) => address.id === data.primary_email_address_id)?.email_address ??
+		data.email_addresses[0]?.email_address;
 
 	if (!email) {
 		throw new Error('Clerk user has no email address');
@@ -86,10 +85,7 @@ const syncClerkUser = async (data: UserJSON) => {
 				clerkUserId: data.id,
 			})
 			.onConflictDoUpdate({
-				target: [
-					clerkIdentitiesTable.userId,
-					clerkIdentitiesTable.environment,
-				],
+				target: [clerkIdentitiesTable.userId, clerkIdentitiesTable.environment],
 				set: {
 					clerkUserId: data.id,
 					updatedAt: new Date(),
@@ -142,10 +138,7 @@ export async function POST(req: Request) {
 			const clerkUserId = event.data.id;
 
 			if (!clerkUserId) {
-				return NextResponse.json(
-					{ error: 'No user ID provided' },
-					{ status: 400 },
-				);
+				return NextResponse.json({ error: 'No user ID provided' }, { status: 400 });
 			}
 
 			const [deletedIdentity] = await db
@@ -162,9 +155,6 @@ export async function POST(req: Request) {
 	} catch (error) {
 		console.error('Failed to process Clerk webhook', error);
 
-		return NextResponse.json(
-			{ error: 'Webhook processing failed' },
-			{ status: 500 },
-		);
+		return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
 	}
 }

@@ -1,11 +1,6 @@
 'use client';
 
-import {
-	ChevronFirstIcon,
-	ChevronLast,
-	ChevronLeft,
-	ChevronRight,
-} from 'lucide-react';
+import { ChevronFirstIcon, ChevronLast, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../ui/button';
 
 interface PaginationProps {
@@ -16,13 +11,7 @@ interface PaginationProps {
 	onPageChange: (page: number) => void;
 }
 
-const Pagination = ({
-	currentPage,
-	totalPages,
-	totalElements,
-	pageSize,
-	onPageChange,
-}: PaginationProps) => {
+const Pagination = ({ currentPage, totalPages, totalElements, pageSize, onPageChange }: PaginationProps) => {
 	const start = (currentPage - 1) * pageSize + 1;
 	const end = Math.min(currentPage * pageSize, totalElements);
 
@@ -68,11 +57,8 @@ const Pagination = ({
 		<div className='flex flex-col items-center justify-between gap-4 text-zinc-700 mt-5 w-full overflow-hidden'>
 			{/* Texto informativo - Quebra em duas linhas se necessário no mobile */}
 			<span className='text-xs sm:text-sm text-muted-foreground text-center px-2'>
-				Exibindo{' '}
-				<span className='font-medium text-foreground'>
-					{totalElements > 0 ? start : 0}
-				</span>{' '}
-				a <span className='font-medium text-foreground'>{end}</span> de{' '}
+				Exibindo <span className='font-medium text-foreground'>{totalElements > 0 ? start : 0}</span> a{' '}
+				<span className='font-medium text-foreground'>{end}</span> de{' '}
 				<span className='font-medium text-foreground'>{totalElements}</span>
 				<span className='hidden xs:inline'>
 					{' '}
@@ -108,10 +94,7 @@ const Pagination = ({
 				<div className='flex items-center gap-0.5 sm:gap-1'>
 					{generatePages().map((page, idx) =>
 						page === '...' ? (
-							<span
-								key={`ellipsis-${idx}`}
-								className='w-6 text-center text-zinc-400 text-xs select-none'
-							>
+							<span key={`ellipsis-${idx}`} className='w-6 text-center text-zinc-400 text-xs select-none'>
 								...
 							</span>
 						) : (
@@ -121,9 +104,7 @@ const Pagination = ({
 								variant={page === currentPage ? 'default' : 'outline'}
 								onClick={() => onPageChange(Number(page))}
 								className={`h-8 w-8 sm:h-9 sm:w-9 border-zinc-200 text-xs sm:text-sm ${
-									page === currentPage
-										? 'bg-primary pointer-events-none'
-										: 'bg-zinc-100/50'
+									page === currentPage ? 'bg-primary pointer-events-none' : 'bg-zinc-100/50'
 								}`}
 							>
 								{page}

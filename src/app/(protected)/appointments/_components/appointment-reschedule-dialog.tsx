@@ -1,9 +1,6 @@
 'use client';
 
-import {
-	getRescheduleAvailability,
-	rescheduleAppointment,
-} from '@/api/actions/appointments.actions';
+import { getRescheduleAvailability, rescheduleAppointment } from '@/api/actions/appointments.actions';
 import {
 	rescheduleAppointmentSchema,
 	type AppointmentListItem,
@@ -11,13 +8,7 @@ import {
 } from '@/api/schema/appointments.schema';
 import DateTimePickerForm from '@/components/form/datetimepicker-form';
 import { Button } from '@/components/ui/button';
-import {
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from '@/components/ui/dialog';
+import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form } from '@/components/ui/form';
 import { formatCurrencyFromCents } from '@/helpers/currency';
 import { normalizeAppointmentStart } from '@/lib/scheduling/appointment-time';
@@ -54,26 +45,19 @@ export default function AppointmentRescheduleDialog({
 		},
 	});
 	const selected = useWatch({ control: form.control, name: 'scheduledAt' });
-	const availableTimes =
-		availability?.day === format(selected, 'yyyy-MM-dd')
-			? availability.times
-			: undefined;
+	const availableTimes = availability?.day === format(selected, 'yyyy-MM-dd') ? availability.times : undefined;
 	const availabilityAction = useAction(getRescheduleAvailability, {
 		onSuccess: ({ data }) => {
 			if (!data) return;
 			setAvailability({
 				day: format(new Date(data.dayStart), 'yyyy-MM-dd'),
-				times: data.availableStarts.map((value) =>
-					format(new Date(value), 'HH:mm'),
-				),
+				times: data.availableStarts.map((value) => format(new Date(value), 'HH:mm')),
 				duration: data.durationMinutes,
 			});
 		},
 		onError: ({ error }) => {
 			setAvailability(null);
-			toast.error(
-				error.serverError ?? 'Não foi possível consultar os horários.',
-			);
+			toast.error(error.serverError ?? 'Não foi possível consultar os horários.');
 		},
 	});
 	const saveAction = useAction(rescheduleAppointment, {
@@ -83,9 +67,7 @@ export default function AppointmentRescheduleDialog({
 			router.refresh();
 		},
 		onError: ({ error }) => {
-			toast.error(
-				error.serverError ?? 'Não foi possível reagendar o atendimento.',
-			);
+			toast.error(error.serverError ?? 'Não foi possível reagendar o atendimento.');
 		},
 		onSettled: () => {
 			submitting.current = false;
@@ -115,28 +97,19 @@ export default function AppointmentRescheduleDialog({
 		saveAction.execute({ id: appointment.id, scheduledAt });
 	};
 	return (
-		<DialogContent
-			className='sm:max-w-md'
-			showCloseButton={!saveAction.isPending}
-		>
+		<DialogContent className='sm:max-w-md' showCloseButton={!saveAction.isPending}>
 			<DialogHeader>
 				<DialogTitle>Reagendar atendimento</DialogTitle>
 				<DialogDescription>
-					Altere apenas a data e o horário, mantendo os demais dados do
-					atendimento.
+					Altere apenas a data e o horário, mantendo os demais dados do atendimento.
 				</DialogDescription>
 			</DialogHeader>
 			<div className='space-y-1 rounded-lg border bg-muted/30 p-3 text-sm'>
 				<p className='font-semibold'>{appointment.pet.name}</p>
 				<p className='text-muted-foreground'>{appointment.doctor.user.name}</p>
 				<p className='text-xs text-muted-foreground'>Data e horário atuais</p>
-				<p className='font-medium'>
-					{format(new Date(appointment.scheduledAt), "dd/MM/yyyy 'às' HH:mm")}
-				</p>
-				<p>
-					Valor preservado:{' '}
-					{formatCurrencyFromCents(appointment.totalPriceInCents)}
-				</p>
+				<p className='font-medium'>{format(new Date(appointment.scheduledAt), "dd/MM/yyyy 'às' HH:mm")}</p>
+				<p>Valor preservado: {formatCurrencyFromCents(appointment.totalPriceInCents)}</p>
 			</div>
 			<Form {...form}>
 				<form
@@ -160,13 +133,10 @@ export default function AppointmentRescheduleDialog({
 						onDateChange={requestAvailability}
 					/>
 					{availability && (
-						<p className='text-xs text-muted-foreground'>
-							Duração reservada: {availability.duration} min.
-						</p>
+						<p className='text-xs text-muted-foreground'>Duração reservada: {availability.duration} min.</p>
 					)}
 					<p className='text-xs text-muted-foreground'>
-						Serviços, produtos, descontos, valores e vínculos clínicos
-						permanecem inalterados.
+						Serviços, produtos, descontos, valores e vínculos clínicos permanecem inalterados.
 					</p>
 					<DialogFooter className='flex-row gap-2'>
 						<Button

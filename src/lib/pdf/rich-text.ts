@@ -71,8 +71,7 @@ export const parseRichTextHtml = (html: string): RichTextParagraph[] => {
 	let listItemOpen = false;
 
 	const append = (raw: string) => {
-		const text =
-			raw === '\n' ? '\n' : decodeHtmlEntities(raw).replace(/[\t\r\n ]+/g, ' ');
+		const text = raw === '\n' ? '\n' : decodeHtmlEntities(raw).replace(/[\t\r\n ]+/g, ' ');
 
 		if (!text || (text.trim() === '' && runs.length === 0)) {
 			return;
@@ -107,10 +106,7 @@ export const parseRichTextHtml = (html: string): RichTextParagraph[] => {
 			runs = [];
 		}
 
-		if (
-			force ||
-			runs.some((run) => run.text.trim().length > 0 || run.text.includes('\n'))
-		) {
+		if (force || runs.some((run) => run.text.trim().length > 0 || run.text.includes('\n'))) {
 			paragraphs.push({
 				runs,
 				alignment,

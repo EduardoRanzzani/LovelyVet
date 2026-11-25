@@ -3,15 +3,7 @@ import { normalizePrescriptionGroups } from '@/lib/prescriptions/normalize-presc
 import { parseRichTextHtml, type RichTextAlignment } from '@/lib/pdf/rich-text';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import {
-	PDFDocument,
-	PageSizes,
-	rgb,
-	StandardFonts,
-	type PDFFont,
-	type PDFImage,
-	type PDFPage,
-} from 'pdf-lib';
+import { PDFDocument, PageSizes, rgb, StandardFonts, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib';
 
 interface PrescriptionPdfValidation {
 	url: string;
@@ -94,22 +86,14 @@ const formatSigningDate = (date: Date): string => {
 	}).format(date);
 };
 
-const fitText = (
-	value: string,
-	font: PDFFont,
-	fontSize: number,
-	maxWidth: number,
-): string => {
+const fitText = (value: string, font: PDFFont, fontSize: number, maxWidth: number): string => {
 	if (font.widthOfTextAtSize(value, fontSize) <= maxWidth) {
 		return value;
 	}
 
 	let result = value;
 
-	while (
-		result.length > 0 &&
-		font.widthOfTextAtSize(`${result}...`, fontSize) > maxWidth
-	) {
+	while (result.length > 0 && font.widthOfTextAtSize(`${result}...`, fontSize) > maxWidth) {
 		result = result.slice(0, -1);
 	}
 
@@ -131,11 +115,7 @@ interface StyledTextLine {
 	isLastInParagraph: boolean;
 }
 
-const getRichTextFont = (
-	resources: PageResources,
-	bold: boolean,
-	italic: boolean,
-): PDFFont => {
+const getRichTextFont = (resources: PageResources, bold: boolean, italic: boolean): PDFFont => {
 	if (bold && italic) return resources.boldItalicFont;
 	if (bold) return resources.boldFont;
 	if (italic) return resources.italicFont;
@@ -204,10 +184,7 @@ const layoutRichText = (
 				let word = `${prefix}${token}`;
 				pendingSpace = false;
 
-				if (
-					fragments.length > 0 &&
-					lineWidth + font.widthOfTextAtSize(word, size) > maxWidth
-				) {
+				if (fragments.length > 0 && lineWidth + font.widthOfTextAtSize(word, size) > maxWidth) {
 					flushLine(false);
 					word = token;
 				}
@@ -256,15 +233,10 @@ const drawStyledLine = (page: PDFPage, line: StyledTextLine, y: number) => {
 		x += Math.max(0, CONTENT_WIDTH - line.width);
 	}
 
-	const gaps = line.fragments.filter((fragment) =>
-		fragment.text.startsWith(' '),
-	).length;
+	const gaps = line.fragments.filter((fragment) => fragment.text.startsWith(' ')).length;
 
 	const extraSpace =
-		line.alignment === 'justify' &&
-		!line.isLastInParagraph &&
-		gaps >= 2 &&
-		line.width >= CONTENT_WIDTH * 0.6
+		line.alignment === 'justify' && !line.isLastInParagraph && gaps >= 2 && line.width >= CONTENT_WIDTH * 0.6
 			? Math.max(0, (CONTENT_WIDTH - line.width) / gaps)
 			: 0;
 
@@ -285,13 +257,7 @@ const drawStyledLine = (page: PDFPage, line: StyledTextLine, y: number) => {
 	}
 };
 
-const drawCenteredText = (
-	page: PDFPage,
-	text: string,
-	y: number,
-	font: PDFFont,
-	size: number,
-) => {
+const drawCenteredText = (page: PDFPage, text: string, y: number, font: PDFFont, size: number) => {
 	const width = font.widthOfTextAtSize(text, size);
 
 	page.drawText(text, {
@@ -303,14 +269,7 @@ const drawCenteredText = (
 	});
 };
 
-const drawRightText = (
-	page: PDFPage,
-	text: string,
-	right: number,
-	y: number,
-	font: PDFFont,
-	size: number,
-) => {
+const drawRightText = (page: PDFPage, text: string, right: number, y: number, font: PDFFont, size: number) => {
 	const width = font.widthOfTextAtSize(text, size);
 
 	page.drawText(text, {
@@ -374,8 +333,7 @@ const drawInfoCell = ({
 const drawPageDecoration = (page: PDFPage, resources: PageResources) => {
 	const watermarkWidth = 300;
 
-	const watermarkHeight =
-		(watermarkWidth * resources.logo.height) / resources.logo.width;
+	const watermarkHeight = (watermarkWidth * resources.logo.height) / resources.logo.width;
 
 	page.drawImage(resources.logo, {
 		x: (PAGE_WIDTH - watermarkWidth) / 2,
@@ -422,29 +380,11 @@ const drawHeader = (
 		height: logoHeight,
 	});
 
-	drawCenteredText(
-		page,
-		'Dra. Regina de Oliveira Maciel',
-		PAGE_HEIGHT - 113,
-		resources.boldFont,
-		12,
-	);
+	drawCenteredText(page, 'Dra. Regina de Oliveira Maciel', PAGE_HEIGHT - 113, resources.boldFont, 12);
 
-	drawCenteredText(
-		page,
-		'Médica Veterinária CRMV/MS 9193',
-		PAGE_HEIGHT - 128,
-		resources.font,
-		8.25,
-	);
+	drawCenteredText(page, 'Médica Veterinária CRMV/MS 9193', PAGE_HEIGHT - 128, resources.font, 8.25);
 
-	drawCenteredText(
-		page,
-		'SIPEAGRO MV00802562025',
-		PAGE_HEIGHT - 140,
-		resources.font,
-		8.25,
-	);
+	drawCenteredText(page, 'SIPEAGRO MV00802562025', PAGE_HEIGHT - 140, resources.font, 8.25);
 
 	const firstRowY = PAGE_HEIGHT - 183;
 	const firstRowGap = 24;
@@ -528,12 +468,7 @@ const drawHeader = (
 	void issuedAt;
 };
 
-const drawValidationQrCode = (
-	page: PDFPage,
-	signingTime: Date,
-	resources: PageResources,
-	tutorName: string,
-) => {
+const drawValidationQrCode = (page: PDFPage, signingTime: Date, resources: PageResources, tutorName: string) => {
 	if (!resources.validationQrCode) {
 		return;
 	}
@@ -596,16 +531,13 @@ const drawValidationQrCode = (
 		color: rgb(0, 0, 0),
 	});
 
-	page.drawText(
-		'Escaneie o QR Code para abrir esta receita assinada no navegador.',
-		{
-			x: textX,
-			y: qrY + 9,
-			font: resources.font,
-			size: 7.25,
-			color: rgb(0, 0, 0),
-		},
-	);
+	page.drawText('Escaneie o QR Code para abrir esta receita assinada no navegador.', {
+		x: textX,
+		y: qrY + 9,
+		font: resources.font,
+		size: 7.25,
+		color: rgb(0, 0, 0),
+	});
 
 	page.drawText('Confira também a assinatura criptográfica em', {
 		x: textX,
@@ -710,24 +642,10 @@ const drawFooter = (
 	if (signingTime) {
 		drawValidationQrCode(page, signingTime, resources, tutorName);
 	} else {
-		drawRightText(
-			page,
-			'M.V. Regina de Oliveira Maciel',
-			right,
-			123,
-			resources.boldFont,
-			8.25,
-		);
+		drawRightText(page, 'M.V. Regina de Oliveira Maciel', right, 123, resources.boldFont, 8.25);
 
 		drawRightText(page, 'CRMV/MS 9193', right, 111, resources.font, 7.5);
-		drawRightText(
-			page,
-			'SIPEAGRO MV00802562025',
-			right,
-			99,
-			resources.font,
-			8.25,
-		);
+		drawRightText(page, 'SIPEAGRO MV00802562025', right, 99, resources.font, 8.25);
 
 		page.drawText(`Campo Grande, ${formatIssuedDate(issuedAt)}.`, {
 			x: MARGIN_X,
@@ -794,12 +712,7 @@ const drawMedicationHeader = ({
 		pharmacyMaxWidth,
 	);
 
-	const quantityText = fitText(
-		quantity || '---',
-		resources.boldFont,
-		BODY_FONT_SIZE,
-		rightColumnWidth - 5,
-	);
+	const quantityText = fitText(quantity || '---', resources.boldFont, BODY_FONT_SIZE, rightColumnWidth - 5);
 
 	const leftX = MARGIN_X;
 
@@ -813,15 +726,9 @@ const drawMedicationHeader = ({
 		color: rgb(0, 0, 0),
 	});
 
-	const nameWidth = resources.boldFont.widthOfTextAtSize(
-		nameText,
-		BODY_FONT_SIZE,
-	);
+	const nameWidth = resources.boldFont.widthOfTextAtSize(nameText, BODY_FONT_SIZE);
 
-	const pharmacyWidth = resources.font.widthOfTextAtSize(
-		pharmacyText,
-		BODY_FONT_SIZE,
-	);
+	const pharmacyWidth = resources.font.widthOfTextAtSize(pharmacyText, BODY_FONT_SIZE);
 	const pharmacyX = (PAGE_WIDTH - pharmacyWidth) / 2;
 
 	if (leftX + nameWidth + 6 < pharmacyX - 6) {
@@ -847,10 +754,7 @@ const drawMedicationHeader = ({
 		color: rgb(0, 0, 0),
 	});
 
-	const quantityWidth = resources.boldFont.widthOfTextAtSize(
-		quantityText,
-		BODY_FONT_SIZE,
-	);
+	const quantityWidth = resources.boldFont.widthOfTextAtSize(quantityText, BODY_FONT_SIZE);
 
 	page.drawText(quantityText, {
 		x: rightX + rightColumnWidth - quantityWidth,
@@ -896,15 +800,14 @@ export async function generatePrescriptionPdf({
 
 	const pdf = await PDFDocument.create();
 
-	const [font, boldFont, italicFont, boldItalicFont, logo, paws] =
-		await Promise.all([
-			pdf.embedFont(StandardFonts.Helvetica),
-			pdf.embedFont(StandardFonts.HelveticaBold),
-			pdf.embedFont(StandardFonts.HelveticaOblique),
-			pdf.embedFont(StandardFonts.HelveticaBoldOblique),
-			pdf.embedPng(assets.logo),
-			pdf.embedPng(assets.paws),
-		]);
+	const [font, boldFont, italicFont, boldItalicFont, logo, paws] = await Promise.all([
+		pdf.embedFont(StandardFonts.Helvetica),
+		pdf.embedFont(StandardFonts.HelveticaBold),
+		pdf.embedFont(StandardFonts.HelveticaOblique),
+		pdf.embedFont(StandardFonts.HelveticaBoldOblique),
+		pdf.embedPng(assets.logo),
+		pdf.embedPng(assets.paws),
+	]);
 
 	/*
 	 * O QR é incorporado ao PDF antes
@@ -914,9 +817,7 @@ export async function generatePrescriptionPdf({
 	 * parte dos bytes protegidos pela
 	 * assinatura criptográfica.
 	 */
-	const validationQrCode = validation
-		? await pdf.embedPng(validation.qrCode)
-		: undefined;
+	const validationQrCode = validation ? await pdf.embedPng(validation.qrCode) : undefined;
 
 	const resources: PageResources = {
 		font,
@@ -930,27 +831,13 @@ export async function generatePrescriptionPdf({
 		validationUrl: validation?.url,
 	};
 
-	let page = createPrescriptionPage(
-		pdf,
-		documentData,
-		issuedAt,
-		signingTime,
-		resources,
-		tutorName,
-	);
+	let page = createPrescriptionPage(pdf, documentData, issuedAt, signingTime, resources, tutorName);
 
 	const contentBottom = signingTime ? SIGNED_CONTENT_BOTTOM : CONTENT_BOTTOM;
 	let y = CONTENT_TOP;
 
 	const startNewPage = () => {
-		page = createPrescriptionPage(
-			pdf,
-			documentData,
-			issuedAt,
-			signingTime,
-			resources,
-			tutorName,
-		);
+		page = createPrescriptionPage(pdf, documentData, issuedAt, signingTime, resources, tutorName);
 		y = CONTENT_TOP;
 	};
 
@@ -958,13 +845,7 @@ export async function generatePrescriptionPdf({
 		const route = group.administrationRoute.trim().toUpperCase();
 
 		const drawRoute = () => {
-			drawCenteredText(
-				page,
-				fitText(route, boldFont, 9.75, CONTENT_WIDTH),
-				y,
-				boldFont,
-				9.75,
-			);
+			drawCenteredText(page, fitText(route, boldFont, 9.75, CONTENT_WIDTH), y, boldFont, 9.75);
 			y -= 25;
 		};
 
@@ -972,12 +853,7 @@ export async function generatePrescriptionPdf({
 		drawRoute();
 
 		for (const item of group.items) {
-			const lines = layoutRichText(
-				item.orientations,
-				resources,
-				BODY_FONT_SIZE,
-				CONTENT_WIDTH,
-			);
+			const lines = layoutRichText(item.orientations, resources, BODY_FONT_SIZE, CONTENT_WIDTH);
 			const firstLineHeight = lines[0]?.lineHeight ?? BODY_LINE_HEIGHT;
 
 			// Reservar espaço para o cabeçalho do medicamento e sua primeira linha.
@@ -1019,16 +895,9 @@ export async function generatePrescriptionPdf({
 	}
 
 	for (const block of documentData.orientationBlocks ?? []) {
-		const title = (block.title?.trim() || 'Orientações').toLocaleUpperCase(
-			'pt-BR',
-		);
+		const title = (block.title?.trim() || 'Orientações').toLocaleUpperCase('pt-BR');
 		const fittedTitle = fitText(title, boldFont, 9.75, CONTENT_WIDTH);
-		const lines = layoutRichText(
-			block.content,
-			resources,
-			BODY_FONT_SIZE,
-			CONTENT_WIDTH,
-		);
+		const lines = layoutRichText(block.content, resources, BODY_FONT_SIZE, CONTENT_WIDTH);
 		const firstLineHeight = lines[0]?.lineHeight ?? BODY_LINE_HEIGHT;
 
 		if (y < contentBottom + 25 + firstLineHeight) startNewPage();
@@ -1056,20 +925,10 @@ export async function generatePrescriptionPdf({
 	pdf.setCreator('LovelyVet');
 	pdf.setProducer('LovelyVet');
 	pdf.setTitle(`Receita - ${documentData.patient.name}`);
-	pdf.setSubject(
-		documentData.isControlled
-			? 'Receita veterinária controlada'
-			: 'Receita veterinária',
-	);
+	pdf.setSubject(documentData.isControlled ? 'Receita veterinária controlada' : 'Receita veterinária');
 
 	if (validation) {
-		pdf.setKeywords([
-			'LovelyVet',
-			'receita veterinária',
-			'assinatura digital',
-			'validação',
-			validation.url,
-		]);
+		pdf.setKeywords(['LovelyVet', 'receita veterinária', 'assinatura digital', 'validação', validation.url]);
 	}
 
 	const bytes = await pdf.save({

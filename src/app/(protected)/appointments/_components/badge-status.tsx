@@ -20,11 +20,7 @@ const BadgeStatus = ({ appointment }: BadgeStatusProps) => {
 		}
 	};
 
-	return (
-		<Badge variant={variant()}>
-			{convertAppointmentStatus(appointment.status)}
-		</Badge>
-	);
+	return <Badge variant={variant()}>{convertAppointmentStatus(appointment.status)}</Badge>;
 };
 
 export default BadgeStatus;

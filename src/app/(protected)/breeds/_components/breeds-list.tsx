@@ -46,9 +46,7 @@ const BreedsListClient = ({ breeds, species }: BreedsListClientProps) => {
 		},
 		onError: (err) => {
 			console.error('Erro ao deletar raça:', err);
-			toast.error(
-				'Ocorreu um erro ao tentar deletar a raça. Tente novamente mais tarde.',
-			);
+			toast.error('Ocorreu um erro ao tentar deletar a raça. Tente novamente mais tarde.');
 		},
 	});
 
@@ -79,13 +77,7 @@ const BreedsListClient = ({ breeds, species }: BreedsListClientProps) => {
 				<TableCell className='w-20 space-x-2'>
 					<EditButton
 						tooltip={`Editar ${breed.name}`}
-						renderForm={(close) => (
-							<BreedFormClient
-								breed={breed}
-								species={species}
-								onSuccess={close}
-							/>
-						)}
+						renderForm={(close) => <BreedFormClient breed={breed} species={species} onSuccess={close} />}
 					/>
 
 					<DeleteAlertButton action={() => handleDelete(breed.id)} />
@@ -113,9 +105,7 @@ const BreedsListClient = ({ breeds, species }: BreedsListClientProps) => {
 
 						<div className='flex flex-col justify-center'>
 							{breed.name}
-							<p className='text-xs text-muted-foreground'>
-								{breed.specie.name}
-							</p>
+							<p className='text-xs text-muted-foreground'>{breed.specie.name}</p>
 						</div>
 					</div>
 
@@ -123,11 +113,7 @@ const BreedsListClient = ({ breeds, species }: BreedsListClientProps) => {
 						<EditButton
 							tooltip={`Editar ${breed.name}`}
 							renderForm={(close) => (
-								<BreedFormClient
-									breed={breed}
-									species={species}
-									onSuccess={close}
-								/>
+								<BreedFormClient breed={breed} species={species} onSuccess={close} />
 							)}
 						/>
 
@@ -145,9 +131,7 @@ const BreedsListClient = ({ breeds, species }: BreedsListClientProps) => {
 
 				<AddButton
 					text='Adicionar Raça'
-					renderForm={(close) => (
-						<BreedFormClient species={species} onSuccess={close} />
-					)}
+					renderForm={(close) => <BreedFormClient species={species} onSuccess={close} />}
 				/>
 			</div>
 

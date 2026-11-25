@@ -55,7 +55,4 @@ export type CalendarCareReminderEntry = {
 };
 
 export type CalendarEntry =
-	| CalendarAppointmentEntry
-	| CalendarShiftEntry
-	| CalendarPersonalEntry
-	| CalendarCareReminderEntry;
+	CalendarAppointmentEntry | CalendarShiftEntry | CalendarPersonalEntry | CalendarCareReminderEntry;

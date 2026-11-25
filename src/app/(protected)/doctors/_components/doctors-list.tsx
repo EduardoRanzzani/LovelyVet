@@ -54,18 +54,13 @@ const DoctorsListClient = ({ doctors }: DoctorsListClientProps) => {
 										className='object-cover'
 									/>
 								) : (
-									<AvatarImage
-										src={'/avatar-placeholder.png'}
-										alt={doctor.user.name}
-									/>
+									<AvatarImage src={'/avatar-placeholder.png'} alt={doctor.user.name} />
 								)}
 							</Avatar>
 
 							<span className='flex flex-col'>
 								<h3>{doctor.user.name}</h3>
-								<p className='text-xs text-muted-foreground'>
-									{doctor.user.email}
-								</p>
+								<p className='text-xs text-muted-foreground'>{doctor.user.email}</p>
 								<p className='text-xs text-muted-foreground'>
 									CRMV/{doctor.licenseState} - {doctor.licenseNumber}
 								</p>
@@ -76,16 +71,13 @@ const DoctorsListClient = ({ doctors }: DoctorsListClientProps) => {
 				<TableCell>{doctor.cpf}</TableCell>
 				<TableCell>{doctor.phone}</TableCell>
 				<TableCell>
-					{getWeekDay(doctor.availableFromWeekDay)} a{' '}
-					{getWeekDay(doctor.availableToWeekDay)} das {doctor.availableFromTime}{' '}
-					às {doctor.availableToTime}
+					{getWeekDay(doctor.availableFromWeekDay)} a {getWeekDay(doctor.availableToWeekDay)} das{' '}
+					{doctor.availableFromTime} às {doctor.availableToTime}
 				</TableCell>
 				<TableCell>
 					<EditButton
 						tooltip={`Editar '${doctor.user.name}'`}
-						renderForm={(close) => (
-							<DoctorFormClient doctor={doctor} onSuccess={close} />
-						)}
+						renderForm={(close) => <DoctorFormClient doctor={doctor} onSuccess={close} />}
 					/>
 				</TableCell>
 			</TableRow>
@@ -117,9 +109,7 @@ const DoctorsListClient = ({ doctors }: DoctorsListClientProps) => {
 
 					<EditButton
 						tooltip={`Editar '${doctor.user.name}'`}
-						renderForm={(close) => (
-							<DoctorFormClient doctor={doctor} onSuccess={close} />
-						)}
+						renderForm={(close) => <DoctorFormClient doctor={doctor} onSuccess={close} />}
 					/>
 				</div>
 
@@ -145,8 +135,7 @@ const DoctorsListClient = ({ doctors }: DoctorsListClientProps) => {
 							<CalendarIcon className='w-4 h-4' />
 						</span>
 						<span className='text-sm'>
-							De {getWeekDay(doctor.availableFromWeekDay)} a{' '}
-							{getWeekDay(doctor.availableToWeekDay)}
+							De {getWeekDay(doctor.availableFromWeekDay)} a {getWeekDay(doctor.availableToWeekDay)}
 						</span>
 					</p>
 

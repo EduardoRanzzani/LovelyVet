@@ -7,9 +7,7 @@ export const weekDaySchema = z.enum(['0', '1', '2', '3', '4', '5', '6'], {
 
 export type WeekDayValue = z.infer<typeof weekDaySchema>;
 
-const timeSchema = z
-	.string()
-	.regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Horário inválido');
+const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Horário inválido');
 
 export type DoctorsWithRelations = typeof doctorsTable.$inferSelect & {
 	user: typeof usersTable.$inferSelect;
@@ -30,16 +28,10 @@ export const createDoctorWithUserSchema = z
 		image: z.string().optional(),
 		phone: z.string().nonempty({ message: 'O campo Telefone é obrigatório' }),
 		cpf: z.string().nonempty({ message: 'O campo CPF é obrigatório' }),
-		gender: z
-			.enum(['male', 'female'])
-			.nonoptional({ message: 'O campo Sexo é obrigatório' }),
-		licenseNumber: z
-			.string()
-			.nonempty({ message: 'O campo CRMV é obrigatório' }),
+		gender: z.enum(['male', 'female']).nonoptional({ message: 'O campo Sexo é obrigatório' }),
+		licenseNumber: z.string().nonempty({ message: 'O campo CRMV é obrigatório' }),
 		licenseState: z.string().nonempty({ message: 'O campo UF é obrigatório' }),
-		specialty: z
-			.string()
-			.nonempty({ message: 'O campo Especialidade é obrigatório' }),
+		specialty: z.string().nonempty({ message: 'O campo Especialidade é obrigatório' }),
 		availableFromWeekDay: weekDaySchema,
 		availableToWeekDay: weekDaySchema,
 		availableFromTime: timeSchema,
@@ -50,6 +42,4 @@ export const createDoctorWithUserSchema = z
 		path: ['availableToTime'],
 	});
 
-export type CreateDoctorWithUserSchema = z.infer<
-	typeof createDoctorWithUserSchema
->;
+export type CreateDoctorWithUserSchema = z.infer<typeof createDoctorWithUserSchema>;

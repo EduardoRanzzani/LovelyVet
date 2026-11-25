@@ -38,12 +38,7 @@ export default function RichTextDocumentBuilder({
 
 	return (
 		<div className='space-y-4'>
-			<TextEditorForm
-				name='content'
-				control={form.control}
-				label={label}
-				placeholder={placeholder}
-			/>
+			<TextEditorForm name='content' control={form.control} label={label} placeholder={placeholder} />
 		</div>
 	);
 }

@@ -12,10 +12,7 @@ const vaccine = {
 
 describe('buildVaccineSubmitPayload', () => {
 	it('não envia reminderId vazio no cadastro manual', () => {
-		const result = buildVaccineSubmitPayload(
-			{ ...vaccine, reminderId: '' } as CreateVaccineSchema,
-			null,
-		);
+		const result = buildVaccineSubmitPayload({ ...vaccine, reminderId: '' } as CreateVaccineSchema, null);
 
 		expect(result).not.toHaveProperty('reminderId');
 	});
@@ -31,10 +28,7 @@ describe('buildVaccineSubmitPayload', () => {
 	it('preserva a data de aplicação retroativa', () => {
 		const applicationDate = new Date(2025, 5, 10);
 
-		const result = buildVaccineSubmitPayload(
-			{ ...vaccine, applicationDate },
-			null,
-		);
+		const result = buildVaccineSubmitPayload({ ...vaccine, applicationDate }, null);
 
 		expect(result.applicationDate).toEqual(applicationDate);
 	});

@@ -13,16 +13,21 @@ export async function uploadTutorPetPhoto(bytes: Uint8Array): Promise<{ url: str
 	configureCloudinary();
 	const publicId = `pets/tutor-photos/${randomUUID()}`;
 	return new Promise((resolve, reject) => {
-		cloudinary.uploader.upload_stream({
-			public_id: publicId,
-			overwrite: false,
-			resource_type: 'image',
-			allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
-			transformation: [{ width: 1200, height: 1200, crop: 'limit' }],
-		}, (error, result) => {
-			if (error || !result?.secure_url) return reject(new Error('Falha no upload da foto'));
-			resolve({ url: result.secure_url, publicId });
-		}).end(Buffer.from(bytes));
+		cloudinary.uploader
+			.upload_stream(
+				{
+					public_id: publicId,
+					overwrite: false,
+					resource_type: 'image',
+					allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+					transformation: [{ width: 1200, height: 1200, crop: 'limit' }],
+				},
+				(error, result) => {
+					if (error || !result?.secure_url) return reject(new Error('Falha no upload da foto'));
+					resolve({ url: result.secure_url, publicId });
+				},
+			)
+			.end(Buffer.from(bytes));
 	});
 }
 

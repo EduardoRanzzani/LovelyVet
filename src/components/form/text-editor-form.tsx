@@ -10,12 +10,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { useEffect, type ReactNode } from 'react';
-import {
-	Controller,
-	type Control,
-	type FieldValues,
-	type Path,
-} from 'react-hook-form';
+import { Controller, type Control, type FieldValues, type Path } from 'react-hook-form';
 import EditorToolbar from '../shared/editor-toolbar';
 
 interface EditorFormProps<T extends FieldValues> {
@@ -69,12 +64,7 @@ interface TiptapEditorProps {
 	placeholder?: string;
 }
 
-const TiptapEditor = ({
-	content,
-	onChange,
-	hasError,
-	placeholder,
-}: TiptapEditorProps) => {
+const TiptapEditor = ({ content, onChange, hasError, placeholder }: TiptapEditorProps) => {
 	const editor = useEditor({
 		extensions: [
 			StarterKit.configure({
@@ -123,10 +113,7 @@ const TiptapEditor = ({
 		const nextContent = content || '';
 		const currentContent = editor.getHTML();
 
-		if (
-			currentContent !== nextContent &&
-			!(currentContent === '<p></p>' && nextContent === '')
-		) {
+		if (currentContent !== nextContent && !(currentContent === '<p></p>' && nextContent === '')) {
 			editor.commands.setContent(nextContent, {
 				emitUpdate: false,
 			});
@@ -158,13 +145,7 @@ interface ToolbarButtonProps {
 	title?: string;
 }
 
-export const ToolbarButton = ({
-	children,
-	onClick,
-	active = false,
-	disabled = false,
-	title,
-}: ToolbarButtonProps) => (
+export const ToolbarButton = ({ children, onClick, active = false, disabled = false, title }: ToolbarButtonProps) => (
 	<Button
 		type='button'
 		size='icon-xs'

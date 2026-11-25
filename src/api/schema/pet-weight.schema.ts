@@ -1,11 +1,4 @@
-import {
-	breedsTable,
-	customersTable,
-	petsTable,
-	petWeightsTable,
-	speciesTable,
-	usersTable,
-} from '@/db/schema';
+import { breedsTable, customersTable, petsTable, petWeightsTable, speciesTable, usersTable } from '@/db/schema';
 import z from 'zod';
 
 export type PetWeight = typeof petWeightsTable.$inferSelect;

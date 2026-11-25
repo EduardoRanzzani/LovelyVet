@@ -40,10 +40,7 @@ const EmailFormClient = () => {
 
 			<CardContent>
 				<Form {...form}>
-					<form
-						onSubmit={form.handleSubmit(formSubmit)}
-						className='flex flex-col gap-5'
-					>
+					<form onSubmit={form.handleSubmit(formSubmit)} className='flex flex-col gap-5'>
 						<div className='flex flex-row gap-4'>
 							<InputForm
 								label='Para:'

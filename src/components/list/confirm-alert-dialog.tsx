@@ -48,9 +48,7 @@ const ConfirmAlertButton = ({
 			<AlertDialogContent>
 				<AlertDialogHeader>
 					<AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-					<AlertDialogDescription>
-						Essa ação não poderá ser desfeita.
-					</AlertDialogDescription>
+					<AlertDialogDescription>Essa ação não poderá ser desfeita.</AlertDialogDescription>
 				</AlertDialogHeader>
 
 				<AlertDialogFooter className='grid grid-cols-2 gap-3 sm:space-x-0'>

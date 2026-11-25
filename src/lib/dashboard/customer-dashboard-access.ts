@@ -6,10 +6,10 @@ import { requireCustomerDashboardScope } from './customer-dashboard';
 
 /** Todas as condições são derivadas do contexto autenticado, sem IDs externos. */
 export function buildCustomerDashboardAccess(context: AuthContext) {
- requireCustomerDashboardScope(context);
- return {
-  pets: buildPetAccessCondition(context),
-  appointments: buildAppointmentAccessCondition(context),
-  reminders: buildCareReminderAccessCondition(context),
- };
+	requireCustomerDashboardScope(context);
+	return {
+		pets: buildPetAccessCondition(context),
+		appointments: buildAppointmentAccessCondition(context),
+		reminders: buildCareReminderAccessCondition(context),
+	};
 }

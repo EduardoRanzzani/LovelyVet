@@ -1,10 +1,7 @@
 import type { AuthContext } from './auth-context';
 import { requireStaff } from './authorization';
 
-export const resolveClinicalDoctorId = (
-	context: AuthContext,
-	requestedDoctorId?: string | null,
-): string => {
+export const resolveClinicalDoctorId = (context: AuthContext, requestedDoctorId?: string | null): string => {
 	requireStaff(context);
 
 	if (context.role === 'doctor') {

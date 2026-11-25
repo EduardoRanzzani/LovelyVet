@@ -38,10 +38,7 @@ export const buildAppointmentAccessCondition = (
 					.select({ petId: petTutorsTable.petId })
 					.from(petTutorsTable)
 					.where(
-						and(
-							eq(petTutorsTable.petId, columns.petId),
-							eq(petTutorsTable.customerId, context.customerId),
-						),
+						and(eq(petTutorsTable.petId, columns.petId), eq(petTutorsTable.customerId, context.customerId)),
 					),
 			),
 		);
@@ -50,14 +47,10 @@ export const buildAppointmentAccessCondition = (
 	return conditions.length ? and(...conditions) : undefined;
 };
 
-export const requireAccessibleAppointment = async (
-	context: AuthContext,
-	appointmentId: string,
-) => {
+export const requireAccessibleAppointment = async (context: AuthContext, appointmentId: string) => {
 	const appointment = await db.query.appointmentsTable.findFirst({
 		columns: { id: true, petId: true, status: true },
-		where: (appointments) =>
-			buildAppointmentAccessCondition(context, appointmentId, appointments),
+		where: (appointments) => buildAppointmentAccessCondition(context, appointmentId, appointments),
 	});
 
 	if (!appointment) {

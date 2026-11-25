@@ -10,23 +10,28 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
-export async function updateTutorPetPhoto(formData: FormData): Promise<
-	{ success: true; photo: string | null } | { success: false; error: string }
-> {
+export async function updateTutorPetPhoto(
+	formData: FormData,
+): Promise<{ success: true; photo: string | null } | { success: false; error: string }> {
 	try {
 		const context = await requireAuthContext();
 		if (context.role !== 'customer' || !context.customerId) {
 			return { success: false, error: 'Você não tem permissão para alterar esta foto.' };
 		}
-		const parsed = z.object({ petId: z.uuid(), operation: z.enum(['upload', 'remove']), expectedPhoto: z.string().max(4096) }).safeParse({
-			petId: formData.get('petId'), operation: formData.get('operation'), expectedPhoto: formData.get('expectedPhoto'),
-		});
+		const parsed = z
+			.object({ petId: z.uuid(), operation: z.enum(['upload', 'remove']), expectedPhoto: z.string().max(4096) })
+			.safeParse({
+				petId: formData.get('petId'),
+				operation: formData.get('operation'),
+				expectedPhoto: formData.get('expectedPhoto'),
+			});
 		if (!parsed.success) return { success: false, error: 'Solicitação inválida.' };
 		const { petId, operation, expectedPhoto } = parsed.data;
 		const access = buildPetAccessCondition(context, petId);
 		if (!access) return { success: false, error: 'Você não tem permissão para alterar esta foto.' };
 		const pet = await db.query.petsTable.findFirst({
-			columns: { id: true, photo: true }, where: access,
+			columns: { id: true, photo: true },
+			where: access,
 		});
 		if (!pet) return { success: false, error: 'Pet não encontrado ou sem permissão de acesso.' };
 
@@ -49,10 +54,13 @@ export async function updateTutorPetPhoto(formData: FormData): Promise<
 
 		// Revalida o vínculo no UPDATE e não sobrescreve uma foto alterada
 		// por outro tutor durante o upload. Nenhum campo cadastral é aceito.
-		const [updated] = await db.update(petsTable).set({
-			photo: upload?.url ?? null,
-			updatedAt: new Date(),
-		}).where(and(access, pet.photo === null ? isNull(petsTable.photo) : eq(petsTable.photo, pet.photo)))
+		const [updated] = await db
+			.update(petsTable)
+			.set({
+				photo: upload?.url ?? null,
+				updatedAt: new Date(),
+			})
+			.where(and(access, pet.photo === null ? isNull(petsTable.photo) : eq(petsTable.photo, pet.photo)))
 			.returning({ photo: petsTable.photo });
 
 		if (!updated) {

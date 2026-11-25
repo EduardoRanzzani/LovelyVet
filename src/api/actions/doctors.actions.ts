@@ -13,10 +13,7 @@ import z from 'zod';
 import { MAX_PAGE_SIZE, PaginatedData } from '../config/consts';
 import type { DoctorOption } from '../schema/doctors.schema';
 import { normalizePagination } from '@/lib/pagination';
-import {
-	createDoctorWithUserSchema,
-	DoctorsWithRelations,
-} from '../schema/doctors.schema';
+import { createDoctorWithUserSchema, DoctorsWithRelations } from '../schema/doctors.schema';
 
 export const getDoctors = async (): Promise<DoctorsWithRelations[]> => {
 	const context = await requireAuthContext();
@@ -75,10 +72,7 @@ export const getDoctorsPaginated = async (
 		.innerJoin(usersTable, sql`${doctorsTable.userId} = ${usersTable.id}`)
 		.where(filterCondition);
 
-	const [data, totalCountResult] = await Promise.all([
-		dataPromise,
-		totalCountPromise,
-	]);
+	const [data, totalCountResult] = await Promise.all([dataPromise, totalCountPromise]);
 
 	const totalCount = Number(totalCountResult[0]?.value ?? 0);
 	const pageCount = Math.ceil(totalCount / pagination.limit);
@@ -99,150 +93,141 @@ export const getDoctorsPaginated = async (
 	};
 };
 
-export const upsertDoctor = actionClient
-	.schema(createDoctorWithUserSchema)
-	.action(async ({ parsedInput }) => {
-		const context = await requireAuthContext();
-		requireAdmin(context);
-		const clerkEnvironment = getClerkEnvironment();
+export const upsertDoctor = actionClient.schema(createDoctorWithUserSchema).action(async ({ parsedInput }) => {
+	const context = await requireAuthContext();
+	requireAdmin(context);
+	const clerkEnvironment = getClerkEnvironment();
 
-		const existingDoctor = parsedInput.id
-			? await db.query.doctorsTable.findFirst({
-					where: eq(doctorsTable.id, parsedInput.id),
-					with: { user: true },
-				})
-			: null;
+	const existingDoctor = parsedInput.id
+		? await db.query.doctorsTable.findFirst({
+				where: eq(doctorsTable.id, parsedInput.id),
+				with: { user: true },
+			})
+		: null;
 
-		if (parsedInput.id && !existingDoctor) {
-			throw new Error('Veterinário não encontrado');
-		}
+	if (parsedInput.id && !existingDoctor) {
+		throw new Error('Veterinário não encontrado');
+	}
 
-		const cpfOwner = await db.query.doctorsTable.findFirst({
-			where: eq(doctorsTable.cpf, parsedInput.cpf),
+	const cpfOwner = await db.query.doctorsTable.findFirst({
+		where: eq(doctorsTable.cpf, parsedInput.cpf),
+	});
+
+	if (cpfOwner && cpfOwner.id !== existingDoctor?.id) {
+		throw new Error('CPF já cadastrado para outro veterinário');
+	}
+
+	const existingUser =
+		existingDoctor?.user ??
+		(await db.query.usersTable.findFirst({
+			where: eq(usersTable.email, parsedInput.email),
+		}));
+
+	if (!existingDoctor && existingUser) {
+		const linkedDoctor = await db.query.doctorsTable.findFirst({
+			where: eq(doctorsTable.userId, existingUser.id),
 		});
 
-		if (cpfOwner && cpfOwner.id !== existingDoctor?.id) {
-			throw new Error('CPF já cadastrado para outro veterinário');
+		if (linkedDoctor) {
+			throw new Error('Usuário já possui um cadastro de veterinário');
 		}
+	}
 
-		const existingUser =
-			existingDoctor?.user ??
-			(await db.query.usersTable.findFirst({
-				where: eq(usersTable.email, parsedInput.email),
-			}));
+	const newClerkUser = existingUser ? null : await createNewClerkUser(parsedInput);
 
-		if (!existingDoctor && existingUser) {
-			const linkedDoctor = await db.query.doctorsTable.findFirst({
-				where: eq(doctorsTable.userId, existingUser.id),
-			});
-
-			if (linkedDoctor) {
-				throw new Error('Usuário já possui um cadastro de veterinário');
-			}
-		}
-
-		const newClerkUser = existingUser
-			? null
-			: await createNewClerkUser(parsedInput);
-
-		await db.transaction(async (transaction) => {
-			const userRows = existingUser
-				? await transaction
-						.update(usersTable)
-						.set({
-							name: parsedInput.name,
-							email: parsedInput.email,
-							image: parsedInput.image,
-							role: 'doctor',
-							updatedAt: new Date(),
-						})
-						.where(eq(usersTable.id, existingUser.id))
-						.returning()
-				: await transaction
-						.insert(usersTable)
-						.values({
-							name: parsedInput.name,
-							email: parsedInput.email,
-							image: parsedInput.image,
-							role: 'doctor',
-						})
-						.onConflictDoUpdate({
-							target: usersTable.email,
-							set: {
-								name: parsedInput.name,
-								image: parsedInput.image,
-								role: 'doctor',
-								updatedAt: new Date(),
-							},
-						})
-						.returning();
-
-			const [user] = userRows;
-
-			if (!user) throw new Error('Falha ao criar usuário base no sistema');
-
-			if (newClerkUser) {
-				await transaction
-					.insert(clerkIdentitiesTable)
+	await db.transaction(async (transaction) => {
+		const userRows = existingUser
+			? await transaction
+					.update(usersTable)
+					.set({
+						name: parsedInput.name,
+						email: parsedInput.email,
+						image: parsedInput.image,
+						role: 'doctor',
+						updatedAt: new Date(),
+					})
+					.where(eq(usersTable.id, existingUser.id))
+					.returning()
+			: await transaction
+					.insert(usersTable)
 					.values({
-						userId: user.id,
-						environment: clerkEnvironment,
-						clerkUserId: newClerkUser.id,
+						name: parsedInput.name,
+						email: parsedInput.email,
+						image: parsedInput.image,
+						role: 'doctor',
 					})
 					.onConflictDoUpdate({
-						target: [
-							clerkIdentitiesTable.userId,
-							clerkIdentitiesTable.environment,
-						],
+						target: usersTable.email,
 						set: {
-							clerkUserId: newClerkUser.id,
+							name: parsedInput.name,
+							image: parsedInput.image,
+							role: 'doctor',
 							updatedAt: new Date(),
 						},
-					});
-			}
+					})
+					.returning();
 
-			const doctorData = {
-				userId: user.id,
-				phone: parsedInput.phone,
-				cpf: parsedInput.cpf,
-				gender: parsedInput.gender,
-				licenseNumber: parsedInput.licenseNumber,
-				licenseState: parsedInput.licenseState,
-				specialty: parsedInput.specialty,
-				availableFromWeekDay: Number(parsedInput.availableFromWeekDay),
-				availableToWeekDay: Number(parsedInput.availableToWeekDay),
-				availableFromTime: parsedInput.availableFromTime,
-				availableToTime: parsedInput.availableToTime,
-			};
+		const [user] = userRows;
 
-			if (existingDoctor) {
-				await transaction
-					.update(doctorsTable)
-					.set({ ...doctorData, updatedAt: new Date() })
-					.where(eq(doctorsTable.id, existingDoctor.id));
-			} else {
-				await transaction.insert(doctorsTable).values(doctorData);
-			}
-		});
+		if (!user) throw new Error('Falha ao criar usuário base no sistema');
 
-		revalidatePath('/doctors');
+		if (newClerkUser) {
+			await transaction
+				.insert(clerkIdentitiesTable)
+				.values({
+					userId: user.id,
+					environment: clerkEnvironment,
+					clerkUserId: newClerkUser.id,
+				})
+				.onConflictDoUpdate({
+					target: [clerkIdentitiesTable.userId, clerkIdentitiesTable.environment],
+					set: {
+						clerkUserId: newClerkUser.id,
+						updatedAt: new Date(),
+					},
+				});
+		}
+
+		const doctorData = {
+			userId: user.id,
+			phone: parsedInput.phone,
+			cpf: parsedInput.cpf,
+			gender: parsedInput.gender,
+			licenseNumber: parsedInput.licenseNumber,
+			licenseState: parsedInput.licenseState,
+			specialty: parsedInput.specialty,
+			availableFromWeekDay: Number(parsedInput.availableFromWeekDay),
+			availableToWeekDay: Number(parsedInput.availableToWeekDay),
+			availableFromTime: parsedInput.availableFromTime,
+			availableToTime: parsedInput.availableToTime,
+		};
+
+		if (existingDoctor) {
+			await transaction
+				.update(doctorsTable)
+				.set({ ...doctorData, updatedAt: new Date() })
+				.where(eq(doctorsTable.id, existingDoctor.id));
+		} else {
+			await transaction.insert(doctorsTable).values(doctorData);
+		}
 	});
 
-export const deleteDoctor = actionClient
-	.schema(z.object({ id: z.uuid() }))
-	.action(async ({ parsedInput }) => {
-		const context = await requireAuthContext();
-		requireAdmin(context);
+	revalidatePath('/doctors');
+});
 
-		const doctor = await db.query.doctorsTable.findFirst({
-			where: eq(doctorsTable.id, parsedInput.id),
-		});
+export const deleteDoctor = actionClient.schema(z.object({ id: z.uuid() })).action(async ({ parsedInput }) => {
+	const context = await requireAuthContext();
+	requireAdmin(context);
 
-		if (!doctor) throw new Error('Veterinário não encontrado');
-		await db.delete(doctorsTable).where(eq(doctorsTable.id, parsedInput.id));
-
-		revalidatePath('/doctors');
+	const doctor = await db.query.doctorsTable.findFirst({
+		where: eq(doctorsTable.id, parsedInput.id),
 	});
+
+	if (!doctor) throw new Error('Veterinário não encontrado');
+	await db.delete(doctorsTable).where(eq(doctorsTable.id, parsedInput.id));
+
+	revalidatePath('/doctors');
+});
 
 export const getDoctorsForSelection = async (): Promise<DoctorOption[]> => {
 	await requireAuthContext();

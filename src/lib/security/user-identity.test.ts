@@ -31,8 +31,6 @@ describe('findUserByClerkUserId', () => {
 	it('returns undefined when the Clerk identity is not linked', async () => {
 		databaseMocks.findIdentity.mockResolvedValue(undefined);
 
-		await expect(
-			findUserByClerkUserId('unknown-clerk-user-id'),
-		).resolves.toBeUndefined();
+		await expect(findUserByClerkUserId('unknown-clerk-user-id')).resolves.toBeUndefined();
 	});
 });

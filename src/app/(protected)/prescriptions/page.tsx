@@ -21,9 +21,7 @@ interface PrescriptionsPageProps {
 	}>;
 }
 
-export default async function PrescriptionsPage({
-	searchParams,
-}: PrescriptionsPageProps) {
+export default async function PrescriptionsPage({ searchParams }: PrescriptionsPageProps) {
 	await requirePageAccess('/prescriptions');
 
 	const params = await searchParams;
@@ -41,9 +39,7 @@ export default async function PrescriptionsPage({
 			</PageHeader>
 
 			<PageContent>
-				<PageDescription>
-					Consulte as receitas emitidas e acesse o documento do paciente.
-				</PageDescription>
+				<PageDescription>Consulte as receitas emitidas e acesse o documento do paciente.</PageDescription>
 
 				<Suspense
 					fallback={

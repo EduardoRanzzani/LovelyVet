@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-	getMobileCalendarIndicatorClass,
-	getMobileCalendarVisibleCount,
-} from './mobile-calendar-indicators';
+import { getMobileCalendarIndicatorClass, getMobileCalendarVisibleCount } from './mobile-calendar-indicators';
 
 describe('mobile-calendar-indicators', () => {
 	it('deve limitar a quantidade de indicadores visíveis', () => {

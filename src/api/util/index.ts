@@ -6,8 +6,7 @@ export const generateUsername = (name: string): string => {
 	const filteredParts = nameParts.filter((part) => !conectores.includes(part));
 
 	const firstName = filteredParts[0];
-	const lastName =
-		filteredParts.length > 1 ? filteredParts[filteredParts.length - 1] : '';
+	const lastName = filteredParts.length > 1 ? filteredParts[filteredParts.length - 1] : '';
 
 	const generatedUsername = lastName ? `${firstName}${lastName}` : firstName;
 
@@ -43,20 +42,12 @@ export const formatAge = (dateOfBirth: Date): string => {
 	}
 
 	if (days < 0) {
-		const lastMonth = new Date(
-			today.getFullYear(),
-			today.getMonth(),
-			0,
-		).getDate();
+		const lastMonth = new Date(today.getFullYear(), today.getMonth(), 0).getDate();
 		days += lastMonth;
 	}
 
-	const textYears = `${
-		years < 1 ? '' : years === 1 ? '1 ano' : `${years} anos`
-	}`;
-	const textMonths = `${
-		months < 1 ? '' : months === 1 ? '1 mês' : `${months} meses`
-	}`;
+	const textYears = `${years < 1 ? '' : years === 1 ? '1 ano' : `${years} anos`}`;
+	const textMonths = `${months < 1 ? '' : months === 1 ? '1 mês' : `${months} meses`}`;
 	const textDays = `${days < 1 ? '' : days === 1 ? '1 dia' : `${days} dias`}`;
 
 	let result = '';
@@ -87,11 +78,7 @@ export const formatAgeShort = (dateOfBirth: Date): string => {
 	// Ajuste fino para o caso de o dia de hoje ser menor que o dia de nascimento
 	if (today.getDate() < dateOfBirth.getDate() && months > 0) {
 		months--;
-	} else if (
-		today.getDate() < dateOfBirth.getDate() &&
-		months === 0 &&
-		years > 0
-	) {
+	} else if (today.getDate() < dateOfBirth.getDate() && months === 0 && years > 0) {
 		years--;
 		months = 11;
 	}
@@ -100,7 +87,5 @@ export const formatAgeShort = (dateOfBirth: Date): string => {
 	const partMonths = months > 0 ? `${months}M` : '';
 
 	// Retorna a combinação, removendo espaços extras se um dos dois for vazio
-	return (
-		`${partYears}${partYears && partMonths ? ' ' : ''}${partMonths}` || '0M'
-	);
+	return `${partYears}${partYears && partMonths ? ' ' : ''}${partMonths}` || '0M';
 };

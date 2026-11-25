@@ -2,11 +2,7 @@
 
 import { upsertClinic } from '@/api/actions/clinics.actions';
 import { searchAddressByPostalCode } from '@/api/config/consts';
-import {
-	Clinics,
-	createClinicSchema,
-	CreateClinicSchema,
-} from '@/api/schema/clinics.schema';
+import { Clinics, createClinicSchema, CreateClinicSchema } from '@/api/schema/clinics.schema';
 import CheckboxForm from '@/components/form/checkbox-form';
 import InputForm from '@/components/form/input-form';
 import InputFormMask from '@/components/form/input-mask-form';
@@ -43,9 +39,7 @@ const ClinicFormClient = ({ clinic, onSuccess }: ClinicFormClientProps) => {
 			name: clinic?.name || '',
 			phone: clinic?.phone || '',
 			defaultShiftPriceInCents:
-				clinic?.defaultShiftPriceInCents !== undefined
-					? fromCents(clinic.defaultShiftPriceInCents)
-					: 0,
+				clinic?.defaultShiftPriceInCents !== undefined ? fromCents(clinic.defaultShiftPriceInCents) : 0,
 			isActive: clinic?.isActive ?? true,
 			postalCode: clinic?.postalCode || '',
 			address: clinic?.address || '',
@@ -78,11 +72,7 @@ const ClinicFormClient = ({ clinic, onSuccess }: ClinicFormClientProps) => {
 	const upsertClinicAction = useAction(upsertClinic, {
 		onSuccess: () => {
 			onSuccess?.();
-			toast.success(
-				clinic
-					? 'Clínica atualizada com sucesso!'
-					: 'Clínica cadastrada com sucesso!',
-			);
+			toast.success(clinic ? 'Clínica atualizada com sucesso!' : 'Clínica cadastrada com sucesso!');
 			form.reset();
 		},
 		onError: (error) => {
@@ -92,14 +82,9 @@ const ClinicFormClient = ({ clinic, onSuccess }: ClinicFormClientProps) => {
 	});
 
 	return (
-		<DialogContent
-			onInteractOutside={(e) => e.preventDefault()}
-			showCloseButton={false}
-		>
+		<DialogContent onInteractOutside={(e) => e.preventDefault()} showCloseButton={false}>
 			<DialogHeader>
-				<DialogTitle>
-					{clinic ? 'Atualizar Clínica' : 'Cadastrar Clínica'}
-				</DialogTitle>
+				<DialogTitle>{clinic ? 'Atualizar Clínica' : 'Cadastrar Clínica'}</DialogTitle>
 				<DialogDescription>
 					{clinic
 						? 'Atualize as informações da clínica selecionada'
@@ -217,12 +202,7 @@ const ClinicFormClient = ({ clinic, onSuccess }: ClinicFormClientProps) => {
 					</Button>
 				</DialogClose>
 
-				<Button
-					type='submit'
-					disabled={upsertClinicAction.isPending}
-					form='clinicForm'
-					className='flex-1'
-				>
+				<Button type='submit' disabled={upsertClinicAction.isPending} form='clinicForm' className='flex-1'>
 					{upsertClinicAction.isPending ? (
 						<Loader2Icon className='h-5 w-5 animate-spin' />
 					) : (

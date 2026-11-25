@@ -1,9 +1,6 @@
 'use client';
 
-import {
-	getDoctorAvailability,
-	upsertAppointment,
-} from '@/api/actions/appointments.actions';
+import { getDoctorAvailability, upsertAppointment } from '@/api/actions/appointments.actions';
 import { REGINA_DOCTOR_ID } from '@/api/config/consts';
 import {
 	AppointmentListItem,
@@ -54,8 +51,7 @@ interface AppointmentFormClientProps {
 	onSuccess?: () => void;
 }
 
-const getServicesKey = (serviceIds: string[]) =>
-	[...serviceIds].sort().join(',');
+const getServicesKey = (serviceIds: string[]) => [...serviceIds].sort().join(',');
 
 const AppointmentFormClient = ({
 	appointment,
@@ -89,14 +85,14 @@ const AppointmentFormClient = ({
 		defaultValues: {
 			petId: appointment?.petId || reminder?.pet.id || '',
 			doctorId: appointment?.doctorId || reminder?.doctor.id || REGINA_DOCTOR_ID,
-			scheduledAt: appointment?.scheduledAt
-				? new Date(appointment.scheduledAt)
-				: initialSlot,
+			scheduledAt: appointment?.scheduledAt ? new Date(appointment.scheduledAt) : initialSlot,
 			status: appointment?.status || 'pending',
 			totalPriceInCents:
 				appointment?.totalPriceInCents !== undefined
 					? fromCents(appointment.totalPriceInCents)
-					: reminderService ? fromCents(reminderService.priceInCents) : 0,
+					: reminderService
+						? fromCents(reminderService.priceInCents)
+						: 0,
 			notes: appointment?.notes || (reminder ? `Retorno: ${reminder.title}` : ''),
 			// Importante: inicializar o array de serviços se estiver editando
 			services: appointment?.items?.map((i) => i.serviceId) || (reminderService ? [reminderService.id] : []),
@@ -104,12 +100,7 @@ const AppointmentFormClient = ({
 	});
 
 	// 1. Monitorar o pet selecionado
-	const [
-		selectedPetId,
-		selectedServicesIds,
-		selectedDoctorId,
-		selectedScheduledAt,
-	] = useWatch({
+	const [selectedPetId, selectedServicesIds, selectedDoctorId, selectedScheduledAt] = useWatch({
 		control: form.control,
 		name: ['petId', 'services', 'doctorId', 'scheduledAt'],
 	});
@@ -132,8 +123,7 @@ const AppointmentFormClient = ({
 		const unchangedSchedule =
 			appointment &&
 			data.doctorId === appointment.doctorId &&
-			getServicesKey(data.services) ===
-				getServicesKey(appointment.items.map((item) => item.serviceId)) &&
+			getServicesKey(data.services) === getServicesKey(appointment.items.map((item) => item.serviceId)) &&
 			normalizeAppointmentStart(data.scheduledAt).getTime() ===
 				normalizeAppointmentStart(new Date(appointment.scheduledAt)).getTime();
 
@@ -172,9 +162,7 @@ const AppointmentFormClient = ({
 			router.refresh();
 		},
 		onError: ({ error }) => {
-			toast.error(
-				error.serverError ?? 'Não foi possível salvar o agendamento.',
-			);
+			toast.error(error.serverError ?? 'Não foi possível salvar o agendamento.');
 		},
 	});
 
@@ -186,17 +174,13 @@ const AppointmentFormClient = ({
 				servicesKey: data.serviceIds.join(','),
 				dayKey: format(new Date(data.dayStart), 'yyyy-MM-dd'),
 				durationMinutes: data.durationMinutes,
-				availableTimes: data.availableStarts.map((value) =>
-					format(new Date(value), 'HH:mm'),
-				),
+				availableTimes: data.availableStarts.map((value) => format(new Date(value), 'HH:mm')),
 			});
 		},
 
 		onError: ({ error }) => {
 			setAvailability(null);
-			toast.error(
-				error.serverError ?? 'Não foi possível verificar a disponibilidade.',
-			);
+			toast.error(error.serverError ?? 'Não foi possível verificar a disponibilidade.');
 		},
 	});
 
@@ -225,9 +209,7 @@ const AppointmentFormClient = ({
 
 	const selectedServicesKey = getServicesKey(selectedServicesIds ?? []);
 
-	const selectedDayKey = selectedScheduledAt
-		? format(selectedScheduledAt, 'yyyy-MM-dd')
-		: '';
+	const selectedDayKey = selectedScheduledAt ? format(selectedScheduledAt, 'yyyy-MM-dd') : '';
 
 	const currentAvailableTimes =
 		availability &&
@@ -245,25 +227,19 @@ const AppointmentFormClient = ({
 		>
 			<DialogHeader>
 				<DialogTitle>
-					{appointment ? 'Atualizar Agendamento' : reminder ? 'Converter retorno em agendamento' : 'Cadastrar Agendamento'}
+					{appointment
+						? 'Atualizar Agendamento'
+						: reminder
+							? 'Converter retorno em agendamento'
+							: 'Cadastrar Agendamento'}
 				</DialogTitle>
-				<DialogDescription>
-					Selecione o pet, o veterinário e os serviços prestados.
-				</DialogDescription>
+				<DialogDescription>Selecione o pet, o veterinário e os serviços prestados.</DialogDescription>
 			</DialogHeader>
 
 			<Form {...form}>
-				<form
-					id='appointmentForm'
-					className='min-w-0'
-					onSubmit={form.handleSubmit(formSubmit)}
-				>
+				<form id='appointmentForm' className='min-w-0' onSubmit={form.handleSubmit(formSubmit)}>
 					<div className='flex max-h-[calc(100dvh-12rem)] min-w-0 flex-col gap-2 overflow-y-auto px-1'>
-						<input
-							type='text'
-							className='hidden'
-							{...form.register('status')}
-						/>
+						<input type='text' className='hidden' {...form.register('status')} />
 
 						<SelectForm
 							label='Pet:'
@@ -281,18 +257,13 @@ const AppointmentFormClient = ({
 								if (!pet) return;
 								const currentServices = form.getValues('services') ?? [];
 								const validServices = currentServices.filter((serviceId) => {
-									const service = services.find(
-										(item) => item.id === serviceId,
-									);
+									const service = services.find((item) => item.id === serviceId);
 
 									if (!service) {
 										return false;
 									}
 
-									return (
-										!service.specieId ||
-										service.specieId === pet.breed?.specieId
-									);
+									return !service.specieId || service.specieId === pet.breed?.specieId;
 								});
 
 								if (validServices.length !== currentServices.length) {
@@ -348,14 +319,10 @@ const AppointmentFormClient = ({
 							error={form.formState.errors.services?.message}
 							options={filteredServices.map((service) => ({
 								value: service.id,
-								label: `${service.name} - ${formatCurrencyFromCents(
-									service.priceInCents,
-								)}`,
+								label: `${service.name} - ${formatCurrencyFromCents(service.priceInCents)}`,
 							}))}
 							onSelect={(value) => {
-								const serviceIds = Array.isArray(value)
-									? value.map(String)
-									: [];
+								const serviceIds = Array.isArray(value) ? value.map(String) : [];
 
 								const totalInCents = services
 									.filter((service) => serviceIds.includes(service.id))

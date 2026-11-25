@@ -30,10 +30,7 @@ const ShiftsPage = async ({ searchParams }: ShiftsPageProps) => {
 	// Busca os dados
 	const shiftsPromise = getShifts(currentMonth, true);
 
-	const [doctors, clinics] = await Promise.all([
-		getDoctors(),
-		getClinicsForShiftSelection(),
-	]);
+	const [doctors, clinics] = await Promise.all([getDoctors(), getClinicsForShiftSelection()]);
 
 	return (
 		<PageContainer>
@@ -44,9 +41,7 @@ const ShiftsPage = async ({ searchParams }: ShiftsPageProps) => {
 			</PageHeader>
 
 			<PageContent>
-				<PageDescription>
-					Visualize e gerencie os plantões do mês selecionado.
-				</PageDescription>
+				<PageDescription>Visualize e gerencie os plantões do mês selecionado.</PageDescription>
 				<Suspense
 					fallback={
 						<>
@@ -55,11 +50,7 @@ const ShiftsPage = async ({ searchParams }: ShiftsPageProps) => {
 						</>
 					}
 				>
-					<ShiftsCalendarClient
-						shiftsPromise={shiftsPromise}
-						doctors={doctors}
-						clinics={clinics}
-					/>
+					<ShiftsCalendarClient shiftsPromise={shiftsPromise} doctors={doctors} clinics={clinics} />
 				</Suspense>
 			</PageContent>
 		</PageContainer>

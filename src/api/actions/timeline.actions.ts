@@ -17,152 +17,123 @@ import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
 import { assertPrescriptionIsUnsigned } from '@/lib/prescriptions/prescription-signature';
 
-export const deleteTimelineItem = actionClient
-	.schema(deleteTimelineItemSchema)
-	.action(async ({ parsedInput }) => {
-		const context = await requireAuthContext();
-		requireStaff(context);
+export const deleteTimelineItem = actionClient.schema(deleteTimelineItemSchema).action(async ({ parsedInput }) => {
+	const context = await requireAuthContext();
+	requireStaff(context);
 
-		const { id, petId, type } = parsedInput;
+	const { id, petId, type } = parsedInput;
 
-		switch (type) {
-			case 'vaccine': {
-				await db.transaction(async (tx) => {
-					const vaccine = await tx.query.vaccinesTable.findFirst({
-						where: and(
-							eq(vaccinesTable.id, id),
-							eq(vaccinesTable.petId, petId),
-						),
-					});
-
-					if (!vaccine) {
-						throw new Error('Vacina não encontrada');
-					}
-					if (vaccine.appointmentId) {
-						throw new Error('Vacina vinculada a atendimento: revise o atendimento antes de excluir o registro clínico.');
-					}
-
-					/*
-					 * Remove os lembretes originados pela vacina excluída,
-					 * independentemente de estarem pendentes, concluídos
-					 * ou cancelados.
-					 *
-					 * A operação permanece na mesma transação da
-					 * exclusão do registro de vacinação.
-					 */
-					await tx
-						.delete(careRemindersTable)
-						.where(
-							and(
-								eq(careRemindersTable.sourceVaccineId, id),
-								eq(careRemindersTable.petId, petId),
-							),
-						);
-
-					// A exclusão da vacina ocorre na mesma
-					// transação da exclusão do lembrete.
-					await tx
-						.delete(vaccinesTable)
-						.where(
-							and(eq(vaccinesTable.id, id), eq(vaccinesTable.petId, petId)),
-						);
+	switch (type) {
+		case 'vaccine': {
+			await db.transaction(async (tx) => {
+				const vaccine = await tx.query.vaccinesTable.findFirst({
+					where: and(eq(vaccinesTable.id, id), eq(vaccinesTable.petId, petId)),
 				});
 
-				break;
-			}
-
-			case 'weight': {
-				const weight = await db.query.petWeightsTable.findFirst({
-					where: and(
-						eq(petWeightsTable.id, id),
-						eq(petWeightsTable.petId, petId),
-					),
-				});
-
-				if (!weight) {
-					throw new Error('Peso não encontrado');
+				if (!vaccine) {
+					throw new Error('Vacina não encontrada');
 				}
-
-				await db
-					.delete(petWeightsTable)
-					.where(
-						and(eq(petWeightsTable.id, id), eq(petWeightsTable.petId, petId)),
+				if (vaccine.appointmentId) {
+					throw new Error(
+						'Vacina vinculada a atendimento: revise o atendimento antes de excluir o registro clínico.',
 					);
-
-				break;
-			}
-
-			case 'note': {
-				const note = await db.query.petNotesTable.findFirst({
-					where: and(eq(petNotesTable.id, id), eq(petNotesTable.petId, petId)),
-				});
-
-				if (!note) {
-					throw new Error('Observação não encontrada');
 				}
 
-				await db
-					.delete(petNotesTable)
-					.where(and(eq(petNotesTable.id, id), eq(petNotesTable.petId, petId)));
+				/*
+				 * Remove os lembretes originados pela vacina excluída,
+				 * independentemente de estarem pendentes, concluídos
+				 * ou cancelados.
+				 *
+				 * A operação permanece na mesma transação da
+				 * exclusão do registro de vacinação.
+				 */
+				await tx
+					.delete(careRemindersTable)
+					.where(and(eq(careRemindersTable.sourceVaccineId, id), eq(careRemindersTable.petId, petId)));
 
-				break;
+				// A exclusão da vacina ocorre na mesma
+				// transação da exclusão do lembrete.
+				await tx.delete(vaccinesTable).where(and(eq(vaccinesTable.id, id), eq(vaccinesTable.petId, petId)));
+			});
+
+			break;
+		}
+
+		case 'weight': {
+			const weight = await db.query.petWeightsTable.findFirst({
+				where: and(eq(petWeightsTable.id, id), eq(petWeightsTable.petId, petId)),
+			});
+
+			if (!weight) {
+				throw new Error('Peso não encontrado');
 			}
 
-			case 'prescription': {
-				const prescription = await db.query.prescriptionsTable.findFirst({
-					where: and(
-						eq(prescriptionsTable.id, id),
-						eq(prescriptionsTable.petId, petId),
-					),
-				});
+			await db.delete(petWeightsTable).where(and(eq(petWeightsTable.id, id), eq(petWeightsTable.petId, petId)));
 
-				if (!prescription) {
-					throw new Error('Prescrição não encontrada');
-				}
+			break;
+		}
 
-				await assertPrescriptionIsUnsigned(prescription.id);
+		case 'note': {
+			const note = await db.query.petNotesTable.findFirst({
+				where: and(eq(petNotesTable.id, id), eq(petNotesTable.petId, petId)),
+			});
 
-				await db
-					.delete(prescriptionsTable)
-					.where(
-						and(
-							eq(prescriptionsTable.id, id),
-							eq(prescriptionsTable.petId, petId),
-						),
-					);
-
-				break;
+			if (!note) {
+				throw new Error('Observação não encontrada');
 			}
 
-			case 'referral':
-			case 'exam_request': {
-				const document = await db.query.clinicalDocumentsTable.findFirst({
-					where: and(
+			await db.delete(petNotesTable).where(and(eq(petNotesTable.id, id), eq(petNotesTable.petId, petId)));
+
+			break;
+		}
+
+		case 'prescription': {
+			const prescription = await db.query.prescriptionsTable.findFirst({
+				where: and(eq(prescriptionsTable.id, id), eq(prescriptionsTable.petId, petId)),
+			});
+
+			if (!prescription) {
+				throw new Error('Prescrição não encontrada');
+			}
+
+			await assertPrescriptionIsUnsigned(prescription.id);
+
+			await db
+				.delete(prescriptionsTable)
+				.where(and(eq(prescriptionsTable.id, id), eq(prescriptionsTable.petId, petId)));
+
+			break;
+		}
+
+		case 'referral':
+		case 'exam_request': {
+			const document = await db.query.clinicalDocumentsTable.findFirst({
+				where: and(
+					eq(clinicalDocumentsTable.id, id),
+					eq(clinicalDocumentsTable.petId, petId),
+					eq(clinicalDocumentsTable.type, type),
+				),
+			});
+
+			if (!document) {
+				throw new Error('Documento clínico não encontrado');
+			}
+
+			await db
+				.delete(clinicalDocumentsTable)
+				.where(
+					and(
 						eq(clinicalDocumentsTable.id, id),
 						eq(clinicalDocumentsTable.petId, petId),
 						eq(clinicalDocumentsTable.type, type),
 					),
-				});
+				);
 
-				if (!document) {
-					throw new Error('Documento clínico não encontrado');
-				}
-
-				await db
-					.delete(clinicalDocumentsTable)
-					.where(
-						and(
-							eq(clinicalDocumentsTable.id, id),
-							eq(clinicalDocumentsTable.petId, petId),
-							eq(clinicalDocumentsTable.type, type),
-						),
-					);
-
-				break;
-			}
+			break;
 		}
+	}
 
-		revalidatePath(`/pets/${petId}`);
-		revalidatePath('/agenda');
-		revalidatePath('/dashboard');
-	});
+	revalidatePath(`/pets/${petId}`);
+	revalidatePath('/agenda');
+	revalidatePath('/dashboard');
+});

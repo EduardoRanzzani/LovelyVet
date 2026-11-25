@@ -1,7 +1,4 @@
-import {
-	WhatsappPayload,
-	whatsappPayloadSchema,
-} from '@/api/schema/whatsapp.schema';
+import { WhatsappPayload, whatsappPayloadSchema } from '@/api/schema/whatsapp.schema';
 
 export const sendWhatsappMessageInternal = async (data: WhatsappPayload) => {
 	const payload = whatsappPayloadSchema.parse(data);

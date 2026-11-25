@@ -1,9 +1,6 @@
 'use client';
 
-import type {
-	ClinicalDocumentSnapshot,
-	ClinicalDocumentType,
-} from '@/api/schema/clinical-documents.schema';
+import type { ClinicalDocumentSnapshot, ClinicalDocumentType } from '@/api/schema/clinical-documents.schema';
 import type { PrescriptionDocumentData } from '@/api/schema/prescription-document.schema';
 import PrescriptionDocument from '@/components/prescriptions/prescription-document';
 import { Button } from '@/components/ui/button';
@@ -28,16 +25,12 @@ type ClinicalDocumentPdfProps = {
 	issuedAt: Date | string;
 };
 
-type DocumentPdfDownloadButtonProps =
-	| PrescriptionPdfProps
-	| ClinicalDocumentPdfProps;
+type DocumentPdfDownloadButtonProps = PrescriptionPdfProps | ClinicalDocumentPdfProps;
 
 const A4_WIDTH_PX = Math.round(210 * (96 / 25.4));
 const A4_HEIGHT_PX = Math.round(297 * (96 / 25.4));
 
-export default function DocumentPdfDownloadButton(
-	props: DocumentPdfDownloadButtonProps,
-) {
+export default function DocumentPdfDownloadButton(props: DocumentPdfDownloadButtonProps) {
 	const documentRef = useRef<HTMLDivElement>(null);
 	const [isExporting, setIsExporting] = useState(false);
 
@@ -80,13 +73,7 @@ export default function DocumentPdfDownloadButton(
 
 	return (
 		<>
-			<Button
-				type='button'
-				variant='outline'
-				size='sm'
-				onClick={handleDownload}
-				disabled={isExporting}
-			>
+			<Button type='button' variant='outline' size='sm' onClick={handleDownload} disabled={isExporting}>
 				{isExporting ? (
 					<LoaderCircleIcon className='size-4 animate-spin' />
 				) : (

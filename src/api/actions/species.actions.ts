@@ -30,9 +30,7 @@ export const getSpeciesPaginated = async (
 
 	const pagination = normalizePagination(page, limit);
 
-	const filterCondition = search
-		? or(ilike(speciesTable.name, `%${search}%`))
-		: undefined;
+	const filterCondition = search ? or(ilike(speciesTable.name, `%${search}%`)) : undefined;
 
 	const dataPromise = db
 		.select({
@@ -44,15 +42,9 @@ export const getSpeciesPaginated = async (
 		.offset(pagination.offset)
 		.orderBy(asc(speciesTable.name));
 
-	const totalCountPromise = db
-		.select({ value: count() })
-		.from(speciesTable)
-		.where(filterCondition);
+	const totalCountPromise = db.select({ value: count() }).from(speciesTable).where(filterCondition);
 
-	const [data, totalCountResult] = await Promise.all([
-		dataPromise,
-		totalCountPromise,
-	]);
+	const [data, totalCountResult] = await Promise.all([dataPromise, totalCountPromise]);
 
 	const totalCount = totalCountResult[0].value;
 	const pageCount = Math.ceil(totalCount / pagination.limit);
@@ -72,42 +64,38 @@ export const getSpeciesPaginated = async (
 	};
 };
 
-export const upsertSpecie = actionClient
-	.schema(createSpecieSchema)
-	.action(async ({ parsedInput }) => {
-		const context = await requireAuthContext();
-		requireStaff(context);
+export const upsertSpecie = actionClient.schema(createSpecieSchema).action(async ({ parsedInput }) => {
+	const context = await requireAuthContext();
+	requireStaff(context);
 
-		await db
-			.insert(speciesTable)
-			.values({
-				id: parsedInput.id ?? undefined,
+	await db
+		.insert(speciesTable)
+		.values({
+			id: parsedInput.id ?? undefined,
+			name: parsedInput.name,
+		})
+		.onConflictDoUpdate({
+			target: speciesTable.id, // O conflito ocorre no ID
+			set: {
 				name: parsedInput.name,
-			})
-			.onConflictDoUpdate({
-				target: speciesTable.id, // O conflito ocorre no ID
-				set: {
-					name: parsedInput.name,
-				},
-			})
-			.returning();
+			},
+		})
+		.returning();
 
-		revalidatePath('/species');
+	revalidatePath('/species');
+});
+
+export const deleteSpecie = actionClient.schema(z.object({ id: z.uuid() })).action(async ({ parsedInput }) => {
+	const context = await requireAuthContext();
+	requireStaff(context);
+
+	const specie = await db.query.speciesTable.findFirst({
+		where: eq(speciesTable.id, parsedInput.id),
 	});
 
-export const deleteSpecie = actionClient
-	.schema(z.object({ id: z.uuid() }))
-	.action(async ({ parsedInput }) => {
-		const context = await requireAuthContext();
-		requireStaff(context);
+	if (!specie) throw new Error('Espécie não encontrada');
 
-		const specie = await db.query.speciesTable.findFirst({
-			where: eq(speciesTable.id, parsedInput.id),
-		});
+	await db.delete(speciesTable).where(eq(speciesTable.id, parsedInput.id));
 
-		if (!specie) throw new Error('Espécie não encontrada');
-
-		await db.delete(speciesTable).where(eq(speciesTable.id, parsedInput.id));
-
-		revalidatePath('/species');
-	});
+	revalidatePath('/species');
+});

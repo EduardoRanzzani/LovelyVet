@@ -11,10 +11,7 @@ import z from 'zod';
 import { MAX_PAGE_SIZE, PaginatedData } from '../config/consts';
 import { normalizePagination } from '@/lib/pagination';
 import { toCents } from '@/lib/money/currency';
-import {
-	createServiceSchema,
-	ServicesWithRelations,
-} from '../schema/services.schema';
+import { createServiceSchema, ServicesWithRelations } from '../schema/services.schema';
 
 export const getServices = async (): Promise<ServicesWithRelations[]> => {
 	await requireAuthContext();
@@ -36,10 +33,7 @@ export const getServicesPaginated = async (
 	const pagination = normalizePagination(page, limit);
 
 	const filterCondition = search
-		? or(
-				ilike(servicesTable.name, `%${search}%`),
-				ilike(servicesTable.description, `%${search}%`),
-			)
+		? or(ilike(servicesTable.name, `%${search}%`), ilike(servicesTable.description, `%${search}%`))
 		: undefined;
 
 	const data = await db.query.servicesTable.findMany({
@@ -69,57 +63,53 @@ export const getServicesPaginated = async (
 	};
 };
 
-export const upsertService = actionClient
-	.schema(createServiceSchema)
-	.action(async ({ parsedInput }) => {
-		const context = await requireAuthContext();
-		requireStaff(context);
+export const upsertService = actionClient.schema(createServiceSchema).action(async ({ parsedInput }) => {
+	const context = await requireAuthContext();
+	requireStaff(context);
 
-		// Verifica se a especie foi preenchida, caso contrário salva null no banco
-		const specieId = parsedInput?.specieId === '' ? null : parsedInput.specieId;
-		const priceInCents = toCents(parsedInput.price);
+	// Verifica se a especie foi preenchida, caso contrário salva null no banco
+	const specieId = parsedInput?.specieId === '' ? null : parsedInput.specieId;
+	const priceInCents = toCents(parsedInput.price);
 
-		await db
-			.insert(servicesTable)
-			.values({
-				id: parsedInput.id ?? undefined,
+	await db
+		.insert(servicesTable)
+		.values({
+			id: parsedInput.id ?? undefined,
+			name: parsedInput.name,
+			description: parsedInput.description,
+			specieId,
+			priceInCents,
+			isVaccine: parsedInput.isVaccine ?? false,
+		})
+		.onConflictDoUpdate({
+			target: servicesTable.id,
+			set: {
 				name: parsedInput.name,
 				description: parsedInput.description,
 				specieId,
 				priceInCents,
 				isVaccine: parsedInput.isVaccine ?? false,
-			})
-			.onConflictDoUpdate({
-				target: servicesTable.id,
-				set: {
-					name: parsedInput.name,
-					description: parsedInput.description,
-					specieId,
-					priceInCents,
-					isVaccine: parsedInput.isVaccine ?? false,
-					updatedAt: new Date(),
-				},
-			});
-
-		revalidatePath('/services');
-	});
-
-export const deleteService = actionClient
-	.schema(z.object({ id: z.string() }))
-	.action(async ({ parsedInput }) => {
-		const context = await requireAuthContext();
-		requireStaff(context);
-
-		const service = await db.query.servicesTable.findFirst({
-			where: eq(servicesTable.id, parsedInput.id),
+				updatedAt: new Date(),
+			},
 		});
 
-		if (!service) throw new Error('Serviço não encontrado');
+	revalidatePath('/services');
+});
 
-		await db.delete(servicesTable).where(eq(servicesTable.id, parsedInput.id));
+export const deleteService = actionClient.schema(z.object({ id: z.string() })).action(async ({ parsedInput }) => {
+	const context = await requireAuthContext();
+	requireStaff(context);
 
-		revalidatePath('/services');
+	const service = await db.query.servicesTable.findFirst({
+		where: eq(servicesTable.id, parsedInput.id),
 	});
+
+	if (!service) throw new Error('Serviço não encontrado');
+
+	await db.delete(servicesTable).where(eq(servicesTable.id, parsedInput.id));
+
+	revalidatePath('/services');
+});
 
 /** Catálogo de vacinas para o formulário clínico; somente equipe autenticada. */
 export const getVaccineServices = async () => {

@@ -1,13 +1,7 @@
 import DatePickerForm from '@/components/form/datepicker-form';
 import InputForm from '@/components/form/input-form';
 import { Button } from '@/components/ui/button';
-import {
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from '@/components/ui/dialog';
+import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form } from '@/components/ui/form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { MinusIcon, PlusIcon } from 'lucide-react';
@@ -57,8 +51,7 @@ const AddDaysToDate = () => {
 			<DialogHeader>
 				<DialogTitle>Somar/Subtrair dias a uma Data</DialogTitle>
 				<DialogDescription>
-					Saiba exatamente o dia resultante da soma/subtração a partir da data
-					atual
+					Saiba exatamente o dia resultante da soma/subtração a partir da data atual
 				</DialogDescription>
 			</DialogHeader>
 

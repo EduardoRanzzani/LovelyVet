@@ -1,34 +1,15 @@
 'use server';
 
 import { db } from '@/db';
-import {
-	appointmentsTable,
-	calendarEventsTable,
-	doctorsTable,
-	shiftsTable,
-} from '@/db/schema';
+import { appointmentsTable, calendarEventsTable, doctorsTable, shiftsTable } from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
 import { addMinutes } from 'date-fns';
-import {
-	and,
-	eq,
-	gt,
-	gte,
-	isNull,
-	lt,
-	ne,
-	notInArray,
-	or,
-	sql,
-} from 'drizzle-orm';
+import { and, eq, gt, gte, isNull, lt, ne, notInArray, or, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import {
-	createCalendarEventSchema,
-	getCalendarEventAvailabilitySchema,
-} from '../schema/calendar-event.schema';
+import { createCalendarEventSchema, getCalendarEventAvailabilitySchema } from '../schema/calendar-event.schema';
 import { resolveRequestedDoctorId } from '@/lib/security/doctor-scope';
 
 export const getCalendarEventAvailability = actionClient
@@ -37,13 +18,7 @@ export const getCalendarEventAvailability = actionClient
 		const context = await requireAuthContext();
 		requireStaff(context);
 
-		const {
-			doctorId: requestedDoctorId,
-			dayStart,
-			dayEnd,
-			durationMinutes,
-			eventId,
-		} = parsedInput;
+		const { doctorId: requestedDoctorId, dayStart, dayEnd, durationMinutes, eventId } = parsedInput;
 
 		const doctorId = resolveRequestedDoctorId(context, requestedDoctorId);
 
@@ -72,10 +47,7 @@ export const getCalendarEventAvailability = actionClient
 					lt(appointmentsTable.scheduledAt, queryEnd),
 					or(
 						gt(appointmentsTable.endsAt, dayStart),
-						and(
-							isNull(appointmentsTable.endsAt),
-							gte(appointmentsTable.scheduledAt, dayStart),
-						),
+						and(isNull(appointmentsTable.endsAt), gte(appointmentsTable.scheduledAt, dayStart)),
 					),
 					notInArray(appointmentsTable.status, ['cancelled', 'no_show']),
 				),
@@ -108,16 +80,11 @@ export const getCalendarEventAvailability = actionClient
 		const busyIntervals = [
 			...appointments.map((appointment) => {
 				const fallbackDuration =
-					appointment.items.reduce(
-						(total, item) => total + item.service.durationMinutes,
-						0,
-					) || 30;
+					appointment.items.reduce((total, item) => total + item.service.durationMinutes, 0) || 30;
 
 				return {
 					start: appointment.scheduledAt,
-					end:
-						appointment.endsAt ??
-						addMinutes(appointment.scheduledAt, fallbackDuration),
+					end: appointment.endsAt ?? addMinutes(appointment.scheduledAt, fallbackDuration),
 				};
 			}),
 			...shifts.map((shift) => ({
@@ -132,11 +99,7 @@ export const getCalendarEventAvailability = actionClient
 
 		const availableStarts: string[] = [];
 
-		for (
-			let cursor = new Date(dayStart);
-			cursor <= dayEnd;
-			cursor = addMinutes(cursor, 5)
-		) {
+		for (let cursor = new Date(dayStart); cursor <= dayEnd; cursor = addMinutes(cursor, 5)) {
 			const candidateEnd = addMinutes(cursor, durationMinutes);
 
 			const hasConflict = busyIntervals.some(
@@ -156,168 +119,140 @@ export const getCalendarEventAvailability = actionClient
 		};
 	});
 
-export const upsertCalendarEvent = actionClient
-	.schema(createCalendarEventSchema)
-	.action(async ({ parsedInput }) => {
-		const context = await requireAuthContext();
-		requireStaff(context);
+export const upsertCalendarEvent = actionClient.schema(createCalendarEventSchema).action(async ({ parsedInput }) => {
+	const context = await requireAuthContext();
+	requireStaff(context);
 
-		const {
-			id,
-			doctorId: requestedDoctorId,
-			title,
-			startTime,
-			endTime,
-			notes,
-		} = parsedInput;
+	const { id, doctorId: requestedDoctorId, title, startTime, endTime, notes } = parsedInput;
 
-		const doctorId = resolveRequestedDoctorId(context, requestedDoctorId);
+	const doctorId = resolveRequestedDoctorId(context, requestedDoctorId);
 
-		const result = await db.transaction(async (tx) => {
-			const doctor = await tx.query.doctorsTable.findFirst({
-				columns: { id: true },
-				where: eq(doctorsTable.id, doctorId),
-			});
+	const result = await db.transaction(async (tx) => {
+		const doctor = await tx.query.doctorsTable.findFirst({
+			columns: { id: true },
+			where: eq(doctorsTable.id, doctorId),
+		});
 
-			if (!doctor) {
-				throw new Error('Veterinário não encontrado.');
-			}
+		if (!doctor) {
+			throw new Error('Veterinário não encontrado.');
+		}
 
-			const existingEvent = id
-				? await tx.query.calendarEventsTable.findFirst({
-						where: eq(calendarEventsTable.id, id),
-					})
-				: null;
+		const existingEvent = id
+			? await tx.query.calendarEventsTable.findFirst({
+					where: eq(calendarEventsTable.id, id),
+				})
+			: null;
 
-			if (id && !existingEvent) {
-				throw new Error('Compromisso não encontrado.');
-			}
+		if (id && !existingEvent) {
+			throw new Error('Compromisso não encontrado.');
+		}
 
-			if (
-				existingEvent &&
-				context.role === 'doctor' &&
-				existingEvent.doctorId !== context.doctorId
-			) {
-				throw new Error(
-					'Você não possui permissão para alterar este compromisso.',
-				);
-			}
+		if (existingEvent && context.role === 'doctor' && existingEvent.doctorId !== context.doctorId) {
+			throw new Error('Você não possui permissão para alterar este compromisso.');
+		}
 
-			const doctorIdsToLock = Array.from(
-				new Set(
-					[doctorId, existingEvent?.doctorId].filter((value): value is string =>
-						Boolean(value),
-					),
-				),
-			).sort();
+		const doctorIdsToLock = Array.from(
+			new Set([doctorId, existingEvent?.doctorId].filter((value): value is string => Boolean(value))),
+		).sort();
 
-			for (const doctorIdToLock of doctorIdsToLock) {
-				await tx.execute(sql`
+		for (const doctorIdToLock of doctorIdsToLock) {
+			await tx.execute(sql`
 					SELECT pg_advisory_xact_lock(
 						hashtext('lovelyvet:doctor_schedule'),
 						hashtext(${doctorIdToLock})
 					)
 				`);
-			}
+		}
 
-			const shiftConflict = await tx.query.shiftsTable.findFirst({
-				columns: { id: true },
-				where: and(
-					eq(shiftsTable.doctorId, doctorId),
-					lt(shiftsTable.startTime, endTime),
-					gt(shiftsTable.endTime, startTime),
-				),
-			});
-
-			if (shiftConflict) {
-				throw new Error(
-					'O horário selecionado não está disponível para este veterinário.',
-				);
-			}
-
-			const appointmentConflict = await tx.query.appointmentsTable.findFirst({
-				columns: { id: true },
-				where: and(
-					eq(appointmentsTable.doctorId, doctorId),
-					lt(appointmentsTable.scheduledAt, endTime),
-					or(
-						gt(appointmentsTable.endsAt, startTime),
-						and(
-							isNull(appointmentsTable.endsAt),
-							gte(appointmentsTable.scheduledAt, startTime),
-						),
-					),
-					notInArray(appointmentsTable.status, ['cancelled', 'no_show']),
-				),
-			});
-
-			if (appointmentConflict) {
-				throw new Error(
-					'O horário selecionado não está disponível para este veterinário.',
-				);
-			}
-
-			const personalConflict = await tx.query.calendarEventsTable.findFirst({
-				columns: { id: true },
-				where: and(
-					eq(calendarEventsTable.doctorId, doctorId),
-					lt(calendarEventsTable.startTime, endTime),
-					gt(calendarEventsTable.endTime, startTime),
-					id ? ne(calendarEventsTable.id, id) : undefined,
-				),
-			});
-
-			if (personalConflict) {
-				throw new Error(
-					'O horário selecionado não está disponível para este veterinário.',
-				);
-			}
-
-			const eventData = {
-				doctorId,
-				title,
-				startTime,
-				endTime,
-				notes: notes?.trim() || null,
-			};
-
-			if (existingEvent) {
-				const [updatedEvent] = await tx
-					.update(calendarEventsTable)
-					.set({
-						...eventData,
-						updatedAt: new Date(),
-					})
-					.where(eq(calendarEventsTable.id, existingEvent.id))
-					.returning();
-
-				if (!updatedEvent) {
-					throw new Error('Erro ao atualizar compromisso.');
-				}
-
-				return updatedEvent;
-			}
-
-			const [createdEvent] = await tx
-				.insert(calendarEventsTable)
-				.values({
-					...eventData,
-					type: 'personal',
-				})
-				.returning();
-
-			if (!createdEvent) {
-				throw new Error('Erro ao criar compromisso.');
-			}
-
-			return createdEvent;
+		const shiftConflict = await tx.query.shiftsTable.findFirst({
+			columns: { id: true },
+			where: and(
+				eq(shiftsTable.doctorId, doctorId),
+				lt(shiftsTable.startTime, endTime),
+				gt(shiftsTable.endTime, startTime),
+			),
 		});
 
-		revalidatePath('/agenda');
-		revalidatePath('/appointments');
+		if (shiftConflict) {
+			throw new Error('O horário selecionado não está disponível para este veterinário.');
+		}
 
-		return result;
+		const appointmentConflict = await tx.query.appointmentsTable.findFirst({
+			columns: { id: true },
+			where: and(
+				eq(appointmentsTable.doctorId, doctorId),
+				lt(appointmentsTable.scheduledAt, endTime),
+				or(
+					gt(appointmentsTable.endsAt, startTime),
+					and(isNull(appointmentsTable.endsAt), gte(appointmentsTable.scheduledAt, startTime)),
+				),
+				notInArray(appointmentsTable.status, ['cancelled', 'no_show']),
+			),
+		});
+
+		if (appointmentConflict) {
+			throw new Error('O horário selecionado não está disponível para este veterinário.');
+		}
+
+		const personalConflict = await tx.query.calendarEventsTable.findFirst({
+			columns: { id: true },
+			where: and(
+				eq(calendarEventsTable.doctorId, doctorId),
+				lt(calendarEventsTable.startTime, endTime),
+				gt(calendarEventsTable.endTime, startTime),
+				id ? ne(calendarEventsTable.id, id) : undefined,
+			),
+		});
+
+		if (personalConflict) {
+			throw new Error('O horário selecionado não está disponível para este veterinário.');
+		}
+
+		const eventData = {
+			doctorId,
+			title,
+			startTime,
+			endTime,
+			notes: notes?.trim() || null,
+		};
+
+		if (existingEvent) {
+			const [updatedEvent] = await tx
+				.update(calendarEventsTable)
+				.set({
+					...eventData,
+					updatedAt: new Date(),
+				})
+				.where(eq(calendarEventsTable.id, existingEvent.id))
+				.returning();
+
+			if (!updatedEvent) {
+				throw new Error('Erro ao atualizar compromisso.');
+			}
+
+			return updatedEvent;
+		}
+
+		const [createdEvent] = await tx
+			.insert(calendarEventsTable)
+			.values({
+				...eventData,
+				type: 'personal',
+			})
+			.returning();
+
+		if (!createdEvent) {
+			throw new Error('Erro ao criar compromisso.');
+		}
+
+		return createdEvent;
 	});
+
+	revalidatePath('/agenda');
+	revalidatePath('/appointments');
+
+	return result;
+});
 
 export const getCalendarEventDetails = actionClient
 	.schema(
@@ -338,9 +273,7 @@ export const getCalendarEventDetails = actionClient
 		}
 
 		if (context.role === 'doctor' && event.doctorId !== context.doctorId) {
-			throw new Error(
-				'Você não possui permissão para visualizar este compromisso.',
-			);
+			throw new Error('Você não possui permissão para visualizar este compromisso.');
 		}
 
 		return event;
@@ -365,9 +298,7 @@ export const deleteCalendarEvent = actionClient
 		}
 
 		if (context.role === 'doctor' && event.doctorId !== context.doctorId) {
-			throw new Error(
-				'Você não possui permissão para excluir este compromisso.',
-			);
+			throw new Error('Você não possui permissão para excluir este compromisso.');
 		}
 
 		await db.transaction(async (tx) => {

@@ -87,9 +87,7 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
 
 				{dashboardContent}
 
-				{needsToCreateCustomer && (
-					<OnboardingCustomerFormDialog isOpen={needsToCreateCustomer} />
-				)}
+				{needsToCreateCustomer && <OnboardingCustomerFormDialog isOpen={needsToCreateCustomer} />}
 			</PageContent>
 		</PageContainer>
 	);

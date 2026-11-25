@@ -21,9 +21,7 @@ interface PrescriptionsItemsListClientProps {
 	prescriptionsItems: Promise<PaginatedData<PrescriptionItemsWithRelations>>;
 }
 
-export const PrescriptionsItemsListClient = ({
-	prescriptionsItems,
-}: PrescriptionsItemsListClientProps) => {
+export const PrescriptionsItemsListClient = ({ prescriptionsItems }: PrescriptionsItemsListClientProps) => {
 	const prescriptionsItemsResolved = use(prescriptionsItems);
 	const searchParams = useSearchParams();
 
@@ -50,9 +48,7 @@ export const PrescriptionsItemsListClient = ({
 		},
 		onError: (err) => {
 			console.error('Erro ao deletar item:', err);
-			toast.error(
-				'Ocorreu um erro ao tentar deletar o item. Tente novamente mais tarde.',
-			);
+			toast.error('Ocorreu um erro ao tentar deletar o item. Tente novamente mais tarde.');
 		},
 	});
 
@@ -73,18 +69,10 @@ export const PrescriptionsItemsListClient = ({
 				<TableCell className='w-20 space-x-2'>
 					<EditButton
 						tooltip={`Editar ${item.name}`}
-						renderForm={(close) => (
-							<PrescriptionItemFormClient
-								prescriptionItem={item}
-								onSuccess={close}
-							/>
-						)}
+						renderForm={(close) => <PrescriptionItemFormClient prescriptionItem={item} onSuccess={close} />}
 					/>
 
-					<DeleteAlertButton
-						tooltip={`Deletar ${item.name}`}
-						action={() => handleDelete(item.id)}
-					/>
+					<DeleteAlertButton tooltip={`Deletar ${item.name}`} action={() => handleDelete(item.id)} />
 				</TableCell>
 			</TableRow>
 		);
@@ -119,10 +107,7 @@ export const PrescriptionsItemsListClient = ({
 						<span className='text-sm font-semibold'>
 							<NotebookIcon className='h-4 w-4' />
 						</span>
-						<span
-							className='text-sm'
-							dangerouslySetInnerHTML={{ __html: item.orientations }}
-						/>
+						<span className='text-sm' dangerouslySetInnerHTML={{ __html: item.orientations }} />
 					</p>
 				</div>
 			</div>
@@ -136,9 +121,7 @@ export const PrescriptionsItemsListClient = ({
 
 				<AddButton
 					text={'Adicionar Item '}
-					renderForm={(close) => (
-						<PrescriptionItemFormClient onSuccess={close} />
-					)}
+					renderForm={(close) => <PrescriptionItemFormClient onSuccess={close} />}
 				/>
 			</div>
 

@@ -26,10 +26,7 @@ interface NewClinicalDocumentPageProps {
 	}>;
 }
 
-export default async function NewClinicalDocumentPage({
-	params,
-	searchParams,
-}: NewClinicalDocumentPageProps) {
+export default async function NewClinicalDocumentPage({ params, searchParams }: NewClinicalDocumentPageProps) {
 	await connection();
 
 	const context = await requireAuthContext();
@@ -44,16 +41,9 @@ export default async function NewClinicalDocumentPage({
 		notFound();
 	}
 
-	const prescription = prescriptionId
-		? await getPrescriptionDocumentById(prescriptionId)
-		: null;
+	const prescription = prescriptionId ? await getPrescriptionDocumentById(prescriptionId) : null;
 
-	if (
-		prescriptionId &&
-		(!prescription ||
-			prescription.petId !== pet.id ||
-			!prescription.documentData)
-	) {
+	if (prescriptionId && (!prescription || prescription.petId !== pet.id || !prescription.documentData)) {
 		notFound();
 	}
 
@@ -98,9 +88,7 @@ export default async function NewClinicalDocumentPage({
 						<div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5'>
 							<div>
 								<p className='text-xs text-muted-foreground'>Idade</p>
-								<p className='font-medium'>
-									{formatAge(new Date(`${pet.birthDate}T12:00:00`))}
-								</p>
+								<p className='font-medium'>{formatAge(new Date(`${pet.birthDate}T12:00:00`))}</p>
 							</div>
 
 							<div>

@@ -38,9 +38,7 @@ const ServicesPage = async ({ searchParams }: ServicesPageProps) => {
 			</PageHeader>
 
 			<PageContent>
-				<PageDescription>
-					Listagem de todos os serviços ofertados cadastrados no sistema
-				</PageDescription>
+				<PageDescription>Listagem de todos os serviços ofertados cadastrados no sistema</PageDescription>
 				<Suspense
 					fallback={
 						<>

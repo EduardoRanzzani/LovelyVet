@@ -1,21 +1,11 @@
 'use client';
 
 import { Input } from '@/components/ui/input';
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { ChevronDown, ChevronUp, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
-import {
-	Control,
-	Controller,
-	FieldValues,
-	Path,
-	PathValue,
-} from 'react-hook-form';
+import { Control, Controller, FieldValues, Path, PathValue } from 'react-hook-form';
 
 interface SelectOption {
 	key?: string;
@@ -34,9 +24,7 @@ interface SelectFormProps<T extends FieldValues> {
 	placeholder?: string;
 	multiple?: boolean;
 	maxVisible?: number;
-	onSelect?: (
-		value: string | number | boolean | (string | number | boolean)[],
-	) => void;
+	onSelect?: (value: string | number | boolean | (string | number | boolean)[]) => void;
 }
 
 const SelectForm = <T extends FieldValues>({
@@ -107,15 +95,11 @@ const SelectForm = <T extends FieldValues>({
 					? Array.isArray(field.value)
 						? field.value
 						: []
-					: field.value !== undefined &&
-						  field.value !== null &&
-						  field.value !== ''
+					: field.value !== undefined && field.value !== null && field.value !== ''
 						? [field.value as string | number | boolean]
 						: [];
 
-				const selectedOptions = options.filter((option) =>
-					values.includes(option.value),
-				);
+				const selectedOptions = options.filter((option) => values.includes(option.value));
 
 				const filteredOptions = options.filter((option) =>
 					option.label.toLowerCase().includes(search.toLowerCase()),
@@ -125,9 +109,9 @@ const SelectForm = <T extends FieldValues>({
 					let newValue: PathValue<T, Path<T>>;
 
 					if (multiple) {
-						const currentValues = (
-							Array.isArray(field.value) ? field.value : []
-						) as (string | number | boolean)[];
+						const currentValues = (Array.isArray(field.value) ? field.value : []) as (
+							string | number | boolean
+						)[];
 
 						const updatedArray = currentValues.includes(value)
 							? currentValues.filter((currentValue) => currentValue !== value)
@@ -142,21 +126,11 @@ const SelectForm = <T extends FieldValues>({
 
 					field.onChange(newValue);
 
-					onSelect?.(
-						newValue as
-							| string
-							| number
-							| boolean
-							| (string | number | boolean)[],
-					);
+					onSelect?.(newValue as string | number | boolean | (string | number | boolean)[]);
 				};
 
 				const handleListKeyDown = (e: React.KeyboardEvent) => {
-					if (
-						filteredOptions.length === 0 &&
-						e.key !== 'Escape' &&
-						e.key !== 'Tab'
-					) {
+					if (filteredOptions.length === 0 && e.key !== 'Escape' && e.key !== 'Tab') {
 						return;
 					}
 
@@ -164,18 +138,14 @@ const SelectForm = <T extends FieldValues>({
 						case 'ArrowDown':
 							e.preventDefault();
 
-							setActiveIndex((previous) =>
-								previous < filteredOptions.length - 1 ? previous + 1 : 0,
-							);
+							setActiveIndex((previous) => (previous < filteredOptions.length - 1 ? previous + 1 : 0));
 
 							break;
 
 						case 'ArrowUp':
 							e.preventDefault();
 
-							setActiveIndex((previous) =>
-								previous > 0 ? previous - 1 : filteredOptions.length - 1,
-							);
+							setActiveIndex((previous) => (previous > 0 ? previous - 1 : filteredOptions.length - 1));
 
 							break;
 
@@ -238,9 +208,7 @@ const SelectForm = <T extends FieldValues>({
 				};
 
 				return (
-					<div
-						className={cn('flex w-full min-w-0 max-w-full flex-col', className)}
-					>
+					<div className={cn('flex w-full min-w-0 max-w-full flex-col', className)}>
 						<label id={labelId} className='mb-1 text-xs font-medium'>
 							{label}
 
@@ -272,39 +240,35 @@ const SelectForm = <T extends FieldValues>({
 											multiple ? (
 												<>
 													<div className='flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-hidden'>
-														{selectedOptions
-															.slice(0, maxVisible)
-															.map((option) => (
-																<span
-																	key={option.key || option.value.toString()}
-																	className='flex max-w-30 shrink-0 items-center whitespace-nowrap rounded-sm border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100'
-																>
-																	<span className='truncate'>
-																		{option.label}
-																	</span>
+														{selectedOptions.slice(0, maxVisible).map((option) => (
+															<span
+																key={option.key || option.value.toString()}
+																className='flex max-w-30 shrink-0 items-center whitespace-nowrap rounded-sm border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100'
+															>
+																<span className='truncate'>{option.label}</span>
 
-																	<X
-																		className='ml-1 h-3 w-3 cursor-pointer hover:text-destructive'
-																		role='button'
-																		aria-label={`Remover ${option.label}`}
-																		tabIndex={0}
-																		onClick={(e) => {
+																<X
+																	className='ml-1 h-3 w-3 cursor-pointer hover:text-destructive'
+																	role='button'
+																	aria-label={`Remover ${option.label}`}
+																	tabIndex={0}
+																	onClick={(e) => {
+																		e.preventDefault();
+																		e.stopPropagation();
+
+																		handleSelect(option.value);
+																	}}
+																	onKeyDown={(e) => {
+																		if (e.key === 'Enter' || e.key === ' ') {
 																			e.preventDefault();
 																			e.stopPropagation();
 
 																			handleSelect(option.value);
-																		}}
-																		onKeyDown={(e) => {
-																			if (e.key === 'Enter' || e.key === ' ') {
-																				e.preventDefault();
-																				e.stopPropagation();
-
-																				handleSelect(option.value);
-																			}
-																		}}
-																	/>
-																</span>
-															))}
+																		}
+																	}}
+																/>
+															</span>
+														))}
 													</div>
 
 													{selectedOptions.length > maxVisible && (
@@ -319,9 +283,7 @@ const SelectForm = <T extends FieldValues>({
 												</span>
 											)
 										) : (
-											<span className='truncate text-zinc-400'>
-												{placeholder}
-											</span>
+											<span className='truncate text-zinc-400'>{placeholder}</span>
 										)}
 									</div>
 
@@ -395,8 +357,7 @@ const SelectForm = <T extends FieldValues>({
 													'flex cursor-pointer items-center gap-2 px-3 py-2 text-sm outline-none transition',
 													'hover:bg-zinc-100 dark:hover:bg-zinc-800',
 													isActive && 'bg-zinc-100 dark:bg-zinc-800',
-													isSelected &&
-														'bg-zinc-50 font-medium dark:bg-zinc-900',
+													isSelected && 'bg-zinc-50 font-medium dark:bg-zinc-900',
 												)}
 												onMouseEnter={() => setActiveIndex(index)}
 												onClick={(e) => {
@@ -415,18 +376,13 @@ const SelectForm = <T extends FieldValues>({
 													/>
 												)}
 
-												<span className='min-w-0 flex-1 truncate'>
-													{option.label}
-												</span>
+												<span className='min-w-0 flex-1 truncate'>{option.label}</span>
 											</div>
 										);
 									})}
 
 									{filteredOptions.length === 0 && (
-										<div
-											role='status'
-											className='px-3 py-4 text-center text-sm text-zinc-400'
-										>
+										<div role='status' className='px-3 py-4 text-center text-sm text-zinc-400'>
 											Nenhum resultado encontrado
 										</div>
 									)}
@@ -435,11 +391,7 @@ const SelectForm = <T extends FieldValues>({
 						</Popover>
 
 						{error && (
-							<p
-								id={errorId}
-								role='alert'
-								className='mt-1 text-xs text-destructive'
-							>
+							<p id={errorId} role='alert' className='mt-1 text-xs text-destructive'>
 								{error}
 							</p>
 						)}

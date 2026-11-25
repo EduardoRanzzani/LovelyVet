@@ -8,31 +8,26 @@ import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireAdmin } from '@/lib/security/authorization';
 import z from 'zod';
 
-export const linkCurrentClerkIdentity = actionClient
-	.schema(z.object({}))
-	.action(async () => {
-		const context = await requireAuthContext();
-		requireAdmin(context);
+export const linkCurrentClerkIdentity = actionClient.schema(z.object({})).action(async () => {
+	const context = await requireAuthContext();
+	requireAdmin(context);
 
-		const environment = getClerkEnvironment();
+	const environment = getClerkEnvironment();
 
-		await db
-			.insert(clerkIdentitiesTable)
-			.values({
-				userId: context.userId,
-				environment,
+	await db
+		.insert(clerkIdentitiesTable)
+		.values({
+			userId: context.userId,
+			environment,
+			clerkUserId: context.clerkUserId,
+		})
+		.onConflictDoUpdate({
+			target: [clerkIdentitiesTable.userId, clerkIdentitiesTable.environment],
+			set: {
 				clerkUserId: context.clerkUserId,
-			})
-			.onConflictDoUpdate({
-				target: [
-					clerkIdentitiesTable.userId,
-					clerkIdentitiesTable.environment,
-				],
-				set: {
-					clerkUserId: context.clerkUserId,
-					updatedAt: new Date(),
-				},
-			});
+				updatedAt: new Date(),
+			},
+		});
 
-		return { environment };
-	});
+	return { environment };
+});

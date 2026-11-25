@@ -65,10 +65,7 @@ describe('getDoctorShiftSummary', () => {
 	it('ordena os próximos plantões pela data de início', () => {
 		const summary = getDoctorShiftSummary([...shifts].reverse(), NOW);
 
-		expect(summary.upcomingShifts.map((shift) => shift.id)).toEqual([
-			'future-unpaid',
-			'future-paid',
-		]);
+		expect(summary.upcomingShifts.map((shift) => shift.id)).toEqual(['future-unpaid', 'future-paid']);
 	});
 
 	it('não considera plantão em andamento como realizado', () => {

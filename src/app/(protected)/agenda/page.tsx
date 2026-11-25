@@ -33,9 +33,7 @@ const AgendaPage = async ({ searchParams }: AgendaPageProps) => {
 	const isAllDoctors = context.role !== 'doctor' && params.doctor === 'all';
 
 	const requestedDoctorId =
-		params.doctor &&
-		params.doctor !== 'all' &&
-		doctors.some((doctor) => doctor.id === params.doctor)
+		params.doctor && params.doctor !== 'all' && doctors.some((doctor) => doctor.id === params.doctor)
 			? params.doctor
 			: undefined;
 
@@ -48,15 +46,9 @@ const AgendaPage = async ({ searchParams }: AgendaPageProps) => {
 
 	const parsedYear = params.year ? Number(params.year) : undefined;
 
-	const year =
-		parsedYear && Number.isInteger(parsedYear) ? parsedYear : undefined;
+	const year = parsedYear && Number.isInteger(parsedYear) ? parsedYear : undefined;
 
-	const entriesPromise = getCalendarEntries(
-		params.month,
-		true,
-		selectedDoctorId,
-		year,
-	);
+	const entriesPromise = getCalendarEntries(params.month, true, selectedDoctorId, year);
 
 	return (
 		<PageContainer>
@@ -68,8 +60,7 @@ const AgendaPage = async ({ searchParams }: AgendaPageProps) => {
 
 			<PageContent>
 				<PageDescription>
-					Visualize atendimentos, plantões, compromissos pessoais e lembretes em
-					uma única agenda.
+					Visualize atendimentos, plantões, compromissos pessoais e lembretes em uma única agenda.
 				</PageDescription>
 
 				<Suspense

@@ -173,8 +173,7 @@ export const getPrescriptionsPaginated = async (
 
 	const data = await db.query.prescriptionsTable.findMany({
 		where: normalizedSearch
-			? (prescriptions, { ilike }) =>
-					ilike(prescriptions.content, `%${normalizedSearch}%`)
+			? (prescriptions, { ilike }) => ilike(prescriptions.content, `%${normalizedSearch}%`)
 			: undefined,
 		with: {
 			pet: true,
@@ -189,11 +188,7 @@ export const getPrescriptionsPaginated = async (
 	const totalCountResult = await db
 		.select({ value: count() })
 		.from(prescriptionsTable)
-		.where(
-			normalizedSearch
-				? ilike(prescriptionsTable.content, `%${normalizedSearch}%`)
-				: undefined,
-		);
+		.where(normalizedSearch ? ilike(prescriptionsTable.content, `%${normalizedSearch}%`) : undefined);
 
 	const totalCount = Number(totalCountResult[0]?.value ?? 0);
 	const pageCount = Math.ceil(totalCount / pagination.limit);
@@ -239,17 +234,9 @@ export const savePrescriptionDocument = actionClient
 				name: usersTable.name,
 			})
 			.from(petTutorsTable)
-			.innerJoin(
-				customersTable,
-				eq(petTutorsTable.customerId, customersTable.id),
-			)
+			.innerJoin(customersTable, eq(petTutorsTable.customerId, customersTable.id))
 			.innerJoin(usersTable, eq(customersTable.userId, usersTable.id))
-			.where(
-				and(
-					eq(petTutorsTable.petId, parsedInput.petId),
-					eq(petTutorsTable.customerId, parsedInput.tutorId),
-				),
-			)
+			.where(and(eq(petTutorsTable.petId, parsedInput.petId), eq(petTutorsTable.customerId, parsedInput.tutorId)))
 			.limit(1);
 
 		if (!tutor) {
@@ -291,27 +278,23 @@ export const savePrescriptionDocument = actionClient
 		 * Sanitiza todos os blocos e medicamentos
 		 * antes de persistir.
 		 */
-		const groups: PrescriptionDocumentGroup[] = parsedInput.groups.map(
-			(group) => ({
-				administrationRoute: group.administrationRoute.trim(),
+		const groups: PrescriptionDocumentGroup[] = parsedInput.groups.map((group) => ({
+			administrationRoute: group.administrationRoute.trim(),
 
-				items: group.items.map((item) => ({
-					sourceId: item.sourceId,
-					name: item.name.trim(),
-					pharmacy: item.pharmacy.trim(),
-					quantity: item.quantity.trim(),
+			items: group.items.map((item) => ({
+				sourceId: item.sourceId,
+				name: item.name.trim(),
+				pharmacy: item.pharmacy.trim(),
+				quantity: item.quantity.trim(),
 
-					orientations: sanitizeRichTextHtml(item.orientations),
-				})),
-			}),
-		);
+				orientations: sanitizeRichTextHtml(item.orientations),
+			})),
+		}));
 
-		const orientationBlocks = (parsedInput.orientationBlocks ?? []).map(
-			(block) => ({
-				title: block.title.trim(),
-				content: sanitizeRichTextHtml(block.content),
-			}),
-		);
+		const orientationBlocks = (parsedInput.orientationBlocks ?? []).map((block) => ({
+			title: block.title.trim(),
+			content: sanitizeRichTextHtml(block.content),
+		}));
 
 		/*
 		 * Snapshot histórico.
@@ -416,17 +399,9 @@ export const updatePrescriptionDocument = actionClient
 				name: usersTable.name,
 			})
 			.from(petTutorsTable)
-			.innerJoin(
-				customersTable,
-				eq(petTutorsTable.customerId, customersTable.id),
-			)
+			.innerJoin(customersTable, eq(petTutorsTable.customerId, customersTable.id))
 			.innerJoin(usersTable, eq(customersTable.userId, usersTable.id))
-			.where(
-				and(
-					eq(petTutorsTable.petId, parsedInput.petId),
-					eq(petTutorsTable.customerId, parsedInput.tutorId),
-				),
-			)
+			.where(and(eq(petTutorsTable.petId, parsedInput.petId), eq(petTutorsTable.customerId, parsedInput.tutorId)))
 			.limit(1);
 
 		if (!tutor) {
@@ -439,25 +414,21 @@ export const updatePrescriptionDocument = actionClient
 		 * Mesmo na atualização nunca confiamos no HTML
 		 * enviado pelo browser.
 		 */
-		const groups: PrescriptionDocumentGroup[] = parsedInput.groups.map(
-			(group) => ({
-				administrationRoute: group.administrationRoute.trim(),
-				items: group.items.map((item) => ({
-					sourceId: item.sourceId,
-					name: item.name.trim(),
-					pharmacy: item.pharmacy.trim(),
-					quantity: item.quantity.trim(),
-					orientations: sanitizeRichTextHtml(item.orientations),
-				})),
-			}),
-		);
+		const groups: PrescriptionDocumentGroup[] = parsedInput.groups.map((group) => ({
+			administrationRoute: group.administrationRoute.trim(),
+			items: group.items.map((item) => ({
+				sourceId: item.sourceId,
+				name: item.name.trim(),
+				pharmacy: item.pharmacy.trim(),
+				quantity: item.quantity.trim(),
+				orientations: sanitizeRichTextHtml(item.orientations),
+			})),
+		}));
 
-		const orientationBlocks = (parsedInput.orientationBlocks ?? []).map(
-			(block) => ({
-				title: block.title.trim(),
-				content: sanitizeRichTextHtml(block.content),
-			}),
-		);
+		const orientationBlocks = (parsedInput.orientationBlocks ?? []).map((block) => ({
+			title: block.title.trim(),
+			content: sanitizeRichTextHtml(block.content),
+		}));
 
 		/*
 		 * Mantemos o snapshot do paciente da emissão original.
@@ -527,9 +498,7 @@ export const getPrescriptionsByPet = async (petId: string) => {
 	}
 
 	return prescriptions
-		.filter((prescription) =>
-			canAccessTutorScopedData(context, prescription.documentData?.tutor.id),
-		)
+		.filter((prescription) => canAccessTutorScopedData(context, prescription.documentData?.tutor.id))
 		.map((prescription) => ({
 			...prescription,
 			doctor: sanitizeDoctorForCustomer(prescription.doctor),
@@ -657,9 +626,7 @@ export const getPrescriptionById = async (prescriptionId: string) => {
 				})),
 			weightHistory: data.pet.weightHistory?.map((weight) => ({
 				...weight,
-				author: weight.author
-					? sanitizeUserForCustomer(weight.author)
-					: weight.author,
+				author: weight.author ? sanitizeUserForCustomer(weight.author) : weight.author,
 			})),
 		},
 	};

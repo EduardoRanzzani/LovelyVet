@@ -28,10 +28,7 @@ interface PrescriptionItemFormClientProps {
 	onSuccess?: () => void;
 }
 
-const PrescriptionItemFormClient = ({
-	prescriptionItem,
-	onSuccess,
-}: PrescriptionItemFormClientProps) => {
+const PrescriptionItemFormClient = ({ prescriptionItem, onSuccess }: PrescriptionItemFormClientProps) => {
 	const form = useForm<CreatePrescriptionItemSchema>({
 		resolver: zodResolver(createPrescriptionItemSchema),
 		shouldUnregister: true,
@@ -63,14 +60,9 @@ const PrescriptionItemFormClient = ({
 	});
 
 	return (
-		<DialogContent
-			onInteractOutside={(e) => e.preventDefault()}
-			showCloseButton={false}
-		>
+		<DialogContent onInteractOutside={(e) => e.preventDefault()} showCloseButton={false}>
 			<DialogHeader>
-				<DialogTitle>
-					{prescriptionItem ? 'Atualizar Item' : 'Cadastrar Item'}
-				</DialogTitle>
+				<DialogTitle>{prescriptionItem ? 'Atualizar Item' : 'Cadastrar Item'}</DialogTitle>
 				<DialogDescription>
 					{prescriptionItem
 						? 'Atualize as informações do item selecionado'

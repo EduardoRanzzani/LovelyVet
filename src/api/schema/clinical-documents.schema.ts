@@ -28,8 +28,6 @@ export const saveClinicalDocumentSchema = z.object({
 
 export type ClinicalDocumentType = z.infer<typeof clinicalDocumentTypeSchema>;
 
-export type ClinicalDocumentSnapshot = z.infer<
-	typeof clinicalDocumentSnapshotSchema
->;
+export type ClinicalDocumentSnapshot = z.infer<typeof clinicalDocumentSnapshotSchema>;
 
 export type SaveClinicalDocument = z.infer<typeof saveClinicalDocumentSchema>;

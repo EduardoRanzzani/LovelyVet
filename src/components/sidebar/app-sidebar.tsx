@@ -161,9 +161,7 @@ const AppSidebar = ({ role }: AppSidebarProps) => {
 
 	const visibleHelpers = helpers.filter((item) => canAccessPath(role, item.url));
 
-	const visibleSettings = settings.filter((item) =>
-		canAccessPath(role, item.url),
-	);
+	const visibleSettings = settings.filter((item) => canAccessPath(role, item.url));
 
 	const isLinkActive = (url: string) => {
 		if (url === '/dashboard') {
@@ -183,9 +181,7 @@ const AppSidebar = ({ role }: AppSidebarProps) => {
 								<span>LovelyVet</span>
 							</span>
 						</Link>
-						{role === 'admin' && (
-							<SidebarGroupLabel>v. {packageJson.version}</SidebarGroupLabel>
-						)}
+						{role === 'admin' && <SidebarGroupLabel>v. {packageJson.version}</SidebarGroupLabel>}
 					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarHeader>
@@ -206,9 +202,7 @@ const AppSidebar = ({ role }: AppSidebarProps) => {
 										>
 											<span className='flex items-center gap-2'>
 												<item.icon className='h-5 w-5' />
-												<p
-													className={`${isLinkActive(item.url) && 'font-semibold'}`}
-												>
+												<p className={`${isLinkActive(item.url) && 'font-semibold'}`}>
 													{item.title}
 												</p>
 											</span>
@@ -226,10 +220,7 @@ const AppSidebar = ({ role }: AppSidebarProps) => {
 							<SidebarMenu>
 								{visibleHelpers.map((item) => (
 									<SidebarMenuItem key={item.title}>
-										<SidebarMenuButton
-											asChild
-											isActive={isLinkActive(item.url)}
-										>
+										<SidebarMenuButton asChild isActive={isLinkActive(item.url)}>
 											<Link
 												href={item.url}
 												className='flex justify-between'
@@ -237,9 +228,7 @@ const AppSidebar = ({ role }: AppSidebarProps) => {
 											>
 												<span className='flex items-center gap-2'>
 													<item.icon className='h-5 w-5' />
-													<p
-														className={`${isLinkActive(item.url) && 'font-semibold'}`}
-													>
+													<p className={`${isLinkActive(item.url) && 'font-semibold'}`}>
 														{item.title}
 													</p>
 												</span>
@@ -257,10 +246,7 @@ const AppSidebar = ({ role }: AppSidebarProps) => {
 								<SidebarMenu>
 									{visibleSettings.map((item) => (
 										<SidebarMenuItem key={item.title}>
-											<SidebarMenuButton
-												asChild
-												isActive={isLinkActive(item.url)}
-											>
+											<SidebarMenuButton asChild isActive={isLinkActive(item.url)}>
 												<Link
 													href={item.url}
 													className='flex justify-between'
@@ -268,9 +254,7 @@ const AppSidebar = ({ role }: AppSidebarProps) => {
 												>
 													<span className='flex items-center gap-2'>
 														<item.icon className='h-5 w-5' />
-														<p
-															className={`${isLinkActive(item.url) && 'font-semibold'}`}
-														>
+														<p className={`${isLinkActive(item.url) && 'font-semibold'}`}>
 															{item.title}
 														</p>
 													</span>

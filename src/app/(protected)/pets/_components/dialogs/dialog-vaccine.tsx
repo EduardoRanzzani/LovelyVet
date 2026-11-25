@@ -1,10 +1,7 @@
 import { insertVaccine } from '@/api/actions/pet-vaccines.actions';
 import { REGINA_DOCTOR_ID } from '@/api/config/consts';
 import { DoctorsWithRelations } from '@/api/schema/doctors.schema';
-import {
-	createVaccineSchema,
-	CreateVaccineSchema,
-} from '@/api/schema/vaccine.schema';
+import { createVaccineSchema, CreateVaccineSchema } from '@/api/schema/vaccine.schema';
 import DatePickerForm from '@/components/form/datepicker-form';
 import InputForm from '@/components/form/input-form';
 import SelectForm from '@/components/form/select-form';
@@ -43,11 +40,7 @@ interface DialogVaccineProps {
 	}[];
 }
 
-const DialogVaccine = ({
-	petId,
-	doctors,
-	vaccineServices,
-}: DialogVaccineProps) => {
+const DialogVaccine = ({ petId, doctors, vaccineServices }: DialogVaccineProps) => {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 
@@ -81,9 +74,7 @@ const DialogVaccine = ({
 		control: form.control,
 		name: 'serviceId',
 	});
-	const selectedService = vaccineServices.find(
-		(service) => service.id === selectedServiceId,
-	);
+	const selectedService = vaccineServices.find((service) => service.id === selectedServiceId);
 
 	const nextDoseType = useWatch({
 		control: form.control,
@@ -109,9 +100,7 @@ const DialogVaccine = ({
 			router.refresh();
 		},
 		onError: ({ error }) => {
-			toast.error(
-				error.serverError ?? 'Não foi possível salvar o registro de vacinação.',
-			);
+			toast.error(error.serverError ?? 'Não foi possível salvar o registro de vacinação.');
 		},
 	});
 
@@ -133,9 +122,7 @@ const DialogVaccine = ({
 		});
 	};
 
-	const onInvalid = (
-		errors: FieldErrors<z.input<typeof createVaccineSchema>>,
-	) => {
+	const onInvalid = (errors: FieldErrors<z.input<typeof createVaccineSchema>>) => {
 		console.error('Erros de validação da vacina:', errors);
 
 		const firstError = Object.values(errors).find((error) => error?.message);
@@ -162,9 +149,7 @@ const DialogVaccine = ({
 				className='flex max-h-[90dvh] w-[calc(100vw-1.5rem)] max-w-lg flex-col gap-3 overflow-y-auto p-4 sm:p-6'
 			>
 				<DialogHeader>
-					<DialogTitle>
-						{reminderId ? 'Concluir vacinação' : 'Nova Vacina'}
-					</DialogTitle>
+					<DialogTitle>{reminderId ? 'Concluir vacinação' : 'Nova Vacina'}</DialogTitle>
 
 					<DialogDescription>
 						{reminderId
@@ -185,11 +170,22 @@ const DialogVaccine = ({
 						<input type='hidden' {...form.register('petId')} />
 
 						{vaccineServices.length === 0 ? (
-							<div className='space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100' role='status'>
-								<p className='font-semibold'>Nenhuma vacina disponível no catálogo para este paciente.</p>
-								<p>Em Serviços, marque o tipo <strong>Vacinação</strong> e confira se a espécie corresponde à do pet. Você ainda pode registrar uma vacina antiga pelo nome abaixo, sem vínculo comercial.</p>
+							<div
+								className='space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100'
+								role='status'
+							>
+								<p className='font-semibold'>
+									Nenhuma vacina disponível no catálogo para este paciente.
+								</p>
+								<p>
+									Em Serviços, marque o tipo <strong>Vacinação</strong> e confira se a espécie
+									corresponde à do pet. Você ainda pode registrar uma vacina antiga pelo nome abaixo,
+									sem vínculo comercial.
+								</p>
 								<Button variant='outline' size='sm' asChild className='w-full sm:w-auto'>
-									<Link href='/services' target='_blank' rel='noopener noreferrer'>Abrir catálogo de serviços</Link>
+									<Link href='/services' target='_blank' rel='noopener noreferrer'>
+										Abrir catálogo de serviços
+									</Link>
 								</Button>
 							</div>
 						) : (
@@ -202,9 +198,7 @@ const DialogVaccine = ({
 									label: service.name,
 								}))}
 								onSelect={(value) => {
-									const service = vaccineServices.find(
-										(item) => item.id === value,
-									);
+									const service = vaccineServices.find((item) => item.id === value);
 									if (service)
 										form.setValue('name', service.name, {
 											shouldValidate: true,
@@ -221,14 +215,18 @@ const DialogVaccine = ({
 									style: 'currency',
 									currency: 'BRL',
 								})}
-								. Uma aplicação registrada hoje cria atendimento com valor;
-								registros de datas anteriores ficam com valor financeiro zero.
+								. Uma aplicação registrada hoje cria atendimento com valor; registros de datas
+								anteriores ficam com valor financeiro zero.
 							</p>
 						)}
 
 						{
 							<InputForm
-								label={selectedService ? 'Nome da vacina (preenchido pelo catálogo)' : 'Nome da vacina (registro manual)'}
+								label={
+									selectedService
+										? 'Nome da vacina (preenchido pelo catálogo)'
+										: 'Nome da vacina (registro manual)'
+								}
 								name='name'
 								placeholder='Ex: Raiva, V10, Gripe...'
 								register={form.register}
@@ -279,8 +277,7 @@ const DialogVaccine = ({
 
 							{nextDoseType === 'annual' && (
 								<p className='text-sm text-muted-foreground'>
-									O lembrete será criado automaticamente para 1 ano após a
-									aplicação.
+									O lembrete será criado automaticamente para 1 ano após a aplicação.
 								</p>
 							)}
 

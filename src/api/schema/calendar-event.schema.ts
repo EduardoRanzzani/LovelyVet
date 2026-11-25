@@ -6,22 +6,14 @@ export const createCalendarEventSchema = z
 		doctorId: z.string().uuid({
 			message: 'O veterinário é obrigatório',
 		}),
-		title: z
-			.string()
-			.trim()
-			.min(2, 'Informe o compromisso')
-			.max(150, 'O título deve ter no máximo 150 caracteres'),
+		title: z.string().trim().min(2, 'Informe o compromisso').max(150, 'O título deve ter no máximo 150 caracteres'),
 		startTime: z.date({
 			message: 'Data/hora de início é obrigatória',
 		}),
 		endTime: z.date({
 			message: 'Data/hora de término é obrigatória',
 		}),
-		notes: z
-			.string()
-			.trim()
-			.max(2000, 'As observações devem ter no máximo 2000 caracteres')
-			.optional(),
+		notes: z.string().trim().max(2000, 'As observações devem ter no máximo 2000 caracteres').optional(),
 	})
 	.superRefine((data, ctx) => {
 		if (data.endTime <= data.startTime) {
@@ -51,6 +43,4 @@ export const getCalendarEventAvailabilitySchema = z
 		}
 	});
 
-export type CreateCalendarEventSchema = z.infer<
-	typeof createCalendarEventSchema
->;
+export type CreateCalendarEventSchema = z.infer<typeof createCalendarEventSchema>;

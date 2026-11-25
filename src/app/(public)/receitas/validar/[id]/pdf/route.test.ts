@@ -26,12 +26,14 @@ afterEach(() => vi.unstubAllEnvs());
 
 beforeEach(() => {
 	vi.stubEnv('APP_URL', 'https://example.com');
-	limit.mockResolvedValue([{
-		documentData: { patient: { name: 'Paciente' } },
-		pdf,
-		pdfSha256: 'original-hash',
-		validationToken: 'ABC123',
-	}]);
+	limit.mockResolvedValue([
+		{
+			documentData: { patient: { name: 'Paciente' } },
+			pdf,
+			pdfSha256: 'original-hash',
+			validationToken: 'ABC123',
+		},
+	]);
 });
 
 describe('public prescription PDF', () => {
@@ -57,14 +59,17 @@ describe('public prescription PDF', () => {
 		expect([...new Uint8Array(await response.arrayBuffer())]).toEqual([...pdf]);
 	});
 
-	it.each([ITI_VALIDATOR_FORMAT, encodeURIComponent(ITI_VALIDATOR_FORMAT)])('gives ITI a direct PDF URL for format %s', async (format) => {
-		const response = await get(`?_format=${format}&_secretCode=ABC123`);
-		expect(response.status).toBe(200);
-		expect(await response.json()).toEqual({
-			version: '1.0.0',
-			prescription: { signatureFiles: [{ url: `${baseUrl}?raw=1` }] },
-		});
-	});
+	it.each([ITI_VALIDATOR_FORMAT, encodeURIComponent(ITI_VALIDATOR_FORMAT)])(
+		'gives ITI a direct PDF URL for format %s',
+		async (format) => {
+			const response = await get(`?_format=${format}&_secretCode=ABC123`);
+			expect(response.status).toBe(200);
+			expect(await response.json()).toEqual({
+				version: '1.0.0',
+				prescription: { signatureFiles: [{ url: `${baseUrl}?raw=1` }] },
+			});
+		},
+	);
 
 	it('still rejects incorrect ITI access codes', async () => {
 		const response = await get(`?_format=${encodeURIComponent(ITI_VALIDATOR_FORMAT)}&_secretCode=wrong`);
@@ -77,7 +82,6 @@ describe('public prescription PDF', () => {
 	});
 });
 
-
 describe('ITI QR Code flow', () => {
 	it('serves the original signed file from the URL returned by the protocol', async () => {
 		const { getPrescriptionQrCodeUrl } = await import('@/lib/prescriptions/prescription-validation-url');
@@ -85,9 +89,12 @@ describe('ITI QR Code flow', () => {
 		const protocolUrl = `${qrUrl}?_format=application/validador-iti+json&_secretCode=ABC123`;
 		const response = await GET(new Request(protocolUrl), { params: Promise.resolve({ id }) });
 		const body = await response.json();
-		const pdfResponse = await GET(new Request(body.prescription.signatureFiles[0].url, {
-			headers: { accept: 'text/html' },
-		}), { params: Promise.resolve({ id }) });
+		const pdfResponse = await GET(
+			new Request(body.prescription.signatureFiles[0].url, {
+				headers: { accept: 'text/html' },
+			}),
+			{ params: Promise.resolve({ id }) },
+		);
 		expect(pdfResponse.status).toBe(200);
 		expect(pdfResponse.headers.get('content-type')).toBe('application/pdf');
 		expect([...new Uint8Array(await pdfResponse.arrayBuffer())]).toEqual([...pdf]);
@@ -108,7 +115,6 @@ describe('ITI QR Code flow', () => {
 	});
 });
 
-
 describe('ITI browser cross-origin access', () => {
 	it.each([
 		['?_format=application/validador-iti+json&_secretCode=ABC123', 200],
@@ -116,9 +122,12 @@ describe('ITI browser cross-origin access', () => {
 		['?raw=1', 200],
 		['', 307],
 	] as const)('allows the ITI browser to read %s', async (query, status) => {
-		const response = await GET(new Request(`${baseUrl}${query}`, {
-			headers: { origin: 'https://validar.iti.gov.br', accept: 'text/html' },
-		}), { params: Promise.resolve({ id }) });
+		const response = await GET(
+			new Request(`${baseUrl}${query}`, {
+				headers: { origin: 'https://validar.iti.gov.br', accept: 'text/html' },
+			}),
+			{ params: Promise.resolve({ id }) },
+		);
 		expect(response.status).toBe(status);
 		expect(response.headers.get('access-control-allow-origin')).toBe('https://validar.iti.gov.br');
 		expect(response.headers.get('cache-control')).toBe('private, no-store');

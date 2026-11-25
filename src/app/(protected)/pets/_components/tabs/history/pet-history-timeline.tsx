@@ -10,11 +10,7 @@ interface PetTimelineClientProps {
 	onDelete: (item: TimelineItem) => void;
 }
 
-const PetTimelineClient = ({
-	historyEvents,
-	canDelete,
-	onDelete,
-}: PetTimelineClientProps) => {
+const PetTimelineClient = ({ historyEvents, canDelete, onDelete }: PetTimelineClientProps) => {
 	return (
 		<div className='min-w-0 md:max-h-70 md:overflow-y-auto md:pr-2 md:scrollbar-thin md:scrollbar-thumb-muted'>
 			{historyEvents.length > 0 ? (

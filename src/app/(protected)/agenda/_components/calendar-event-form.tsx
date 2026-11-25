@@ -5,10 +5,7 @@ import {
 	getCalendarEventAvailability,
 	upsertCalendarEvent,
 } from '@/api/actions/calendar-events.actions';
-import {
-	createCalendarEventSchema,
-	type CreateCalendarEventSchema,
-} from '@/api/schema/calendar-event.schema';
+import { createCalendarEventSchema, type CreateCalendarEventSchema } from '@/api/schema/calendar-event.schema';
 import type { DoctorsWithRelations } from '@/api/schema/doctors.schema';
 import DateTimePickerForm from '@/components/form/datetimepicker-form';
 import InputForm from '@/components/form/input-form';
@@ -23,26 +20,11 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import LoadingDialog from '@/components/ui/loading';
 import { Textarea } from '@/components/ui/textarea';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-	addHours,
-	addMinutes,
-	differenceInMinutes,
-	endOfDay,
-	format,
-	set,
-	startOfDay,
-} from 'date-fns';
+import { addHours, addMinutes, differenceInMinutes, endOfDay, format, set, startOfDay } from 'date-fns';
 import { BanIcon, Loader2Icon, SaveIcon } from 'lucide-react';
 import { useAction } from 'next-safe-action/hooks';
 import { useState } from 'react';
@@ -96,19 +78,13 @@ const CalendarEventForm = ({
 				})
 			: new Date();
 
-	const defaultEnd = event?.endTime
-		? new Date(event.endTime)
-		: addHours(defaultStart, 1);
+	const defaultEnd = event?.endTime ? new Date(event.endTime) : addHours(defaultStart, 1);
 
 	const defaultDoctorId =
-		event?.doctorId ??
-		(viewerRole === 'doctor' ? viewerDoctorId : selectedDoctorId) ??
-		REGINA_DOCTOR_ID;
+		event?.doctorId ?? (viewerRole === 'doctor' ? viewerDoctorId : selectedDoctorId) ?? REGINA_DOCTOR_ID;
 
 	const availableDoctors =
-		viewerRole === 'doctor'
-			? doctors.filter((doctor) => doctor.id === viewerDoctorId)
-			: doctors;
+		viewerRole === 'doctor' ? doctors.filter((doctor) => doctor.id === viewerDoctorId) : doctors;
 
 	const form = useForm<CreateCalendarEventSchema>({
 		resolver: zodResolver(createCalendarEventSchema),
@@ -127,24 +103,16 @@ const CalendarEventForm = ({
 		name: ['doctorId', 'startTime', 'endTime'],
 	});
 
-	const [availability, setAvailability] = useState<AvailabilityState | null>(
-		null,
-	);
+	const [availability, setAvailability] = useState<AvailabilityState | null>(null);
 
 	const upsertAction = useAction(upsertCalendarEvent, {
 		onSuccess: () => {
-			toast.success(
-				event
-					? 'Compromisso atualizado com sucesso!'
-					: 'Compromisso adicionado à agenda!',
-			);
+			toast.success(event ? 'Compromisso atualizado com sucesso!' : 'Compromisso adicionado à agenda!');
 
 			onSuccess?.();
 		},
 		onError: ({ error }) => {
-			toast.error(
-				error.serverError ?? 'Não foi possível salvar o compromisso.',
-			);
+			toast.error(error.serverError ?? 'Não foi possível salvar o compromisso.');
 		},
 	});
 
@@ -155,9 +123,7 @@ const CalendarEventForm = ({
 			onSuccess?.();
 		},
 		onError: ({ error }) => {
-			toast.error(
-				error.serverError ?? 'Não foi possível excluir o compromisso.',
-			);
+			toast.error(error.serverError ?? 'Não foi possível excluir o compromisso.');
 		},
 	});
 
@@ -169,17 +135,13 @@ const CalendarEventForm = ({
 				doctorId: data.doctorId,
 				dayKey: format(new Date(data.dayStart), 'yyyy-MM-dd'),
 				durationMinutes: data.durationMinutes,
-				availableTimes: data.availableStarts.map((value) =>
-					format(new Date(value), 'HH:mm'),
-				),
+				availableTimes: data.availableStarts.map((value) => format(new Date(value), 'HH:mm')),
 			});
 		},
 		onError: ({ error }) => {
 			setAvailability(null);
 
-			toast.error(
-				error.serverError ?? 'Não foi possível verificar a disponibilidade.',
-			);
+			toast.error(error.serverError ?? 'Não foi possível verificar a disponibilidade.');
 		},
 	});
 
@@ -216,12 +178,9 @@ const CalendarEventForm = ({
 	};
 
 	const currentDuration =
-		startTime instanceof Date && endTime instanceof Date
-			? differenceInMinutes(endTime, startTime)
-			: 0;
+		startTime instanceof Date && endTime instanceof Date ? differenceInMinutes(endTime, startTime) : 0;
 
-	const currentDayKey =
-		startTime instanceof Date ? format(startTime, 'yyyy-MM-dd') : '';
+	const currentDayKey = startTime instanceof Date ? format(startTime, 'yyyy-MM-dd') : '';
 
 	const currentAvailableTimes =
 		availability &&
@@ -231,22 +190,16 @@ const CalendarEventForm = ({
 			? availability.availableTimes
 			: undefined;
 
-	const currentStartTime =
-		startTime instanceof Date ? format(startTime, 'HH:mm') : '';
+	const currentStartTime = startTime instanceof Date ? format(startTime, 'HH:mm') : '';
 
 	const currentStartIsAvailable =
-		currentAvailableTimes === undefined ||
-		currentAvailableTimes.includes(currentStartTime);
+		currentAvailableTimes === undefined || currentAvailableTimes.includes(currentStartTime);
 
 	const formSubmit = (data: CreateCalendarEventSchema) => {
-		if (
-			currentAvailableTimes &&
-			!currentAvailableTimes.includes(format(data.startTime, 'HH:mm'))
-		) {
+		if (currentAvailableTimes && !currentAvailableTimes.includes(format(data.startTime, 'HH:mm'))) {
 			form.setError('startTime', {
 				type: 'manual',
-				message:
-					'O horário selecionado não está disponível para este veterinário.',
+				message: 'O horário selecionado não está disponível para este veterinário.',
 			});
 
 			return;
@@ -261,14 +214,9 @@ const CalendarEventForm = ({
 	const isPending = upsertAction.isPending || deleteAction.isPending;
 
 	return (
-		<DialogContent
-			onInteractOutside={(dialogEvent) => dialogEvent.preventDefault()}
-			showCloseButton={false}
-		>
+		<DialogContent onInteractOutside={(dialogEvent) => dialogEvent.preventDefault()} showCloseButton={false}>
 			<DialogHeader>
-				<DialogTitle>
-					{event ? 'Editar compromisso' : 'Novo compromisso'}
-				</DialogTitle>
+				<DialogTitle>{event ? 'Editar compromisso' : 'Novo compromisso'}</DialogTitle>
 
 				<DialogDescription>
 					{event
@@ -369,9 +317,7 @@ const CalendarEventForm = ({
 						</div>
 
 						{availabilityAction.isPending && (
-							<p className='text-xs text-muted-foreground'>
-								Verificando disponibilidade do período...
-							</p>
+							<p className='text-xs text-muted-foreground'>Verificando disponibilidade do período...</p>
 						)}
 
 						{!availabilityAction.isPending &&
@@ -420,12 +366,7 @@ const CalendarEventForm = ({
 						)}
 
 						<DialogClose asChild>
-							<Button
-								type='button'
-								variant='destructive'
-								disabled={isPending}
-								className='flex-1'
-							>
+							<Button type='button' variant='destructive' disabled={isPending} className='flex-1'>
 								<BanIcon />
 								Cancelar
 							</Button>
@@ -433,11 +374,7 @@ const CalendarEventForm = ({
 
 						<Button
 							type='submit'
-							disabled={
-								isPending ||
-								availabilityAction.isPending ||
-								!currentStartIsAvailable
-							}
+							disabled={isPending || availabilityAction.isPending || !currentStartIsAvailable}
 							className='flex-1'
 						>
 							{upsertAction.isPending ? (

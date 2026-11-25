@@ -2,13 +2,7 @@
 import DatePickerForm from '@/components/form/datepicker-form';
 import InputForm from '@/components/form/input-form';
 import { Button } from '@/components/ui/button';
-import {
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from '@/components/ui/dialog';
+import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form } from '@/components/ui/form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CalculatorIcon } from 'lucide-react';
@@ -40,9 +34,7 @@ const DaysBetween = () => {
 		const initialDate = data.initialDate;
 		const finalDate = data.finalDate;
 
-		const days = Math.round(
-			(finalDate.getTime() - initialDate.getTime()) / (1000 * 60 * 60 * 24),
-		);
+		const days = Math.round((finalDate.getTime() - initialDate.getTime()) / (1000 * 60 * 60 * 24));
 
 		setResult(days);
 	};
@@ -51,9 +43,7 @@ const DaysBetween = () => {
 		<DialogContent onInteractOutside={(e) => e.preventDefault()}>
 			<DialogHeader>
 				<DialogTitle>Dias entre datas</DialogTitle>
-				<DialogDescription>
-					Saiba exatamente quantos dias há entre duas datas.
-				</DialogDescription>
+				<DialogDescription>Saiba exatamente quantos dias há entre duas datas.</DialogDescription>
 			</DialogHeader>
 
 			<Form {...form}>

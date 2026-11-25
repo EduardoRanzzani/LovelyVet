@@ -79,9 +79,7 @@ export default function PrescriptionDocument({
 						className='mx-auto mb-1 w-[12%] min-w-16 object-contain'
 					/>
 
-					<h1 className='text-[16px] font-semibold'>
-						Dra. Regina de Oliveira Maciel
-					</h1>
+					<h1 className='text-[16px] font-semibold'>Dra. Regina de Oliveira Maciel</h1>
 
 					<p className='text-[11px]'>Médica Veterinária CRMV/MS 9193</p>
 
@@ -117,9 +115,7 @@ export default function PrescriptionDocument({
 
 					<div className='space-y-6'>
 						{groups.length === 0 ? (
-							<p className='text-center text-[11px] text-zinc-400'>
-								Nenhum medicamento adicionado.
-							</p>
+							<p className='text-center text-[11px] text-zinc-400'>Nenhum medicamento adicionado.</p>
 						) : (
 							groups.map((group, groupIndex) => (
 								<section key={`${group.administrationRoute}-${groupIndex}`}>
@@ -132,9 +128,7 @@ export default function PrescriptionDocument({
 									<div className='space-y-[3%]'>
 										{group.items.map((item, itemIndex) => (
 											<div
-												key={`${
-													item.sourceId ?? 'custom'
-												}-${groupIndex}-${itemIndex}`}
+												key={`${item.sourceId ?? 'custom'}-${groupIndex}-${itemIndex}`}
 												className='space-y-1'
 											>
 												<div className='grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-2 text-[11px]'>
@@ -162,9 +156,7 @@ export default function PrescriptionDocument({
 												<div
 													className='rich-text-content text-[11px] leading-5'
 													dangerouslySetInnerHTML={{
-														__html: sanitizeRichTextHtml(
-															item.orientations || '',
-														),
+														__html: sanitizeRichTextHtml(item.orientations || ''),
 													}}
 												/>
 											</div>

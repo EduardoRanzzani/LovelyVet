@@ -11,9 +11,7 @@ export const prescriptionDocumentItemSchema = z.object({
 export const prescriptionDocumentGroupSchema = z.object({
 	administrationRoute: z.string().trim().min(1, 'Informe o modo de uso'),
 
-	items: z
-		.array(prescriptionDocumentItemSchema)
-		.min(1, 'Adicione pelo menos um medicamento'),
+	items: z.array(prescriptionDocumentItemSchema).min(1, 'Adicione pelo menos um medicamento'),
 });
 
 export const prescriptionOrientationBlockSchema = z.object({
@@ -23,14 +21,13 @@ export const prescriptionOrientationBlockSchema = z.object({
 	content: z.string().trim().min(1, 'Preencha as orientações'),
 });
 
-export const editablePrescriptionOrientationBlockSchema =
-	prescriptionOrientationBlockSchema.extend({
-		title: z
-			.string()
-			.trim()
-			.min(1, 'Informe o título da orientação')
-			.max(120, 'O título deve ter no máximo 120 caracteres'),
-	});
+export const editablePrescriptionOrientationBlockSchema = prescriptionOrientationBlockSchema.extend({
+	title: z
+		.string()
+		.trim()
+		.min(1, 'Informe o título da orientação')
+		.max(120, 'O título deve ter no máximo 120 caracteres'),
+});
 
 /*
  * groups é o formato atual.
@@ -60,56 +57,34 @@ export const prescriptionDocumentDataSchema = z.object({
 	items: z.array(prescriptionDocumentItemSchema).optional(),
 });
 
-export type PrescriptionDocumentItem = z.infer<
-	typeof prescriptionDocumentItemSchema
->;
+export type PrescriptionDocumentItem = z.infer<typeof prescriptionDocumentItemSchema>;
 
-export type PrescriptionDocumentGroup = z.infer<
-	typeof prescriptionDocumentGroupSchema
->;
+export type PrescriptionDocumentGroup = z.infer<typeof prescriptionDocumentGroupSchema>;
 
-export type PrescriptionOrientationBlock = z.infer<
-	typeof prescriptionOrientationBlockSchema
->;
+export type PrescriptionOrientationBlock = z.infer<typeof prescriptionOrientationBlockSchema>;
 
-export type PrescriptionDocumentData = z.infer<
-	typeof prescriptionDocumentDataSchema
->;
+export type PrescriptionDocumentData = z.infer<typeof prescriptionDocumentDataSchema>;
 
 export const savePrescriptionDocumentSchema = z.object({
 	petId: z.uuid(),
 	tutorId: z.uuid(),
 	doctorId: z.uuid(),
 	isControlled: z.boolean().default(false),
-	orientationBlocks: z
-		.array(editablePrescriptionOrientationBlockSchema)
-		.default([]),
-	generalOrientations: z
-		.string()
-		.max(2000, 'As orientações devem ter no máximo 2.000 caracteres')
-		.optional(),
-	groups: z
-		.array(prescriptionDocumentGroupSchema)
-		.min(1, 'Adicione pelo menos um modo de uso'),
+	orientationBlocks: z.array(editablePrescriptionOrientationBlockSchema).default([]),
+	generalOrientations: z.string().max(2000, 'As orientações devem ter no máximo 2.000 caracteres').optional(),
+	groups: z.array(prescriptionDocumentGroupSchema).min(1, 'Adicione pelo menos um modo de uso'),
 });
 
-export type SavePrescriptionDocumentSchema = z.infer<
-	typeof savePrescriptionDocumentSchema
->;
+export type SavePrescriptionDocumentSchema = z.infer<typeof savePrescriptionDocumentSchema>;
 
-export const updatePrescriptionDocumentSchema =
-	savePrescriptionDocumentSchema.extend({
-		prescriptionId: z.uuid(),
-	});
+export const updatePrescriptionDocumentSchema = savePrescriptionDocumentSchema.extend({
+	prescriptionId: z.uuid(),
+});
 
-export type UpdatePrescriptionDocumentSchema = z.infer<
-	typeof updatePrescriptionDocumentSchema
->;
+export type UpdatePrescriptionDocumentSchema = z.infer<typeof updatePrescriptionDocumentSchema>;
 
 export const signPrescriptionDocumentSchema = z.object({
 	prescriptionId: z.uuid(),
 });
 
-export type SignPrescriptionDocumentSchema = z.infer<
-	typeof signPrescriptionDocumentSchema
->;
+export type SignPrescriptionDocumentSchema = z.infer<typeof signPrescriptionDocumentSchema>;

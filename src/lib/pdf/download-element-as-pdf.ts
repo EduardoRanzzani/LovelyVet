@@ -58,9 +58,7 @@ async function waitForImages(element: HTMLElement) {
 
 						reject(
 							new Error(
-								`Tempo esgotado ao carregar imagem: ${
-									image.currentSrc || image.src || 'desconhecida'
-								}`,
+								`Tempo esgotado ao carregar imagem: ${image.currentSrc || image.src || 'desconhecida'}`,
 							),
 						);
 					}, 10_000);
@@ -75,9 +73,7 @@ async function waitForImages(element: HTMLElement) {
 
 						reject(
 							new Error(
-								`Não foi possível carregar imagem: ${
-									image.currentSrc || image.src || 'desconhecida'
-								}`,
+								`Não foi possível carregar imagem: ${image.currentSrc || image.src || 'desconhecida'}`,
 							),
 						);
 					};
@@ -169,13 +165,7 @@ async function inlineImages(element: HTMLElement) {
 					const timeout = window.setTimeout(() => {
 						cleanup();
 
-						reject(
-							new Error(
-								`Tempo esgotado ao preparar imagem: ${
-									image.src || 'desconhecida'
-								}`,
-							),
-						);
+						reject(new Error(`Tempo esgotado ao preparar imagem: ${image.src || 'desconhecida'}`));
 					}, 10_000);
 
 					const handleLoad = () => {
@@ -186,13 +176,7 @@ async function inlineImages(element: HTMLElement) {
 					const handleError = () => {
 						cleanup();
 
-						reject(
-							new Error(
-								`Não foi possível preparar imagem: ${
-									image.src || 'desconhecida'
-								}`,
-							),
-						);
+						reject(new Error(`Não foi possível preparar imagem: ${image.src || 'desconhecida'}`));
 					};
 
 					const cleanup = () => {
@@ -233,10 +217,7 @@ async function inlineImages(element: HTMLElement) {
 	};
 }
 
-export async function downloadElementAsPdf({
-	element,
-	filename,
-}: DownloadElementAsPdfOptions) {
+export async function downloadElementAsPdf({ element, filename }: DownloadElementAsPdfOptions) {
 	const restoreLayout = forceA4Layout(element);
 
 	let restoreImages: (() => void) | undefined;
@@ -293,8 +274,7 @@ export async function downloadElementAsPdf({
 		};
 
 		const isMobileDevice =
-			window.matchMedia('(pointer: coarse)').matches ||
-			window.matchMedia('(max-width: 768px)').matches;
+			window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(max-width: 768px)').matches;
 
 		/*
 		 * Em navegadores móveis reais, especialmente WebKit/iOS,
@@ -329,9 +309,7 @@ export async function downloadElementAsPdf({
 
 		const pdf = await PDFDocument.create();
 
-		const jpegBytes = await fetch(image).then((response) =>
-			response.arrayBuffer(),
-		);
+		const jpegBytes = await fetch(image).then((response) => response.arrayBuffer());
 
 		const jpeg = await pdf.embedJpg(jpegBytes);
 
@@ -365,9 +343,7 @@ export async function downloadElementAsPdf({
 
 		link.href = url;
 
-		link.download = filename.toLowerCase().endsWith('.pdf')
-			? filename
-			: `${filename}.pdf`;
+		link.download = filename.toLowerCase().endsWith('.pdf') ? filename : `${filename}.pdf`;
 
 		document.body.append(link);
 

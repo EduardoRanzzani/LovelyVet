@@ -32,10 +32,8 @@ vi.mock('@/db', () => ({
 vi.mock('@/lib/next-safe-action', () => ({
 	actionClient: {
 		schema: () => ({
-			action:
-				(handler: (args: { parsedInput: unknown }) => unknown) =>
-				(parsedInput: unknown) =>
-					handler({ parsedInput }),
+			action: (handler: (args: { parsedInput: unknown }) => unknown) => (parsedInput: unknown) =>
+				handler({ parsedInput }),
 		}),
 	},
 }));
@@ -142,9 +140,7 @@ describe('insertVaccine com lembrete', () => {
 	it('conclui o lembrete e registra a aplicação', async () => {
 		// Primeira consulta: lembrete original pendente.
 		// Segunda consulta: nova vacina sem lembrete associado.
-		mocks.reminderFindFirst
-			.mockResolvedValueOnce(pendingReminder)
-			.mockResolvedValueOnce(undefined);
+		mocks.reminderFindFirst.mockResolvedValueOnce(pendingReminder).mockResolvedValueOnce(undefined);
 
 		await insertVaccine(input);
 
@@ -171,9 +167,7 @@ describe('insertVaccine com lembrete', () => {
 			petId: '55555555-5555-4555-8555-555555555555',
 		});
 
-		await expect(insertVaccine(input)).rejects.toThrow(
-			'O lembrete não corresponde à vacinação deste paciente.',
-		);
+		await expect(insertVaccine(input)).rejects.toThrow('O lembrete não corresponde à vacinação deste paciente.');
 
 		expect(mocks.insert).not.toHaveBeenCalled();
 	});
@@ -184,9 +178,7 @@ describe('insertVaccine com lembrete', () => {
 			status: 'completed',
 		});
 
-		await expect(insertVaccine(input)).rejects.toThrow(
-			'Este lembrete já foi finalizado.',
-		);
+		await expect(insertVaccine(input)).rejects.toThrow('Este lembrete já foi finalizado.');
 
 		expect(mocks.insert).not.toHaveBeenCalled();
 	});
@@ -194,9 +186,7 @@ describe('insertVaccine com lembrete', () => {
 	it('impede conclusão simultânea duplicada', async () => {
 		mocks.updateReturning.mockResolvedValue([]);
 
-		await expect(insertVaccine(input)).rejects.toThrow(
-			'Este lembrete já foi finalizado por outra operação.',
-		);
+		await expect(insertVaccine(input)).rejects.toThrow('Este lembrete já foi finalizado por outra operação.');
 
 		expect(mocks.insert).not.toHaveBeenCalled();
 	});
@@ -207,9 +197,7 @@ describe('insertVaccine com lembrete', () => {
 				...input,
 				id: VACCINE_ID,
 			}),
-		).rejects.toThrow(
-			'Não é permitido editar uma vacina ao concluir um lembrete.',
-		);
+		).rejects.toThrow('Não é permitido editar uma vacina ao concluir um lembrete.');
 
 		expect(mocks.transaction).not.toHaveBeenCalled();
 	});
@@ -220,10 +208,12 @@ describe('insertVaccine com lembrete', () => {
 			name: 'Consulta',
 			isVaccine: false,
 		});
-		await expect(insertVaccine({
-			...input,
-			serviceId: '55555555-5555-4555-8555-555555555555',
-		})).rejects.toThrow('Serviço de vacina inválido ou não encontrado.');
+		await expect(
+			insertVaccine({
+				...input,
+				serviceId: '55555555-5555-4555-8555-555555555555',
+			}),
+		).rejects.toThrow('Serviço de vacina inválido ou não encontrado.');
 		expect(mocks.insert).not.toHaveBeenCalled();
 	});
 
@@ -232,11 +222,10 @@ describe('insertVaccine com lembrete', () => {
 			id: '55555555-5555-4555-8555-555555555555',
 			name: 'Vacina V10',
 			isVaccine: true,
-			priceInCents: 8500, durationMinutes: 30,
+			priceInCents: 8500,
+			durationMinutes: 30,
 		});
-		mocks.reminderFindFirst
-			.mockResolvedValueOnce(pendingReminder)
-			.mockResolvedValueOnce(undefined);
+		mocks.reminderFindFirst.mockResolvedValueOnce(pendingReminder).mockResolvedValueOnce(undefined);
 		await insertVaccine({
 			...input,
 			name: 'Nome adulterado',
@@ -260,31 +249,45 @@ describe('insertVaccine com lembrete', () => {
 		mocks.petFindFirst.mockResolvedValue({
 			breed: { specieId: '77777777-7777-4777-8777-777777777777' },
 		});
-		await expect(insertVaccine({
-			...input,
-			serviceId: '55555555-5555-4555-8555-555555555555',
-		})).rejects.toThrow('Vacina não indicada para a espécie do paciente.');
+		await expect(
+			insertVaccine({
+				...input,
+				serviceId: '55555555-5555-4555-8555-555555555555',
+			}),
+		).rejects.toThrow('Vacina não indicada para a espécie do paciente.');
 		expect(mocks.insert).not.toHaveBeenCalled();
 	});
 
 	it('cria atendimento realizado e item com preço histórico na mesma transação', async () => {
 		mocks.serviceFindFirst.mockResolvedValue({
 			id: '55555555-5555-4555-8555-555555555555',
-			name: 'Vacina V10', isVaccine: true, priceInCents: 8500, durationMinutes: 30,
+			name: 'Vacina V10',
+			isVaccine: true,
+			priceInCents: 8500,
+			durationMinutes: 30,
 		});
 		mocks.reminderFindFirst.mockResolvedValue(undefined);
 		await insertVaccine({ ...input, reminderId: undefined, serviceId: '55555555-5555-4555-8555-555555555555' });
-		expect(mocks.insertValues).toHaveBeenCalledWith(expect.objectContaining({
-			status: 'completed', petId: PET_ID, doctorId: DOCTOR_ID,
-			// Data do teste é retroativa: jamais criar valor a receber antigo.
-			totalPriceInCents: 0,
-		}));
-		expect(mocks.insertValues).toHaveBeenCalledWith(expect.objectContaining({
-			serviceId: '55555555-5555-4555-8555-555555555555', priceAtTimeInCents: 0,
-		}));
-		expect(mocks.updateSet).toHaveBeenCalledWith(expect.objectContaining({
-			appointmentId: '88888888-8888-4888-8888-888888888888',
-		}));
+		expect(mocks.insertValues).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'completed',
+				petId: PET_ID,
+				doctorId: DOCTOR_ID,
+				// Data do teste é retroativa: jamais criar valor a receber antigo.
+				totalPriceInCents: 0,
+			}),
+		);
+		expect(mocks.insertValues).toHaveBeenCalledWith(
+			expect.objectContaining({
+				serviceId: '55555555-5555-4555-8555-555555555555',
+				priceAtTimeInCents: 0,
+			}),
+		);
+		expect(mocks.updateSet).toHaveBeenCalledWith(
+			expect.objectContaining({
+				appointmentId: '88888888-8888-4888-8888-888888888888',
+			}),
+		);
 		expect(mocks.transaction).toHaveBeenCalledOnce();
 	});
 
@@ -295,9 +298,14 @@ describe('insertVaccine com lembrete', () => {
 	});
 
 	it('rejeita reutilização de chave de operação para outro pet', async () => {
-		mocks.vaccineFindFirst.mockResolvedValue({ id: VACCINE_ID, petId: '00000000-0000-4000-8000-000000000000', doctorId: DOCTOR_ID });
-		await expect(insertVaccine({ ...input, reminderId: undefined, operationKey: '99999999-9999-4999-8999-999999999999' })).rejects.toThrow('Identificador de operação já utilizado.');
+		mocks.vaccineFindFirst.mockResolvedValue({
+			id: VACCINE_ID,
+			petId: '00000000-0000-4000-8000-000000000000',
+			doctorId: DOCTOR_ID,
+		});
+		await expect(
+			insertVaccine({ ...input, reminderId: undefined, operationKey: '99999999-9999-4999-8999-999999999999' }),
+		).rejects.toThrow('Identificador de operação já utilizado.');
 		expect(mocks.insert).not.toHaveBeenCalled();
 	});
-
 });

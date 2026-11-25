@@ -27,10 +27,7 @@ const AdminFormClient = ({ environment }: AdminFormClientProps) => {
 		<div className='flex flex-col gap-4'>
 			<h1 className='text-2xl font-bold'>Identidade Clerk</h1>
 			<p>
-				Ambiente atual:{' '}
-				<strong>
-					{environment === 'development' ? 'Desenvolvimento' : 'Produção'}
-				</strong>
+				Ambiente atual: <strong>{environment === 'development' ? 'Desenvolvimento' : 'Produção'}</strong>
 			</p>
 
 			<Button
@@ -38,11 +35,7 @@ const AdminFormClient = ({ environment }: AdminFormClientProps) => {
 				onClick={() => linkIdentityAction.execute({})}
 				disabled={linkIdentityAction.isPending}
 			>
-				{linkIdentityAction.isPending ? (
-					<Loader2Icon className='animate-spin' />
-				) : (
-					<LinkIcon />
-				)}
+				{linkIdentityAction.isPending ? <Loader2Icon className='animate-spin' /> : <LinkIcon />}
 				Vincular identidade deste ambiente
 			</Button>
 		</div>

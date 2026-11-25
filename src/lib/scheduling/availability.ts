@@ -1,10 +1,6 @@
 import { addMinutes } from 'date-fns';
 
-import {
-	type DoctorWorkingHours,
-	type Interval,
-	isIntervalWithinDoctorWorkingHours,
-} from './doctor-working-hours';
+import { type DoctorWorkingHours, type Interval, isIntervalWithinDoctorWorkingHours } from './doctor-working-hours';
 
 type BuildAvailableStartsInput = {
 	dayStart: Date;
@@ -37,11 +33,7 @@ export const buildAvailableStarts = ({
 
 	const availableStarts: string[] = [];
 
-	for (
-		let cursor = new Date(dayStart);
-		cursor < dayEnd;
-		cursor = addMinutes(cursor, stepMinutes)
-	) {
+	for (let cursor = new Date(dayStart); cursor < dayEnd; cursor = addMinutes(cursor, stepMinutes)) {
 		const candidateEnd = addMinutes(cursor, durationMinutes);
 
 		if (candidateEnd > dayEnd) {
@@ -60,9 +52,7 @@ export const buildAvailableStarts = ({
 			continue;
 		}
 
-		const hasConflict = busyIntervals.some(
-			(interval) => interval.start < candidateEnd && interval.end > cursor,
-		);
+		const hasConflict = busyIntervals.some((interval) => interval.start < candidateEnd && interval.end > cursor);
 
 		if (!hasConflict) {
 			availableStarts.push(cursor.toISOString());

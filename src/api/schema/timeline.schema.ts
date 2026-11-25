@@ -54,8 +54,7 @@ export const deletableTimelineItemTypes = [
 	'note',
 ] as const;
 
-export type DeletableTimelineItemType =
-	(typeof deletableTimelineItemTypes)[number];
+export type DeletableTimelineItemType = (typeof deletableTimelineItemTypes)[number];
 
 export const deleteTimelineItemSchema = z.object({
 	type: z.enum(deletableTimelineItemTypes, {

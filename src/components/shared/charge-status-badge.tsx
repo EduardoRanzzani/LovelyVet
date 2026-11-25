@@ -4,7 +4,8 @@ import type { ChargeStatus } from '@/lib/finance/ledger';
 const statusPresentation = {
 	pending: {
 		label: 'Pendente',
-		className: 'border-amber-200 bg-amber-100 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200',
+		className:
+			'border-amber-200 bg-amber-100 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200',
 	},
 	partial: {
 		label: 'Parcialmente paga',
@@ -12,7 +13,8 @@ const statusPresentation = {
 	},
 	paid: {
 		label: 'Paga',
-		className: 'border-emerald-200 bg-emerald-100 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
+		className:
+			'border-emerald-200 bg-emerald-100 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
 	},
 	void: {
 		label: 'Cancelada',

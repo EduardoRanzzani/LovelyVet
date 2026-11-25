@@ -14,30 +14,30 @@ describe('validação de disponibilidade do formulário', () => {
 	});
 
 	it('bloqueia envio enquanto uma nova consulta está pendente, mesmo havendo resposta anterior', () => {
-		expect(getAppointmentAvailabilityError({ ...base, isCheckingAvailability: true }))
-			.toContain('Aguarde');
+		expect(getAppointmentAvailabilityError({ ...base, isCheckingAvailability: true })).toContain('Aguarde');
 	});
 
 	it('bloqueia nova marcação sem disponibilidade consultada', () => {
-		expect(getAppointmentAvailabilityError({ ...base, availableTimes: undefined }))
-			.toContain('Aguarde');
+		expect(getAppointmentAvailabilityError({ ...base, availableTimes: undefined })).toContain('Aguarde');
 	});
 
 	it('permite edição sem mudança de horário, serviços ou veterinário quando ainda não houve consulta', () => {
-		expect(getAppointmentAvailabilityError({
-			...base,
-			availableTimes: undefined,
-			unchangedSchedule: true,
-		})).toBeNull();
+		expect(
+			getAppointmentAvailabilityError({
+				...base,
+				availableTimes: undefined,
+				unchangedSchedule: true,
+			}),
+		).toBeNull();
 	});
 
 	it('bloqueia um horário não presente na disponibilidade retornada', () => {
-		expect(getAppointmentAvailabilityError({ ...base, selectedTime: '10:00' }))
-			.toContain('não está mais disponível');
+		expect(getAppointmentAvailabilityError({ ...base, selectedTime: '10:00' })).toContain(
+			'não está mais disponível',
+		);
 	});
 
 	it('bloqueia dia sem horários disponíveis', () => {
-		expect(getAppointmentAvailabilityError({ ...base, availableTimes: [] }))
-			.toContain('não está mais disponível');
+		expect(getAppointmentAvailabilityError({ ...base, availableTimes: [] })).toContain('não está mais disponível');
 	});
 });

@@ -4,11 +4,7 @@ import { getInitials } from '@/api/util';
 import DeleteAlertButton from '@/components/list/delete-alert-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -59,10 +55,7 @@ export const HistoryItem = ({
 							{avatarPerson ? (
 								<Tooltip>
 									<TooltipTrigger asChild>
-										<Avatar
-											className='size-8 shrink-0 rounded-full sm:size-10'
-											draggable={false}
-										>
+										<Avatar className='size-8 shrink-0 rounded-full sm:size-10' draggable={false}>
 											{avatarPerson.image ? (
 												<AvatarImage
 													src={avatarPerson.image}
@@ -97,12 +90,7 @@ export const HistoryItem = ({
 						</div>
 					</div>
 
-					{canDelete && (
-						<DeleteAlertButton
-							disabled={!canDelete}
-							action={() => onDelete?.()}
-						/>
-					)}
+					{canDelete && <DeleteAlertButton disabled={!canDelete} action={() => onDelete?.()} />}
 				</div>
 				<Separator className='mt-2' />
 

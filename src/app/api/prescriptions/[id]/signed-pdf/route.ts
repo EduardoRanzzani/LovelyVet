@@ -11,10 +11,7 @@ interface SignedPrescriptionPdfRouteProps {
 	}>;
 }
 
-export async function GET(
-	_request: Request,
-	{ params }: SignedPrescriptionPdfRouteProps,
-) {
+export async function GET(_request: Request, { params }: SignedPrescriptionPdfRouteProps) {
 	const context = await requireAuthContext();
 	const { id } = await params;
 
@@ -26,10 +23,7 @@ export async function GET(
 			pdfSha256: prescriptionSignaturesTable.pdfSha256,
 		})
 		.from(prescriptionSignaturesTable)
-		.innerJoin(
-			prescriptionsTable,
-			eq(prescriptionSignaturesTable.prescriptionId, prescriptionsTable.id),
-		)
+		.innerJoin(prescriptionsTable, eq(prescriptionSignaturesTable.prescriptionId, prescriptionsTable.id))
 		.where(eq(prescriptionSignaturesTable.prescriptionId, id))
 		.limit(1);
 
@@ -41,9 +35,7 @@ export async function GET(
 
 	await assertCanAccessPet(context, result.petId);
 
-	if (
-		!canAccessTutorScopedData(context, result.documentData?.tutor.id)
-	) {
+	if (!canAccessTutorScopedData(context, result.documentData?.tutor.id)) {
 		return new Response('PDF assinado não encontrado.', {
 			status: 404,
 		});
@@ -55,9 +47,7 @@ export async function GET(
 	return new Response(new Uint8Array(result.pdf), {
 		headers: {
 			'Content-Type': 'application/pdf',
-			'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(
-				filename,
-			)}`,
+			'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
 			'Cache-Control': 'private, no-store',
 			'X-Content-Type-Options': 'nosniff',
 			'X-PDF-SHA256': result.pdfSha256,

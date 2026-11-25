@@ -5,10 +5,7 @@ import { cn } from '@/lib/utils';
 import { Control, Controller, FieldValues, Path } from 'react-hook-form';
 import { NumericFormat, NumericFormatProps } from 'react-number-format';
 
-interface WeightInputFormProps<T extends FieldValues> extends Omit<
-	NumericFormatProps,
-	'name'
-> {
+interface WeightInputFormProps<T extends FieldValues> extends Omit<NumericFormatProps, 'name'> {
 	label: string;
 	error?: string;
 	name: Path<T>;

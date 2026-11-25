@@ -15,10 +15,7 @@ import {
  * Este helper trata exclusivamente a forma segura da resposta depois que o
  * acesso ao pet já foi autorizado.
  */
-export const filterPetForViewer = (
-	context: AuthContext,
-	pet: PetsWithRelations,
-): PetsWithRelations => {
+export const filterPetForViewer = (context: AuthContext, pet: PetsWithRelations): PetsWithRelations => {
 	if (context.role !== 'customer') {
 		return pet;
 	}
@@ -40,12 +37,7 @@ export const filterPetForViewer = (
 			doctor: sanitizeDoctorForCustomer(record.doctor),
 		})),
 		prescriptions: pet.prescriptions
-			?.filter((prescription) =>
-				canAccessTutorScopedData(
-					context,
-					prescription.documentData?.tutor.id,
-				),
-			)
+			?.filter((prescription) => canAccessTutorScopedData(context, prescription.documentData?.tutor.id))
 			.map((prescription) => ({
 				...prescription,
 				doctor: sanitizeDoctorForCustomer(prescription.doctor),
@@ -63,18 +55,14 @@ export const filterPetForViewer = (
 			doctor: sanitizeDoctorForCustomer(pathology.doctor),
 		})),
 		clinicalDocuments: pet.clinicalDocuments
-			?.filter((document) =>
-				canAccessTutorScopedData(context, document.documentData.tutor.id),
-			)
+			?.filter((document) => canAccessTutorScopedData(context, document.documentData.tutor.id))
 			.map((document) => ({
 				...document,
 				doctor: sanitizeDoctorForCustomer(document.doctor),
 			})),
 		weightHistory: pet.weightHistory?.map((weight) => ({
 			...weight,
-			author: weight.author
-				? sanitizeUserForCustomer(weight.author)
-				: weight.author,
+			author: weight.author ? sanitizeUserForCustomer(weight.author) : weight.author,
 		})),
 		attachments: pet.attachments?.map((attachment) => ({
 			...attachment,

@@ -1,11 +1,4 @@
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TableProps } from './table-responsive';
 
 const TableDesktop = <T,>({
@@ -20,9 +13,7 @@ const TableDesktop = <T,>({
 				<TableHeader>
 					<TableRow>
 						{columns.map((column) => {
-							return (
-								<TableHead key={column.accessorKey}>{column.header}</TableHead>
-							);
+							return <TableHead key={column.accessorKey}>{column.header}</TableHead>;
 						})}
 					</TableRow>
 				</TableHeader>
@@ -31,10 +22,7 @@ const TableDesktop = <T,>({
 						data.map((item) => renderRow(item))
 					) : (
 						<TableRow>
-							<TableCell
-								colSpan={columns.length}
-								className='text-center text-sm p-2 italic'
-							>
+							<TableCell colSpan={columns.length} className='text-center text-sm p-2 italic'>
 								{emptyMessage}
 							</TableCell>
 						</TableRow>

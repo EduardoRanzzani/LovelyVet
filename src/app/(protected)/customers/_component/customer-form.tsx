@@ -32,10 +32,7 @@ interface CustomerFormClientProps {
 	onSuccess?: () => void;
 }
 
-const CustomerFormClient = ({
-	customer,
-	onSuccess,
-}: CustomerFormClientProps) => {
+const CustomerFormClient = ({ customer, onSuccess }: CustomerFormClientProps) => {
 	const form = useForm<CreateCustomerWithUserSchema>({
 		resolver: zodResolver(createCustomerWithUserSchema),
 		shouldUnregister: true,
@@ -89,14 +86,9 @@ const CustomerFormClient = ({
 	});
 
 	return (
-		<DialogContent
-			onInteractOutside={(e) => e.preventDefault()}
-			showCloseButton={false}
-		>
+		<DialogContent onInteractOutside={(e) => e.preventDefault()} showCloseButton={false}>
 			<DialogHeader>
-				<DialogTitle>
-					{customer ? 'Atualizar Cliente' : 'Cadastrar Cliente'}
-				</DialogTitle>
+				<DialogTitle>{customer ? 'Atualizar Cliente' : 'Cadastrar Cliente'}</DialogTitle>
 				<DialogDescription>
 					{customer
 						? 'Atualize as informações do cliente selecionado'
@@ -242,11 +234,7 @@ const CustomerFormClient = ({
 							</Button>
 						</DialogClose>
 
-						<Button
-							type='submit'
-							disabled={upsertCustomerAction.isPending}
-							className='flex-1'
-						>
+						<Button type='submit' disabled={upsertCustomerAction.isPending} className='flex-1'>
 							{upsertCustomerAction.isPending ? (
 								<Loader2Icon className='h-5 w-5 animate-spin' />
 							) : (

@@ -5,15 +5,11 @@ export const ITI_VALIDATOR_FORMAT = 'application/validador-iti+json';
 export const isItiValidatorFormat = (format: string | null): boolean =>
 	format?.replace(' ', '+') === ITI_VALIDATOR_FORMAT;
 
-export const isValidItiSecretCode = (
-	providedCode: string | null,
-	expectedCode: string,
-): boolean => {
+export const isValidItiSecretCode = (providedCode: string | null, expectedCode: string): boolean => {
 	if (providedCode === null) return false;
 	const normalizedCode = providedCode.trim();
 	return (
-		/^[a-z0-9]{0,64}$/i.test(normalizedCode) &&
-		normalizedCode.toUpperCase() === expectedCode.trim().toUpperCase()
+		/^[a-z0-9]{0,64}$/i.test(normalizedCode) && normalizedCode.toUpperCase() === expectedCode.trim().toUpperCase()
 	);
 };
 

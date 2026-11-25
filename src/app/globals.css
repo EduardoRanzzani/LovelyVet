@@ -100,9 +100,7 @@
 
 	/* 🧭 Sidebar */
 	--sidebar: var(--primary); /* Verde menta (#b9f7ce) */
-	--sidebar-foreground: var(
-		--primary-foreground
-	); /* Texto escuro, pra contraste */
+	--sidebar-foreground: var(--primary-foreground); /* Texto escuro, pra contraste */
 	--sidebar-primary: var(--primary); /* Mantém coerente */
 	--sidebar-primary-foreground: var(--primary-foreground);
 	--sidebar-accent: var(--accent);
@@ -157,9 +155,7 @@
 	--chart-5: oklch(0.645 0.246 16.439);
 
 	/* 🧭 Sidebar (dark) */
-	--sidebar: oklch(
-		0.25 0.08 142.56
-	); /* Uma versão bem mais escura do verde menta */
+	--sidebar: oklch(0.25 0.08 142.56); /* Uma versão bem mais escura do verde menta */
 	--sidebar-foreground: var(--foreground);
 	--sidebar-primary: var(--primary);
 	--sidebar-primary-foreground: var(--primary-foreground);

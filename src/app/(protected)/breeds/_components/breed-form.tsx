@@ -1,9 +1,5 @@
 import { upsertBreed } from '@/api/actions/breeds.actions';
-import {
-	BreedsWithRelations,
-	createBreedSchema,
-	CreateBreedSchema,
-} from '@/api/schema/breeds.schema';
+import { BreedsWithRelations, createBreedSchema, CreateBreedSchema } from '@/api/schema/breeds.schema';
 import { Species } from '@/api/schema/species.schema';
 import InputForm from '@/components/form/input-form';
 import SelectForm from '@/components/form/select-form';
@@ -30,11 +26,7 @@ interface BreedFormClientProps {
 	onSuccess?: () => void;
 }
 
-const BreedFormClient = ({
-	breed,
-	species,
-	onSuccess,
-}: BreedFormClientProps) => {
+const BreedFormClient = ({ breed, species, onSuccess }: BreedFormClientProps) => {
 	const form = useForm<CreateBreedSchema>({
 		resolver: zodResolver(createBreedSchema),
 		shouldUnregister: true,
@@ -64,16 +56,11 @@ const BreedFormClient = ({
 	});
 
 	return (
-		<DialogContent
-			onInteractOutside={(e) => e.preventDefault()}
-			showCloseButton={false}
-		>
+		<DialogContent onInteractOutside={(e) => e.preventDefault()} showCloseButton={false}>
 			<DialogHeader>
 				<DialogTitle>{breed ? 'Atualizar Raça' : 'Cadastrar Raça'}</DialogTitle>
 				<DialogDescription>
-					{breed
-						? 'Atualize as informações da raça selecionada'
-						: 'Adicione uma nova raça ao sistema'}
+					{breed ? 'Atualize as informações da raça selecionada' : 'Adicione uma nova raça ao sistema'}
 				</DialogDescription>
 			</DialogHeader>
 
@@ -117,11 +104,7 @@ const BreedFormClient = ({
 							</Button>
 						</DialogClose>
 
-						<Button
-							type='submit'
-							disabled={upsertBreedAction.isPending}
-							className='flex-1'
-						>
+						<Button type='submit' disabled={upsertBreedAction.isPending} className='flex-1'>
 							{upsertBreedAction.isPending ? (
 								<Loader2Icon className='h-5 w-5 animate-spin' />
 							) : (

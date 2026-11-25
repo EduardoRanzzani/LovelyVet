@@ -2,13 +2,7 @@ import { SVGProps } from 'react';
 
 export function FacebookIcon(props: SVGProps<SVGSVGElement>) {
 	return (
-		<svg
-			xmlns='http://www.w3.org/2000/svg'
-			viewBox='0 0 256 256'
-			width='1em'
-			height='1em'
-			{...props}
-		>
+		<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256' width='1em' height='1em' {...props}>
 			<path
 				fill='#1877F2'
 				d='M256 128C256 57.308 198.692 0 128 0S0 57.308 0 128c0 63.888 46.808 116.843 108 126.445V165H75v-37h33V99.625C108 67.907 126.857 50.36 155.748 50.36c13.835 0 28.31 2.47 28.31 2.47V84h-15.891c-15.712 0-20.613 9.752-20.613 19.748V128h35l-5.595 37H147.555V254.445C209.192 244.843 256 191.888 256 128'

@@ -45,7 +45,9 @@ export type PetsWithRelations = typeof petsTable.$inferSelect & {
 		items: (typeof appointmentItemsTable.$inferSelect & {
 			service: typeof servicesTable.$inferSelect;
 		})[];
-		productItems?: (typeof appointmentProductItemsTable.$inferSelect & { product: typeof productsTable.$inferSelect })[];
+		productItems?: (typeof appointmentProductItemsTable.$inferSelect & {
+			product: typeof productsTable.$inferSelect;
+		})[];
 	})[];
 	weightHistory?: (typeof petWeightsTable.$inferSelect & {
 		author?: typeof usersTable.$inferSelect;
@@ -101,9 +103,7 @@ export const createPetWithTutorAndBreedSchema = z.object({
 	birthDate: z.date({ message: 'Data de nascimento é obrigatória' }),
 	breedId: z.uuid({ message: 'Raça inválida' }),
 	specieId: z.uuid({ message: 'Espécie inválida' }),
-	customerIds: z
-		.array(z.uuid({ message: 'Tutor inválido' }))
-		.min(1, { message: 'Selecione pelo menos um tutor' }),
+	customerIds: z.array(z.uuid({ message: 'Tutor inválido' })).min(1, { message: 'Selecione pelo menos um tutor' }),
 	color: z.string().min(1, { message: 'Pelagem é obrigatória' }),
 	gender: z.enum(['male', 'female'], { message: 'Selecione uma das opções' }), // Removido .default()
 	sterile: z.boolean({ message: 'Selecione uma das opções' }), // Removido .default()
@@ -112,9 +112,7 @@ export const createPetWithTutorAndBreedSchema = z.object({
 	photo: z.string().optional().nullable(),
 });
 
-export type CreatePetWithTutorAndBreedSchema = z.infer<
-	typeof createPetWithTutorAndBreedSchema
->;
+export type CreatePetWithTutorAndBreedSchema = z.infer<typeof createPetWithTutorAndBreedSchema>;
 
 export type PetOption = {
 	id: string;

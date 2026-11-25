@@ -12,9 +12,7 @@ export default function PetNotFound() {
 
 				<h1 className='text-2xl font-semibold'>Pet não encontrado</h1>
 
-				<p className='mt-2 text-muted-foreground'>
-					Não encontramos este pet ou você não possui acesso a ele.
-				</p>
+				<p className='mt-2 text-muted-foreground'>Não encontramos este pet ou você não possui acesso a ele.</p>
 
 				<Button asChild className='mt-6'>
 					<Link href='/pets'>

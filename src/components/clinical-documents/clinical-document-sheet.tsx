@@ -22,12 +22,7 @@ interface ClinicalDocumentSheetProps {
 	printRef?: Ref<HTMLDivElement>;
 }
 
-export default function ClinicalDocumentSheet({
-	patient,
-	title,
-	children,
-	printRef,
-}: ClinicalDocumentSheetProps) {
+export default function ClinicalDocumentSheet({ patient, title, children, printRef }: ClinicalDocumentSheetProps) {
 	return (
 		<div
 			ref={printRef}
@@ -72,9 +67,7 @@ export default function ClinicalDocumentSheet({
 						className='mx-auto mb-1 w-[12%] min-w-16 object-contain'
 					/>
 
-					<h1 className='text-[16px] font-semibold'>
-						Dra. Regina de Oliveira Maciel
-					</h1>
+					<h1 className='text-[16px] font-semibold'>Dra. Regina de Oliveira Maciel</h1>
 
 					<p className='text-[11px]'>Médica Veterinária CRMV/MS 9193</p>
 

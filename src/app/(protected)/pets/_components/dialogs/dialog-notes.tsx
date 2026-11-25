@@ -1,8 +1,5 @@
 import { insertNote } from '@/api/actions/pet-notes.actions';
-import {
-	CreateNoteSchema,
-	createNoteSchema,
-} from '@/api/schema/pet-notes.schema';
+import { CreateNoteSchema, createNoteSchema } from '@/api/schema/pet-notes.schema';
 import EditorForm from '@/components/form/text-editor-form';
 import { Button } from '@/components/ui/button';
 import {
@@ -72,23 +69,16 @@ const DialogNotes = ({ petId }: DialogNotesProps) => {
 				</Button>
 			</DialogTrigger>
 
-			<DialogContent
-				showCloseButton={false}
-				onInteractOutside={(e) => e.preventDefault()}
-			>
+			<DialogContent showCloseButton={false} onInteractOutside={(e) => e.preventDefault()}>
 				<DialogHeader>
 					<DialogTitle>Nova Observação</DialogTitle>
 					<DialogDescription>
-						Descreva abaixo as observações do paciente (não será exibido para os
-						tutores)
+						Descreva abaixo as observações do paciente (não será exibido para os tutores)
 					</DialogDescription>
 				</DialogHeader>
 
 				<Form {...form}>
-					<form
-						onSubmit={form.handleSubmit(formSubmit)}
-						className='flex flex-col gap-2'
-					>
+					<form onSubmit={form.handleSubmit(formSubmit)} className='flex flex-col gap-2'>
 						<input type='hidden' {...form.register('petId')} />
 						<EditorForm
 							control={form.control}
