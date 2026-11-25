@@ -183,7 +183,9 @@ const AppSidebar = ({ role }: AppSidebarProps) => {
 								<span>LovelyVet</span>
 							</span>
 						</Link>
-						<SidebarGroupLabel>v. {packageJson.version}</SidebarGroupLabel>
+						{role === 'admin' && (
+							<SidebarGroupLabel>v. {packageJson.version}</SidebarGroupLabel>
+						)}
 					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarHeader>
