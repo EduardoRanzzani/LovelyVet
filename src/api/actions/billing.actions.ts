@@ -1,6 +1,12 @@
 'use server';
 import { db } from '@/db';
-import { appointmentChargesTable, appointmentsTable, chargePaymentsTable, petTutorsTable } from '@/db/schema';
+import {
+	appointmentChargesTable,
+	appointmentsTable,
+	chargePaymentsTable,
+	onlinePaymentAttemptsTable,
+	petTutorsTable,
+} from '@/db/schema';
 import { actionClient } from '@/lib/next-safe-action';
 import { requireAuthContext, type AuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
@@ -11,6 +17,7 @@ import {
 	assertPaymentAmount,
 	calculateChargeBalance,
 } from '@/lib/finance/ledger';
+import { assertNoBlockingOnlinePayment } from '@/lib/finance/online-payment-reservation';
 import { and, eq, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
@@ -108,6 +115,11 @@ export const recordChargePayment = actionClient.schema(receivePaymentSchema).act
 				throw new Error('Chave de operação já utilizada com outros dados.');
 			return { paymentId: existing.id, repeated: true };
 		}
+		const attempts = await tx
+			.select({ status: onlinePaymentAttemptsTable.status })
+			.from(onlinePaymentAttemptsTable)
+			.where(eq(onlinePaymentAttemptsTable.chargeId, charge.id));
+		assertNoBlockingOnlinePayment(attempts);
 		const payments = await tx
 			.select({ amountInCents: chargePaymentsTable.amountInCents })
 			.from(chargePaymentsTable)
@@ -146,6 +158,11 @@ export const cancelAppointmentCharge = actionClient.schema(voidChargeSchema).act
 			.from(appointmentChargesTable)
 			.where(eq(appointmentChargesTable.appointmentId, appointment.id));
 		if (!charge || charge.status !== 'open') throw new Error('Cobrança não está aberta.');
+		const attempts = await tx
+			.select({ status: onlinePaymentAttemptsTable.status })
+			.from(onlinePaymentAttemptsTable)
+			.where(eq(onlinePaymentAttemptsTable.chargeId, charge.id));
+		assertNoBlockingOnlinePayment(attempts);
 		const payments = await tx
 			.select({ id: chargePaymentsTable.id })
 			.from(chargePaymentsTable)
