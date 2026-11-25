@@ -93,3 +93,20 @@ export const getDoctorAvailabilitySchema = z
 export type GetDoctorAvailabilitySchema = z.infer<
 	typeof getDoctorAvailabilitySchema
 >;
+
+// Reagendamento não recebe itens, valores, paciente, veterinário ou status do cliente.
+export const rescheduleAppointmentSchema = z.object({
+	id: z.uuid(),
+	scheduledAt: z.date(),
+}).strict();
+
+export type RescheduleAppointmentSchema = z.infer<typeof rescheduleAppointmentSchema>;
+
+export const rescheduleAvailabilitySchema = z.object({
+	id: z.uuid(),
+	dayStart: z.date(),
+	dayEnd: z.date(),
+}).strict().refine(({ dayStart, dayEnd }) =>
+	dayEnd > dayStart && dayEnd.getTime() - dayStart.getTime() <= 25 * 60 * 60 * 1000,
+	{ message: 'Período inválido', path: ['dayEnd'] },
+);

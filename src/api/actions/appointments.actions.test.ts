@@ -20,9 +20,9 @@ const mocks = vi.hoisted(() => {
 		query: {
 			servicesTable: { findMany: vi.fn() },
 			doctorsTable: { findFirst: vi.fn() },
-			appointmentsTable: { findFirst: vi.fn() },
-			shiftsTable: { findFirst: vi.fn() },
-			calendarEventsTable: { findFirst: vi.fn() },
+			appointmentsTable: { findFirst: vi.fn(), findMany: vi.fn() },
+			shiftsTable: { findFirst: vi.fn(), findMany: vi.fn() },
+			calendarEventsTable: { findFirst: vi.fn(), findMany: vi.fn() },
 			appointmentChargesTable: { findFirst: vi.fn() },
 			appointmentProductItemsTable: { findFirst: vi.fn() },
 			careRemindersTable: { findFirst: vi.fn() },
@@ -108,9 +108,9 @@ vi.mock('@/lib/security/appointment-access', () => ({
 	buildAppointmentAccessCondition: mocks.buildAppointmentAccessCondition,
 }));
 
-vi.mock('@/lib/scheduling/doctor-working-hours', () => ({
-	assertIntervalWithinDoctorWorkingHours:
-		mocks.assertIntervalWithinDoctorWorkingHours,
+vi.mock('@/lib/scheduling/doctor-working-hours', async (importOriginal) => ({
+	...await importOriginal<typeof import('@/lib/scheduling/doctor-working-hours')>(),
+	assertIntervalWithinDoctorWorkingHours: mocks.assertIntervalWithinDoctorWorkingHours,
 }));
 
 vi.mock('next/cache', () => ({
@@ -123,6 +123,8 @@ import {
 	markAppointmentAsCompleted,
 	markAsConfirmed,
 	upsertAppointment,
+	rescheduleAppointment,
+	getRescheduleAvailability,
 } from './appointments.actions';
 
 const PET_ID = '11111111-1111-4111-8111-111111111111';
@@ -242,6 +244,86 @@ describe('appointments actions', () => {
 
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	describe('rescheduleAppointment', () => {
+		const target = new Date('2026-11-25T23:00:00.000Z');
+		const original = {
+			id: APPOINTMENT_ID, petId: PET_ID, doctorId: DOCTOR_ID,
+			status: 'confirmed', isPaid: false, totalPriceInCents: 23000,
+			scheduledAt: SCHEDULED_AT, endsAt: new Date('2026-09-28T13:30:00.000Z'),
+			items: [{ service: { durationMinutes: 30 } }, { service: { durationMinutes: 20 } }, { service: { durationMinutes: 15 } }],
+		};
+		beforeEach(() => {
+			mocks.requireAuthContext.mockResolvedValue(adminContext);
+			mocks.requireAccessibleAppointment.mockResolvedValue({ id: APPOINTMENT_ID, status: 'confirmed' });
+			mocks.tx.query.appointmentsTable.findFirst.mockResolvedValue(original);
+			mocks.tx.query.appointmentsTable.findMany.mockResolvedValue([]);
+			mocks.tx.query.shiftsTable.findMany.mockResolvedValue([]);
+			mocks.tx.query.calendarEventsTable.findMany.mockResolvedValue([]);
+		});
+		it('reagenda retorno confirmado com serviços adicionais sem regravar itens nem valores', async () => {
+			await expect(rescheduleAppointment({ id: APPOINTMENT_ID, scheduledAt: target })).resolves.toEqual({ success: true });
+			expect(mocks.txUpdateSet).toHaveBeenCalledExactlyOnceWith({ scheduledAt: target, endsAt: new Date('2026-11-26T00:05:00.000Z'), updatedAt: expect.any(Date) });
+			expect(mocks.txDelete).not.toHaveBeenCalled();
+			expect(mocks.txInsert).not.toHaveBeenCalled();
+			expect(mocks.tx.query.careRemindersTable.findFirst).not.toHaveBeenCalled();
+			expect(mocks.revalidatePath).toHaveBeenCalledWith('/agenda');
+		});
+		it('aceita agendamento pendente e preserva a reserva de um atendimento sem serviços', async () => {
+			mocks.tx.query.appointmentsTable.findFirst.mockResolvedValue({ ...original, status: 'pending', items: [] });
+			await rescheduleAppointment({ id: APPOINTMENT_ID, scheduledAt: target });
+			expect(mocks.txUpdateSet).toHaveBeenCalledWith({ scheduledAt: target, endsAt: new Date('2026-11-25T23:30:00.000Z'), updatedAt: expect.any(Date) });
+		});
+		it.each(['completed', 'cancelled', 'in_progress', 'no_show'])('bloqueia atendimento %s', async (status) => {
+			mocks.tx.query.appointmentsTable.findFirst.mockResolvedValue({ ...original, status });
+			await expect(rescheduleAppointment({ id: APPOINTMENT_ID, scheduledAt: target })).rejects.toThrow('O status atual');
+			expect(mocks.txUpdate).not.toHaveBeenCalled();
+		});
+		it('consulta horários usando a mesma duração do reagendamento e exclui conflitos', async () => {
+			mocks.tx.query.calendarEventsTable.findMany.mockResolvedValue([{ startTime: target, endTime: new Date('2026-11-25T23:30:00.000Z') }]);
+			const result = await getRescheduleAvailability({ id: APPOINTMENT_ID, dayStart: new Date('2026-11-25T04:00:00Z'), dayEnd: new Date('2026-11-26T03:59:59Z') });
+			expect(result).toMatchObject({ durationMinutes: 65 });
+			expect(result).toMatchObject({ availableStarts: expect.arrayContaining(['2026-11-25T23:30:00.000Z']) });
+			expect(result).not.toMatchObject({ availableStarts: expect.arrayContaining([target.toISOString()]) });
+			expect(mocks.txUpdate).not.toHaveBeenCalled();
+		});
+		it('bloqueia acesso a outro atendimento antes de iniciar a transação', async () => {
+			mocks.requireAccessibleAppointment.mockRejectedValue(new Error('Agendamento não encontrado'));
+			await expect(rescheduleAppointment({ id: APPOINTMENT_ID, scheduledAt: target })).rejects.toThrow('não encontrado');
+			expect(mocks.transaction).not.toHaveBeenCalled();
+		});
+		it('bloqueia atendimento faturado', async () => {
+			mocks.tx.query.appointmentChargesTable.findFirst.mockResolvedValue({ id: 'charge' });
+			await expect(rescheduleAppointment({ id: APPOINTMENT_ID, scheduledAt: target })).rejects.toThrow('faturado');
+			expect(mocks.txUpdate).not.toHaveBeenCalled();
+		});
+		it('nega acesso de tutor', async () => {
+			mocks.requireAuthContext.mockResolvedValue(customerContext);
+			mocks.requireStaff.mockImplementation(() => { throw new Error('Usuário não autorizado'); });
+			await expect(rescheduleAppointment({ id: APPOINTMENT_ID, scheduledAt: target })).rejects.toThrow('não autorizado');
+			expect(mocks.transaction).not.toHaveBeenCalled();
+		});
+		it('revalida o escopo do veterinário na transação', async () => {
+			mocks.requireAuthContext.mockResolvedValue(doctorContext);
+			mocks.tx.query.appointmentsTable.findFirst.mockResolvedValue({ ...original, doctorId: OTHER_DOCTOR_ID });
+			await expect(rescheduleAppointment({ id: APPOINTMENT_ID, scheduledAt: target })).rejects.toThrow('permissão');
+			expect(mocks.txUpdate).not.toHaveBeenCalled();
+		});
+		it.each(['appointments', 'shifts', 'events'])('bloqueia conflito de horário: %s', async (kind) => {
+			const start = target;
+			const end = new Date('2026-11-25T23:20:00.000Z');
+			if (kind === 'appointments') mocks.tx.query.appointmentsTable.findMany.mockResolvedValue([{ scheduledAt: start, endsAt: end, items: [] }]);
+			if (kind === 'shifts') mocks.tx.query.shiftsTable.findMany.mockResolvedValue([{ startTime: start, endTime: end }]);
+			if (kind === 'events') mocks.tx.query.calendarEventsTable.findMany.mockResolvedValue([{ startTime: start, endTime: end }]);
+			await expect(rescheduleAppointment({ id: APPOINTMENT_ID, scheduledAt: target })).rejects.toThrow('não está disponível');
+			expect(mocks.txUpdate).not.toHaveBeenCalled();
+		});
+		it('bloqueia fora do horário de trabalho', async () => {
+			mocks.assertIntervalWithinDoctorWorkingHours.mockImplementation(() => { throw new Error('Fora do horário'); });
+			await expect(rescheduleAppointment({ id: APPOINTMENT_ID, scheduledAt: target })).rejects.toThrow('Fora do horário');
+			expect(mocks.txUpdate).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('upsertAppointment', () => {

@@ -20,6 +20,7 @@ import { actionClient } from '@/lib/next-safe-action';
 import { buildAvailableStarts } from '@/lib/scheduling/availability';
 import { assertIntervalWithinDoctorWorkingHours } from '@/lib/scheduling/doctor-working-hours';
 import { normalizeAppointmentStart } from '@/lib/scheduling/appointment-time';
+import { getRescheduleDurationMinutes } from '@/lib/scheduling/reschedule-duration';
 import {
         buildAppointmentAccessCondition,
         requireAccessibleAppointment,
@@ -62,6 +63,8 @@ import {
         AppointmentsWithRelations,
         createAppointmentSchema,
         getDoctorAvailabilitySchema,
+        rescheduleAppointmentSchema,
+        rescheduleAvailabilitySchema,
 } from '../schema/appointments.schema';
 
 export const getAppointmentsPaginated = async (
@@ -424,6 +427,137 @@ export const getDoctorAvailability = actionClient
                         durationMinutes,
                         availableStarts,
                 };
+        });
+
+// Fluxo isolado: a edição de agenda não deve recriar snapshots de itens.
+type AppointmentTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+async function readRescheduleContext(
+        tx: AppointmentTransaction,
+        context: Awaited<ReturnType<typeof requireAuthContext>>,
+        id: string,
+        lock: boolean,
+) {
+        if (lock) {
+                await tx.execute(sql`SELECT id FROM appointments WHERE id = ${id} FOR UPDATE`);
+        }
+        const appointment = await tx.query.appointmentsTable.findFirst({
+                where: eq(appointmentsTable.id, id),
+                with: { items: { columns: {}, with: { service: { columns: { durationMinutes: true } } } } },
+        });
+        if (!appointment) throw new Error('Agendamento não encontrado.');
+        // Revalidar escopo após obter o estado atual da linha.
+        resolveRequestedDoctorId(context, appointment.doctorId);
+        if (!['pending', 'confirmed'].includes(appointment.status) || appointment.isPaid) {
+                throw new Error('O status atual não permite reagendar este atendimento.');
+        }
+        const charge = await tx.query.appointmentChargesTable.findFirst({
+                where: eq(appointmentChargesTable.appointmentId, id),
+                columns: { id: true },
+        });
+        if (charge) throw new Error('Atendimento faturado não pode ser reagendado.');
+
+        const doctor = await tx.query.doctorsTable.findFirst({
+                where: eq(doctorsTable.id, appointment.doctorId),
+                columns: { id: true, availableFromWeekDay: true, availableToWeekDay: true,
+                        availableFromTime: true, availableToTime: true },
+        });
+        if (!doctor) throw new Error('Veterinário não encontrado.');
+        // O editor de itens pode ter acrescentado serviços sem atualizar endsAt.
+        // Nunca reduzir a duração reservada; se não houver serviços, preservar o intervalo.
+        const durationMinutes = getRescheduleDurationMinutes(appointment);
+        return { appointment, doctor, durationMinutes };
+}
+
+async function readRescheduleBusyIntervals(
+        tx: AppointmentTransaction,
+        doctorId: string,
+        appointmentId: string,
+        start: Date,
+        end: Date,
+) {
+        const [appointments, shifts, events] = await Promise.all([
+                tx.query.appointmentsTable.findMany({
+                        where: and(
+                                eq(appointmentsTable.doctorId, doctorId),
+                                ne(appointmentsTable.id, appointmentId),
+                                lt(appointmentsTable.scheduledAt, end),
+                                or(gt(appointmentsTable.endsAt, start), isNull(appointmentsTable.endsAt)),
+                                notInArray(appointmentsTable.status, ['cancelled', 'no_show']),
+                        ),
+                        columns: { scheduledAt: true, endsAt: true },
+                        with: { items: { columns: {}, with: { service: { columns: { durationMinutes: true } } } } },
+                }),
+                tx.query.shiftsTable.findMany({
+                        where: and(eq(shiftsTable.doctorId, doctorId), lt(shiftsTable.startTime, end), gt(shiftsTable.endTime, start)),
+                        columns: { startTime: true, endTime: true },
+                }),
+                tx.query.calendarEventsTable.findMany({
+                        where: and(eq(calendarEventsTable.doctorId, doctorId), lt(calendarEventsTable.startTime, end), gt(calendarEventsTable.endTime, start)),
+                        columns: { startTime: true, endTime: true },
+                }),
+        ]);
+        return [
+                ...appointments.map((appointment) => ({
+                        start: appointment.scheduledAt,
+                        end: appointment.endsAt ?? addMinutes(appointment.scheduledAt, getRescheduleDurationMinutes(appointment)),
+                })),
+                ...shifts.map((shift) => ({ start: shift.startTime, end: shift.endTime })),
+                ...events.map((event) => ({ start: event.startTime, end: event.endTime })),
+        ];
+}
+
+export const getRescheduleAvailability = actionClient
+        .schema(rescheduleAvailabilitySchema)
+        .action(async ({ parsedInput }) => {
+                const context = await requireAuthContext();
+                requireStaff(context);
+                const { id, dayStart, dayEnd } = parsedInput;
+                await requireAccessibleAppointment(context, id);
+                return db.transaction(async (tx) => {
+                        const { appointment, doctor, durationMinutes } = await readRescheduleContext(tx, context, id, false);
+                        const busyIntervals = await readRescheduleBusyIntervals(tx, appointment.doctorId, id, dayStart, dayEnd);
+                        return {
+                                dayStart: dayStart.toISOString(),
+                                durationMinutes,
+                                availableStarts: buildAvailableStarts({ dayStart, dayEnd, durationMinutes, doctor, busyIntervals }),
+                        };
+                });
+        });
+
+export const rescheduleAppointment = actionClient
+        .schema(rescheduleAppointmentSchema)
+        .action(async ({ parsedInput }) => {
+                const context = await requireAuthContext();
+                requireStaff(context);
+                const { id } = parsedInput;
+                await requireAccessibleAppointment(context, id);
+                const scheduledAt = normalizeAppointmentStart(parsedInput.scheduledAt);
+                await db.transaction(async (tx) => {
+                        const { appointment, doctor, durationMinutes } = await readRescheduleContext(tx, context, id, true);
+                        const endsAt = addMinutes(scheduledAt, durationMinutes);
+                        assertIntervalWithinDoctorWorkingHours({ start: scheduledAt, end: endsAt }, doctor);
+                        // Mesmo lock usado pelo cadastro/edição geral de agendamentos.
+                        await tx.execute(sql`
+                                SELECT pg_advisory_xact_lock(
+                                        hashtext('lovelyvet:doctor_schedule'),
+                                        hashtext(${appointment.doctorId})
+                                )
+                        `);
+                        const busyIntervals = await readRescheduleBusyIntervals(tx, appointment.doctorId, id, scheduledAt, endsAt);
+                        if (busyIntervals.some((interval) => interval.start < endsAt && interval.end > scheduledAt)) {
+                                throw new Error('O horário selecionado não está disponível para este veterinário.');
+                        }
+                        const updated = await tx.update(appointmentsTable)
+                                .set({ scheduledAt, endsAt, updatedAt: new Date() })
+                                .where(and(eq(appointmentsTable.id, id), eq(appointmentsTable.status, appointment.status)))
+                                .returning({ id: appointmentsTable.id });
+                        if (updated.length !== 1) throw new Error('O agendamento foi alterado por outra operação.');
+                });
+                revalidatePath('/appointments');
+                revalidatePath('/agenda');
+                revalidatePath('/dashboard');
+                return { success: true };
         });
 
 export const upsertAppointment = actionClient

@@ -25,6 +25,12 @@ describe('interface de agendamentos', () => {
     expect(menuMarkup).not.toContain('<AlertDialog');
     expect(menuMarkup).not.toContain('<Dialog open=');
   });
+  it('oferece reagendamento independente dos itens e mantém o diálogo fora do menu', () => {
+    expect(list).toContain('Reagendar atendimento');
+    expect(list).toContain('disabled={!availableReschedule}');
+    expect(list).toContain("const availableReschedule = staff && !billed && !appointment.isPaid && ['pending', 'confirmed'].includes(appointment.status)");
+    expect(list.indexOf('<Dialog open={rescheduleOpen}')).toBeGreaterThan(list.indexOf('</DropdownMenu>'));
+  });
   it('usa o cabeçalho cinza e botões compactos para agendar e ver o pet', () => {
     expect(table).toContain('[&_tr]:bg-muted/60');
     expect(list).toContain('Agendar');

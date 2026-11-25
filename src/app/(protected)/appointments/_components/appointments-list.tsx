@@ -60,6 +60,7 @@ import {
 } from '@/components/ui/select';
 import {
 	CalendarDays,
+	CalendarClock,
 	Bell,
 	MoreHorizontal,
 	Check,
@@ -81,6 +82,7 @@ import { use, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import AppointmentFormClient from './appointment-form';
 import AppointmentItemsEditor from './appointment-items-editor';
+import AppointmentRescheduleDialog from './appointment-reschedule-dialog';
 import AppointmentBillingEditor from './appointment-billing-editor';
 import BadgeStatus from './badge-status';
 
@@ -122,6 +124,9 @@ function AppointmentActions({
   const staff = isStaff(viewerRole);
   const billed = Boolean(billing);
   const [itemsOpen, setItemsOpen] = useState(false);
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [rescheduleSaving, setRescheduleSaving] = useState(false);
+  const availableReschedule = staff && !billed && !appointment.isPaid && ['pending', 'confirmed'].includes(appointment.status);
   const router = useRouter();
   const availableConfirmation = appointment.status === 'pending';
   const availableCompletion = ['confirmed', 'in_progress'].includes(appointment.status);
@@ -155,6 +160,9 @@ function AppointmentActions({
                 <DropdownMenuItem disabled={!availableConfirmation} onSelect={() => onRequestConfirmation(appointment.id, 'confirm')}>
                   <Check className='size-4' />Confirmar atendimento
                 </DropdownMenuItem>
+                <DropdownMenuItem disabled={!availableReschedule} onSelect={() => setRescheduleOpen(true)}>
+                  <CalendarClock className='size-4' />Reagendar atendimento
+                </DropdownMenuItem>
                 <DropdownMenuItem disabled={!availableCompletion} onSelect={() => onRequestConfirmation(appointment.id, 'complete')}>
                   <CheckCheck className='size-4' />Concluir atendimento
                 </DropdownMenuItem>
@@ -185,6 +193,9 @@ function AppointmentActions({
         </DropdownMenu>
       </div>
       {/* O editor e a confirmação ficam fora do DropdownMenu para não desmontarem ao fechar o menu. */}
+      <Dialog open={rescheduleOpen} onOpenChange={(open) => { if (!rescheduleSaving) setRescheduleOpen(open); }}>
+        {rescheduleOpen && <AppointmentRescheduleDialog appointment={appointment} onClose={() => setRescheduleOpen(false)} onSavingChange={setRescheduleSaving} />}
+      </Dialog>
       <Dialog open={itemsOpen} onOpenChange={setItemsOpen}>
         {itemsOpen && (
           <AppointmentItemsEditor
