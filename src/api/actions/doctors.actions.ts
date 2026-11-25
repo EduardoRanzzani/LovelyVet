@@ -1,9 +1,10 @@
 'use server';
 
 import { db } from '@/db';
-import { clerkIdentitiesTable, doctorsTable, usersTable } from '@/db/schema';
+import { doctorsTable, usersTable } from '@/db/schema';
 import { createNewClerkUser } from '@/lib/integrations/clerk';
 import { getClerkEnvironment } from '@/lib/integrations/clerk-environment';
+import { provisionClerkIdentity } from '@/lib/security/clerk-identity-provisioning';
 import { actionClient } from '@/lib/next-safe-action';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireAdmin, requireStaff } from '@/lib/security/authorization';
@@ -136,57 +137,36 @@ export const upsertDoctor = actionClient.schema(createDoctorWithUserSchema).acti
 	const newClerkUser = existingUser ? null : await createNewClerkUser(parsedInput);
 
 	await db.transaction(async (transaction) => {
-		const userRows = existingUser
-			? await transaction
-					.update(usersTable)
-					.set({
-						name: parsedInput.name,
-						email: parsedInput.email,
-						image: parsedInput.image,
-						role: 'doctor',
-						updatedAt: new Date(),
-					})
-					.where(eq(usersTable.id, existingUser.id))
-					.returning()
-			: await transaction
-					.insert(usersTable)
-					.values({
-						name: parsedInput.name,
-						email: parsedInput.email,
-						image: parsedInput.image,
-						role: 'doctor',
-					})
-					.onConflictDoUpdate({
-						target: usersTable.email,
-						set: {
-							name: parsedInput.name,
-							image: parsedInput.image,
-							role: 'doctor',
-							updatedAt: new Date(),
-						},
-					})
-					.returning();
-
-		const [user] = userRows;
-
-		if (!user) throw new Error('Falha ao criar usuário base no sistema');
-
-		if (newClerkUser) {
-			await transaction
-				.insert(clerkIdentitiesTable)
-				.values({
-					userId: user.id,
-					environment: clerkEnvironment,
+		const provisioned = newClerkUser
+			? await provisionClerkIdentity(transaction, {
 					clerkUserId: newClerkUser.id,
+					environment: clerkEnvironment,
+					name: parsedInput.name,
+					email: parsedInput.email,
+					image: parsedInput.image,
 				})
-				.onConflictDoUpdate({
-					target: [clerkIdentitiesTable.userId, clerkIdentitiesTable.environment],
-					set: {
-						clerkUserId: newClerkUser.id,
-						updatedAt: new Date(),
-					},
-				});
+			: null;
+
+		if (newClerkUser && (!provisioned || provisioned.user.role !== 'customer')) {
+			throw new Error('Identidade Clerk em conflito. A associação exige revisão administrativa.');
 		}
+
+		const userId = existingUser?.id ?? provisioned?.user.id;
+		if (!userId) throw new Error('Falha ao criar usuário base no sistema');
+
+		const [user] = await transaction
+			.update(usersTable)
+			.set({
+				name: parsedInput.name,
+				email: parsedInput.email,
+				image: parsedInput.image,
+				role: existingUser?.role === 'admin' ? 'admin' : 'doctor',
+				updatedAt: new Date(),
+			})
+			.where(eq(usersTable.id, userId))
+			.returning();
+
+		if (!user) throw new Error('Usuário base não encontrado');
 
 		const doctorData = {
 			userId: user.id,

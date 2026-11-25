@@ -1,6 +1,6 @@
 'use client';
 
-import { linkCurrentClerkIdentity } from '@/api/actions/admin.actions';
+import { verifyCurrentClerkIdentity } from '@/api/actions/admin.actions';
 import { Button } from '@/components/ui/button';
 import { LinkIcon, Loader2Icon } from 'lucide-react';
 import { useAction } from 'next-safe-action/hooks';
@@ -11,15 +11,15 @@ interface AdminFormClientProps {
 }
 
 const AdminFormClient = ({ environment }: AdminFormClientProps) => {
-	const linkIdentityAction = useAction(linkCurrentClerkIdentity, {
+	const verifyIdentityAction = useAction(verifyCurrentClerkIdentity, {
 		onSuccess: () => {
 			toast.success(
-				`Identidade vinculada ao ambiente ${environment === 'development' ? 'de desenvolvimento' : 'de produção'}!`,
+				`Identidade confirmada no ambiente ${environment === 'development' ? 'de desenvolvimento' : 'de produção'}!`,
 			);
 		},
 		onError: (err) => {
 			console.error({ err });
-			toast.error('Não foi possível vincular a identidade atual.');
+			toast.error('Não foi possível verificar a identidade atual.');
 		},
 	});
 
@@ -32,11 +32,11 @@ const AdminFormClient = ({ environment }: AdminFormClientProps) => {
 
 			<Button
 				className='w-full lg:w-80'
-				onClick={() => linkIdentityAction.execute({})}
-				disabled={linkIdentityAction.isPending}
+				onClick={() => verifyIdentityAction.execute({})}
+				disabled={verifyIdentityAction.isPending}
 			>
-				{linkIdentityAction.isPending ? <Loader2Icon className='animate-spin' /> : <LinkIcon />}
-				Vincular identidade deste ambiente
+				{verifyIdentityAction.isPending ? <Loader2Icon className='animate-spin' /> : <LinkIcon />}
+				Verificar identidade deste ambiente
 			</Button>
 		</div>
 	);
