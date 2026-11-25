@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { eq } from 'drizzle-orm';
+import { appointmentsTable } from '@/db/schema';
 
 const mocks = vi.hoisted(() => {
 	const txReturning = vi.fn();
@@ -61,6 +63,8 @@ const mocks = vi.hoisted(() => {
 		requireStaff: vi.fn(),
 		assertCanAccessPet: vi.fn(),
 		requireAccessibleAppointment: vi.fn(),
+		lockAccessibleAppointment: vi.fn(),
+		lockPetTutorAccess: vi.fn(),
 		buildAppointmentAccessCondition: vi.fn(),
 		assertIntervalWithinDoctorWorkingHours: vi.fn(),
 		revalidatePath: vi.fn(),
@@ -74,6 +78,11 @@ vi.mock('@/db', () => ({
 			appointmentProductItemsTable: { findFirst: mocks.productItemsFindFirst },
 			appointmentChargesTable: { findFirst: mocks.chargeFindFirst },
 			careRemindersTable: { findFirst: mocks.tx.query.careRemindersTable.findFirst },
+			doctorsTable: mocks.tx.query.doctorsTable,
+			servicesTable: mocks.tx.query.servicesTable,
+			appointmentsTable: mocks.tx.query.appointmentsTable,
+			shiftsTable: mocks.tx.query.shiftsTable,
+			calendarEventsTable: mocks.tx.query.calendarEventsTable,
 		},
 		update: mocks.dbUpdate,
 		delete: mocks.dbDelete,
@@ -103,6 +112,8 @@ vi.mock('@/lib/security/pet-access', () => ({
 
 vi.mock('@/lib/security/appointment-access', () => ({
 	requireAccessibleAppointment: mocks.requireAccessibleAppointment,
+	lockAccessibleAppointment: mocks.lockAccessibleAppointment,
+	lockPetTutorAccess: mocks.lockPetTutorAccess,
 	buildAppointmentAccessCondition: mocks.buildAppointmentAccessCondition,
 }));
 
@@ -123,6 +134,7 @@ import {
 	upsertAppointment,
 	rescheduleAppointment,
 	getRescheduleAvailability,
+	getDoctorAvailability,
 } from './appointments.actions';
 
 const PET_ID = '11111111-1111-4111-8111-111111111111';
@@ -210,6 +222,11 @@ describe('appointments actions', () => {
 			id: APPOINTMENT_ID,
 			status: 'pending',
 		});
+		mocks.lockAccessibleAppointment.mockImplementation((_tx, context, id) =>
+			mocks.requireAccessibleAppointment(context, id),
+		);
+		mocks.lockPetTutorAccess.mockResolvedValue(true);
+		mocks.buildAppointmentAccessCondition.mockImplementation((_context, id) => eq(appointmentsTable.id, id));
 		mocks.assertIntervalWithinDoctorWorkingHours.mockReturnValue(undefined);
 
 		mocks.tx.query.servicesTable.findMany.mockResolvedValue(servicesData);
@@ -241,6 +258,100 @@ describe('appointments actions', () => {
 
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	describe('autorização dos agendamentos', () => {
+		const availabilityInput = {
+			doctorId: DOCTOR_ID,
+			serviceIds: [SERVICE_ID_1, SERVICE_ID_2],
+			dayStart: new Date('2026-09-28T00:00:00.000Z'),
+			dayEnd: new Date('2026-09-28T23:59:59.000Z'),
+		};
+
+		it.each([customerContext, doctorContext])('nega exclusão de horário sem acesso: $role', async (context) => {
+			mocks.requireAuthContext.mockResolvedValue(context);
+			mocks.requireAccessibleAppointment.mockRejectedValue(new Error('Agendamento não encontrado'));
+			await expect(
+				getDoctorAvailability({ ...availabilityInput, appointmentId: APPOINTMENT_ID }),
+			).rejects.toThrow('Agendamento não encontrado');
+			expect(mocks.tx.query.appointmentsTable.findMany).not.toHaveBeenCalled();
+		});
+
+		it.each([customerContext, doctorContext, adminContext])(
+			'permite exclusão autorizada na disponibilidade: $role',
+			async (context) => {
+				mocks.requireAuthContext.mockResolvedValue(context);
+				mocks.tx.query.appointmentsTable.findMany.mockResolvedValue([]);
+				mocks.tx.query.shiftsTable.findMany.mockResolvedValue([]);
+				mocks.tx.query.calendarEventsTable.findMany.mockResolvedValue([]);
+				await expect(
+					getDoctorAvailability({ ...availabilityInput, appointmentId: APPOINTMENT_ID }),
+				).resolves.toMatchObject({ doctorId: DOCTOR_ID, durationMinutes: 50 });
+				expect(mocks.requireAccessibleAppointment).toHaveBeenCalledWith(context, APPOINTMENT_ID);
+				const query = mocks.tx.query.appointmentsTable.findMany.mock.calls[0][0];
+				query.where(appointmentsTable);
+				expect(mocks.buildAppointmentAccessCondition).toHaveBeenCalledWith(
+					context,
+					APPOINTMENT_ID,
+					appointmentsTable,
+				);
+			},
+		);
+
+		it('consulta disponibilidade sem exclusão para um novo agendamento', async () => {
+			mocks.tx.query.appointmentsTable.findMany.mockResolvedValue([]);
+			mocks.tx.query.shiftsTable.findMany.mockResolvedValue([]);
+			mocks.tx.query.calendarEventsTable.findMany.mockResolvedValue([]);
+			await expect(getDoctorAvailability(availabilityInput)).resolves.toMatchObject({ doctorId: DOCTOR_ID });
+			expect(mocks.requireAccessibleAppointment).not.toHaveBeenCalled();
+		});
+
+		it('bloqueia criação quando o acesso ao pet é perdido antes da transação', async () => {
+			mocks.assertCanAccessPet
+				.mockResolvedValueOnce(undefined)
+				.mockRejectedValueOnce(new Error('Pet não encontrado'));
+			await expect(upsertAppointment(baseInput)).rejects.toThrow('Pet não encontrado');
+			expect(mocks.lockPetTutorAccess).toHaveBeenCalledWith(mocks.tx, customerContext, PET_ID);
+			expect(mocks.assertCanAccessPet).toHaveBeenCalledWith(customerContext, PET_ID, mocks.tx);
+			expect(mocks.txInsert).not.toHaveBeenCalled();
+		});
+
+		it('bloqueia criação se não conseguir travar o vínculo do tutor', async () => {
+			mocks.lockPetTutorAccess.mockResolvedValue(false);
+			await expect(upsertAppointment(baseInput)).rejects.toThrow('Pet não encontrado');
+			expect(mocks.txInsert).not.toHaveBeenCalled();
+		});
+
+		it('bloqueia edição quando o acesso original é perdido depois da validação inicial', async () => {
+			mocks.lockAccessibleAppointment.mockRejectedValue(new Error('Agendamento não encontrado'));
+			await expect(upsertAppointment({ ...baseInput, id: APPOINTMENT_ID })).rejects.toThrow('não encontrado');
+			expect(mocks.txUpdate).not.toHaveBeenCalled();
+			expect(mocks.txDelete).not.toHaveBeenCalled();
+			expect(mocks.txInsert).not.toHaveBeenCalled();
+		});
+
+		it('não substitui itens se a atualização autorizada não afetar nenhuma linha', async () => {
+			mocks.txUpdateReturning.mockResolvedValue([]);
+			await expect(upsertAppointment({ ...baseInput, id: APPOINTMENT_ID })).rejects.toThrow('não encontrado');
+			expect(mocks.txDelete).not.toHaveBeenCalled();
+			expect(mocks.txInsert).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			{ name: 'exclusão', action: deleteAppointment, status: 'pending' },
+			{ name: 'confirmação', action: markAsConfirmed, status: 'pending' },
+			{ name: 'conclusão', action: markAppointmentAsCompleted, status: 'confirmed' },
+			{ name: 'cancelamento', action: markAppointmentAsCancelled, status: 'pending' },
+		])('nega $name após perda do acesso na transação', async ({ action, status }) => {
+			mocks.requireAuthContext.mockResolvedValue(doctorContext);
+			mocks.requireAccessibleAppointment.mockResolvedValue({ id: APPOINTMENT_ID, status });
+			mocks.lockAccessibleAppointment.mockRejectedValue(new Error('Agendamento não encontrado'));
+			await expect(action({ id: APPOINTMENT_ID })).rejects.toThrow('não encontrado');
+			expect(mocks.lockAccessibleAppointment).toHaveBeenCalledWith(mocks.tx, doctorContext, APPOINTMENT_ID);
+			expect(mocks.txUpdate).not.toHaveBeenCalled();
+			expect(mocks.txDelete).not.toHaveBeenCalled();
+			expect(mocks.revalidatePath).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('rescheduleAppointment', () => {
@@ -500,7 +611,7 @@ describe('appointments actions', () => {
 		});
 
 		it('updates pending appointment and replaces its services', async () => {
-			mocks.tx.query.appointmentsTable.findFirst.mockResolvedValueOnce({ id: APPOINTMENT_ID, status: 'pending' });
+			mocks.lockAccessibleAppointment.mockResolvedValueOnce({ id: APPOINTMENT_ID, status: 'pending' });
 			await upsertAppointment({
 				...baseInput,
 				id: APPOINTMENT_ID,
@@ -546,7 +657,7 @@ describe('appointments actions', () => {
 		it('allows staff to edit a confirmed appointment without changing its status', async () => {
 			mocks.requireAuthContext.mockResolvedValue(adminContext);
 			mocks.requireAccessibleAppointment.mockResolvedValue({ id: APPOINTMENT_ID, status: 'confirmed' });
-			mocks.tx.query.appointmentsTable.findFirst.mockResolvedValueOnce({
+			mocks.lockAccessibleAppointment.mockResolvedValueOnce({
 				id: APPOINTMENT_ID,
 				status: 'confirmed',
 			});
@@ -557,7 +668,7 @@ describe('appointments actions', () => {
 		it('blocks editing when the status changes after row lock', async () => {
 			mocks.requireAuthContext.mockResolvedValue(adminContext);
 			mocks.requireAccessibleAppointment.mockResolvedValue({ id: APPOINTMENT_ID, status: 'pending' });
-			mocks.tx.query.appointmentsTable.findFirst.mockResolvedValueOnce({
+			mocks.lockAccessibleAppointment.mockResolvedValueOnce({
 				id: APPOINTMENT_ID,
 				status: 'completed',
 			});
@@ -570,7 +681,7 @@ describe('appointments actions', () => {
 		it('blocks editing when a charge appears after row lock', async () => {
 			mocks.requireAuthContext.mockResolvedValue(adminContext);
 			mocks.requireAccessibleAppointment.mockResolvedValue({ id: APPOINTMENT_ID, status: 'pending' });
-			mocks.tx.query.appointmentsTable.findFirst.mockResolvedValueOnce({ id: APPOINTMENT_ID, status: 'pending' });
+			mocks.lockAccessibleAppointment.mockResolvedValueOnce({ id: APPOINTMENT_ID, status: 'pending' });
 			mocks.tx.query.appointmentChargesTable.findFirst.mockResolvedValue({ id: 'new-charge' });
 			await expect(upsertAppointment({ ...baseInput, id: APPOINTMENT_ID, status: 'pending' })).rejects.toThrow(
 				'Atendimento faturado não pode ser editado.',
@@ -581,7 +692,7 @@ describe('appointments actions', () => {
 		it('blocks editing when products appear after row lock', async () => {
 			mocks.requireAuthContext.mockResolvedValue(adminContext);
 			mocks.requireAccessibleAppointment.mockResolvedValue({ id: APPOINTMENT_ID, status: 'pending' });
-			mocks.tx.query.appointmentsTable.findFirst.mockResolvedValueOnce({ id: APPOINTMENT_ID, status: 'pending' });
+			mocks.lockAccessibleAppointment.mockResolvedValueOnce({ id: APPOINTMENT_ID, status: 'pending' });
 			mocks.tx.query.appointmentProductItemsTable.findFirst.mockResolvedValue({ id: 'new-product' });
 			await expect(upsertAppointment({ ...baseInput, id: APPOINTMENT_ID, status: 'pending' })).rejects.toThrow(
 				'Este atendimento possui produtos',
@@ -743,24 +854,24 @@ describe('appointments actions', () => {
 			await markAsConfirmed({ id: APPOINTMENT_ID });
 
 			expect(mocks.requireStaff).toHaveBeenCalledWith(doctorContext);
-			expect(mocks.dbUpdateSet).toHaveBeenCalledWith(
+			expect(mocks.txUpdateSet).toHaveBeenCalledWith(
 				expect.objectContaining({
 					status: 'confirmed',
 				}),
 			);
-			expect(mocks.dbUpdateWhere).toHaveBeenCalledTimes(1);
+			expect(mocks.txUpdateWhere).toHaveBeenCalledTimes(1);
 			expect(mocks.revalidatePath).toHaveBeenCalledWith('/appointments');
 		});
 
 		it('rejects confirmation if status changes before the conditional update', async () => {
 			mocks.requireAuthContext.mockResolvedValue(doctorContext);
-			mocks.dbUpdateReturning.mockResolvedValue([]);
+			mocks.txUpdateReturning.mockResolvedValue([]);
 
 			await expect(markAsConfirmed({ id: APPOINTMENT_ID })).rejects.toThrow(
 				'O agendamento foi alterado por outra operação.',
 			);
-			expect(mocks.dbUpdateWhere).toHaveBeenCalledTimes(1);
-			expect(mocks.dbUpdateReturning).toHaveBeenCalledTimes(1);
+			expect(mocks.txUpdateWhere).toHaveBeenCalledTimes(1);
+			expect(mocks.txUpdateReturning).toHaveBeenCalledTimes(1);
 			expect(mocks.revalidatePath).not.toHaveBeenCalled();
 		});
 
@@ -775,7 +886,7 @@ describe('appointments actions', () => {
 				'Apenas agendamentos pendentes podem ser confirmados',
 			);
 
-			expect(mocks.dbUpdate).not.toHaveBeenCalled();
+			expect(mocks.txUpdate).not.toHaveBeenCalled();
 		});
 	});
 
@@ -815,12 +926,12 @@ describe('appointments actions', () => {
 			});
 
 			expect(mocks.requireStaff).toHaveBeenCalledWith(doctorContext);
-			expect(mocks.dbUpdateSet).toHaveBeenCalledWith(
+			expect(mocks.txUpdateSet).toHaveBeenCalledWith(
 				expect.objectContaining({
 					status: 'completed',
 				}),
 			);
-			expect(mocks.dbUpdateWhere).toHaveBeenCalledTimes(1);
+			expect(mocks.txUpdateWhere).toHaveBeenCalledTimes(1);
 		});
 
 		it('rejects completion if status changes before the conditional update', async () => {
@@ -829,13 +940,13 @@ describe('appointments actions', () => {
 				id: APPOINTMENT_ID,
 				status: 'confirmed',
 			});
-			mocks.dbUpdateReturning.mockResolvedValue([]);
+			mocks.txUpdateReturning.mockResolvedValue([]);
 
 			await expect(markAppointmentAsCompleted({ id: APPOINTMENT_ID })).rejects.toThrow(
 				'O status do atendimento mudou.',
 			);
-			expect(mocks.dbUpdateWhere).toHaveBeenCalledTimes(1);
-			expect(mocks.dbUpdateReturning).toHaveBeenCalledTimes(1);
+			expect(mocks.txUpdateWhere).toHaveBeenCalledTimes(1);
+			expect(mocks.txUpdateReturning).toHaveBeenCalledTimes(1);
 			expect(mocks.revalidatePath).not.toHaveBeenCalled();
 		});
 
@@ -852,7 +963,7 @@ describe('appointments actions', () => {
 				}),
 			).rejects.toThrow('O agendamento precisa estar confirmado ou em atendimento para ser concluído');
 
-			expect(mocks.dbUpdate).not.toHaveBeenCalled();
+			expect(mocks.txUpdate).not.toHaveBeenCalled();
 		});
 	});
 

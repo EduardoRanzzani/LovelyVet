@@ -11,11 +11,11 @@ Versão atual do código: 1.4.0. Próximo release: 1.5.0.
 - [x] 4.0 — Padronização com Prettier.
 - [x] 4.1.1 — Inventário de segurança.
 - [x] 4.1.2 — Segurança das identidades Clerk (validação automatizada aprovada conforme histórico).
-- [ ] 4.1.2.1 — Gerenciamento administrativo de identidades: implementado; funcionamento da tela confirmado pelo desenvolvedor, homologação integral e suíte final ainda não comprovadas.
+- [x] 4.1.2.1 — Gerenciamento administrativo de identidades; funcionamento confirmado e suíte de 639 testes aprovada.
 - [x] 4.1.2.2 — Migration 0047 aplicada e validada.
-- [ ] 4.1.2.3 — Homologação e commit da segurança Clerk (**etapa atual**).
-- [ ] 4.1.3 — Autorização dos agendamentos (SEC-003 e SEC-004).
-- [ ] 4.1.4 — Segurança dos registros clínicos (SEC-005).
+- [ ] 4.1.2.3 — Homologação e commit Clerk: validação aprovada; desenvolvedor informou faltar apenas commit; execução do commit a confirmar.
+- [ ] 4.1.3 — Autorização dos agendamentos (SEC-003 e SEC-004) (**fechamento atual**): aplicação, validação automatizada e homologação funcional aprovadas pelo desenvolvedor; commit pendente.
+- [ ] 4.1.4 — Segurança dos registros clínicos (SEC-005) — próxima após commit da 4.1.3.
 - [ ] 4.1.5 — Segurança das receitas e PDFs (SEC-006).
 - [ ] 4.1.6 — Revisão financeira e uploads.
 - [ ] 4.1.7 — Auditoria de dependências.

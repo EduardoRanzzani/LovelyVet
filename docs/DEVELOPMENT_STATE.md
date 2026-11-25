@@ -10,16 +10,18 @@ Atualização: 2026-11-25 (America/Campo_Grande).
 - Pacotes: `/Users/eduardoranzzani/Downloads/LovelyVet`.
 - Banco: `lovelyvet-application`. Development e Production compartilham PostgreSQL; Clerk separado por ambiente.
 
-## Checkpoint atual — 4.1.2.3
+## Checkpoint atual — 4.1.3
 
-Homologação e commit do bloco de segurança Clerk. Ver cronograma em `ROADMAP.md`.
+Autorização dos agendamentos (SEC-003 e SEC-004). Implementação aplicada, validação automatizada aprovada e homologação funcional concluída em 25/11/2026, conforme confirmação do desenvolvedor. Commit de fechamento pendente de execução/confirmação.
 
 - [x] 4.0 — Prettier, EditorConfig e ESLint; 585 testes conforme histórico.
 - [x] 4.1.1 — Inventário de segurança.
-- [x] 4.1.2 — Segurança Clerk e correção Vitest; validação automatizada aprovada conforme histórico (613 testes previstos).
-- [x] 4.1.2.1 — Implementação da central `/admin`; desenvolvedor confirmou nesta conversa que a parte está funcionando. A confirmação não detalhou todos os casos de homologação.
+- [x] 4.1.2 — Segurança Clerk e correção Vitest.
+- [x] 4.1.2.1 — Central `/admin` funcionando conforme confirmação do desenvolvedor.
 - [x] 4.1.2.2 — Migration 0047 aplicada e validada em 25/11/2026.
-- [ ] 4.1.2.3 — Homologação integral e commit.
+- 4.1.2.3 — Suíte aprovada: 79 arquivos, 639 testes, Prettier, ESLint sem warnings e TypeScript; 16,31 s (log do Mac, 25/11/2026). O desenvolvedor informou que faltava apenas o commit e autorizou seguir. Comandos de commit fornecidos; hash/execução do commit não confirmados. Verificar no Git sem repetir homologações já realizadas.
+- [x] 4.1.3 — Aplicação, validação automatizada e homologação funcional concluídas.
+- [ ] 4.1.3 — Commit de fechamento (inclui os documentos atualizados).
 
 ## Última migration confirmada
 
@@ -33,11 +35,18 @@ Homologação e commit do bloco de segurança Clerk. Ver cronograma em `ROADMAP.
 
 ## Próximas ações exatas
 
-1. Confirmar o resultado de `pnpm format:check` e `pnpm check` (inclui lint, typecheck e Vitest). A última suíte tem 639 testes esperados: 613 anteriores + 26 novos. Não repetir caso o resultado atual já esteja comprovado.
-2. Confirmar, sem repetir o que já estiver homologado, login Admin, Doctor e Customer, busca, paginação e validação de Clerk IDs.
-3. Confirmar teste controlado de vinculação com usuário fictício e identidade verificada, preservação de vínculos, auditoria e bloqueios indevidos. Não modificar registros reais para testar.
-4. Após homologação, fornecer comandos específicos de Git para um único commit de segurança Clerk. Não executar automaticamente.
-5. Continuar pela etapa 4.1.3 — Autorização dos agendamentos (SEC-003 e SEC-004).
+1. Aplicar o pacote documental `LovelyVet-etapa-4.1.3-fechamento.zip` e conferir o resultado de `pnpm format:check` e `pnpm check`.
+2. Conferir `git status --short` e `git log -3 --oneline`, inclusive o commit Clerk anterior (execução não confirmada neste histórico).
+3. Fazer o commit específico da 4.1.3 com os cinco arquivos TypeScript e os quatro documentos. Não incluir ZIPs. Mensagem: `fix(security): enforce appointment authorization within transactions`.
+4. Após confirmar o commit, retomar diretamente a **4.1.4 — Segurança dos registros clínicos (SEC-005)**. Não repetir a homologação da 4.1.3 sem evidência de regressão. SEC-005 é revisão de política, não vulnerabilidade comprovada.
+
+## Evidências da homologação 4.1.3 (25/11/2026)
+
+- Instalador e validações automatizadas aprovados conforme relato do desenvolvedor ("rodou ok"). Sem log detalhado: 661 testes em 80 arquivos são a previsão, não uma contagem verificada; último log integral disponível: 639 testes em 79 arquivos.
+- O desenvolvedor confirmou expressamente a homologação dos oito fluxos: criação como Admin, edição como Doctor, reagendamento pendente, reagendamento confirmado, confirmação/conclusão/cancelamento, exclusão fictícia, criação como Customer e disponibilidade no reagendamento.
+- Não há evidência separada de teste manual negativo de IDs alheios ou de concorrência real; estes cenários foram contemplados na implementação/testes automatizados.
+- Nenhuma migration nesta etapa; 0047 permanece a última confirmada.
+- Commit ainda não executado por este assistente. A próxima conversa deve verificar o Git antes de tratar a etapa como encerrada no versionamento.
 
 ## Entregas anteriores do bloco Clerk
 
@@ -45,10 +54,14 @@ Homologação e commit do bloco de segurança Clerk. Ver cronograma em `ROADMAP.
 - `LovelyVet-etapa-4.1.2-correcao-vitest.zip`
 - `LovelyVet-etapa-4.1.2.1-gerenciamento-identidades-clerk.zip`
 
-## Atualização documental atual
+## Entrega 4.1.3
 
-Pacote exclusivo de documentação: `AGENTS.md`, `docs/ROADMAP.md` e atualização dos três documentos existentes. Não muda código, schema ou versão. Aplicação no Mac, formatação global, testes finais e commit ainda não confirmados. Registrar resultados do instalador quando o desenvolvedor os informar. Não confundir a conclusão do pacote documental com o fechamento de 4.1.2.3.
+- `src/api/actions/appointments.actions.ts`: escopo da exclusão na disponibilidade, autorização após trava e gravações condicionadas ao escopo; consulta de lembrete na transação de conclusão.
+- `src/lib/security/appointment-access.ts`: leitura com executor transacional, trava do agendamento e vínculo do tutor.
+- `src/lib/security/pet-access.ts`: leitura de acesso ao pet pelo executor transacional.
+- `src/api/actions/appointments.actions.test.ts` e `src/lib/security/appointment-access.test.ts`: 22 novos casos previstos; testes de ações existentes adaptados às transações.
+- Documentação de estado, roadmap, decisões e auditoria atualizada.
 
 ## Limitações
 
-Sem consulta ao banco ou execução de testes do aplicativo neste ambiente. O hash e a presença de migrations não equivalem a auditoria integral do schema. O último resultado completo de 639 testes e o commit Clerk não foram fornecidos. Não inferir novos escopos. Atualizar este checkpoint após cada avanço relevante.
+A sintaxe dos arquivos TypeScript foi verificada por transpileModule; não substitui typecheck nem testes. Dependências e configuração Prettier local não estavam disponíveis neste ambiente. O instalador usa o Prettier efetivo do projeto antes de aplicar os arquivos. Não houve consulta ao PostgreSQL nem teste real de concorrência. A revalidação usa o contexto autenticado da requisição, não uma nova consulta de papel/identidade Clerk; revogação global de identidade durante uma requisição e outros fluxos financeiros/clínicos não integram esta correção. Banco compartilhado continua sendo risco. SEC-003/004 corrigidas e homologadas no escopo da etapa; riscos residuais permanecem registrados. Não confundir homologação funcional com teste real de concorrência ou auditoria integral.

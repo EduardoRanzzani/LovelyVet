@@ -21,7 +21,12 @@ import { buildAvailableStarts } from '@/lib/scheduling/availability';
 import { assertIntervalWithinDoctorWorkingHours } from '@/lib/scheduling/doctor-working-hours';
 import { normalizeAppointmentStart } from '@/lib/scheduling/appointment-time';
 import { getRescheduleDurationMinutes } from '@/lib/scheduling/reschedule-duration';
-import { buildAppointmentAccessCondition, requireAccessibleAppointment } from '@/lib/security/appointment-access';
+import {
+	buildAppointmentAccessCondition,
+	lockAccessibleAppointment,
+	lockPetTutorAccess,
+	requireAccessibleAppointment,
+} from '@/lib/security/appointment-access';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
 import { resolveRequestedDoctorId } from '@/lib/security/doctor-scope';
@@ -29,7 +34,24 @@ import { assertCanAccessPet } from '@/lib/security/pet-access';
 import { normalizePagination } from '@/lib/pagination';
 import { resolveShiftMonth } from '@/lib/shifts/shift-month';
 import { addMinutes, addMonths, endOfMonth, startOfMonth, subMonths } from 'date-fns';
-import { and, count, desc, eq, exists, gt, gte, ilike, isNull, lt, lte, ne, notInArray, or, sql } from 'drizzle-orm';
+import {
+	and,
+	count,
+	desc,
+	eq,
+	exists,
+	gt,
+	gte,
+	ilike,
+	isNull,
+	lt,
+	lte,
+	ne,
+	not,
+	notInArray,
+	or,
+	sql,
+} from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
 import { MAX_PAGE_SIZE, monthNames, PaginatedData } from '../config/consts';
@@ -230,6 +252,8 @@ export const getDoctorAvailability = actionClient
 
 		const doctorId = resolveRequestedDoctorId(context, requestedDoctorId);
 
+		if (appointmentId) await requireAccessibleAppointment(context, appointmentId);
+
 		const doctor = await db.query.doctorsTable.findFirst({
 			columns: {
 				id: true,
@@ -277,13 +301,18 @@ export const getDoctorAvailability = actionClient
 		 */
 		const [appointments, shifts, personalEvents] = await Promise.all([
 			db.query.appointmentsTable.findMany({
-				where: and(
-					eq(appointmentsTable.doctorId, doctorId),
-					lt(appointmentsTable.scheduledAt, dayEnd),
-					or(gt(appointmentsTable.endsAt, dayStart), isNull(appointmentsTable.endsAt)),
-					notInArray(appointmentsTable.status, ['cancelled', 'no_show']),
-					appointmentId ? ne(appointmentsTable.id, appointmentId) : undefined,
-				),
+				where: (appointments) => {
+					const exclusion = appointmentId
+						? buildAppointmentAccessCondition(context, appointmentId, appointments)
+						: undefined;
+					return and(
+						eq(appointments.doctorId, doctorId),
+						lt(appointments.scheduledAt, dayEnd),
+						or(gt(appointments.endsAt, dayStart), isNull(appointments.endsAt)),
+						notInArray(appointments.status, ['cancelled', 'no_show']),
+						exclusion ? not(exclusion) : undefined,
+					);
+				},
 
 				columns: {
 					id: true,
@@ -509,7 +538,9 @@ export const rescheduleAppointment = actionClient
 			const updated = await tx
 				.update(appointmentsTable)
 				.set({ scheduledAt, endsAt, updatedAt: new Date() })
-				.where(and(eq(appointmentsTable.id, id), eq(appointmentsTable.status, appointment.status)))
+				.where(
+					and(buildAppointmentAccessCondition(context, id), eq(appointmentsTable.status, appointment.status)),
+				)
 				.returning({ id: appointmentsTable.id });
 			if (updated.length !== 1) throw new Error('O agendamento foi alterado por outra operação.');
 		});
@@ -602,15 +633,7 @@ export const upsertAppointment = actionClient.schema(createAppointmentSchema).ac
 				convertingReminder = reminder;
 			}
 			if (id) {
-				// Bloqueia a linha antes de validar o estado efetivo do atendimento.
-				await tx.execute(sql`SELECT id FROM appointments WHERE id = ${id} FOR UPDATE`);
-				const lockedAppointment = await tx.query.appointmentsTable.findFirst({
-					where: eq(appointmentsTable.id, id),
-					columns: { id: true, status: true },
-				});
-				if (!lockedAppointment) {
-					throw new Error('Agendamento não encontrado ou já removido.');
-				}
+				const lockedAppointment = await lockAccessibleAppointment(tx, context, id);
 				const editableStatuses = context.role === 'customer' ? ['pending'] : ['pending', 'confirmed'];
 				if (!editableStatuses.includes(lockedAppointment.status)) {
 					throw new Error('O agendamento mudou de status e não pode mais ser editado.');
@@ -648,6 +671,11 @@ export const upsertAppointment = actionClient.schema(createAppointmentSchema).ac
 					}
 				}
 			}
+			if (!(await lockPetTutorAccess(tx, context, data.petId))) {
+				throw new Error('Pet não encontrado');
+			}
+			await assertCanAccessPet(context, data.petId, tx);
+
 			/*
 			 * Não confiamos em preço nem duração
 			 * enviados pelo browser.
@@ -854,13 +882,15 @@ export const upsertAppointment = actionClient.schema(createAppointmentSchema).ac
 			let appointmentId: string | null = null;
 
 			if (id) {
-				await tx
+				const updated = await tx
 					.update(appointmentsTable)
 					.set({
 						...appointmentData,
 						updatedAt: new Date(),
 					})
-					.where(eq(appointmentsTable.id, id));
+					.where(buildAppointmentAccessCondition(context, id))
+					.returning({ id: appointmentsTable.id });
+				if (updated.length !== 1) throw new Error('Agendamento não encontrado');
 
 				appointmentId = id;
 
@@ -945,7 +975,7 @@ export const deleteAppointment = actionClient
 		// Uma exclusão não pode apagar o histórico clínico nem o financeiro.
 		// A trava impede que outra operação emita uma cobrança durante esta exclusão.
 		await db.transaction(async (tx) => {
-			await tx.execute(sql`SELECT id FROM appointments WHERE id = ${parsedInput.id} FOR UPDATE`);
+			await lockAccessibleAppointment(tx, context, parsedInput.id);
 
 			const [charge, vaccine, record, prescription, document] = await Promise.all([
 				tx.query.appointmentChargesTable.findFirst({
@@ -981,7 +1011,7 @@ export const deleteAppointment = actionClient
 				);
 			}
 
-			await tx.delete(appointmentsTable).where(eq(appointmentsTable.id, parsedInput.id));
+			await tx.delete(appointmentsTable).where(buildAppointmentAccessCondition(context, parsedInput.id));
 		});
 
 		revalidatePath('/appointments');
@@ -1004,18 +1034,29 @@ export const markAsConfirmed = actionClient
 			throw new Error('Apenas agendamentos pendentes podem ser confirmados');
 		}
 
-		const updated = await db
-			.update(appointmentsTable)
-			.set({
-				status: 'confirmed',
-				updatedAt: new Date(),
-			})
-			.where(and(eq(appointmentsTable.id, parsedInput.id), eq(appointmentsTable.status, 'pending')))
-			.returning({ id: appointmentsTable.id });
+		await db.transaction(async (tx) => {
+			const locked = await lockAccessibleAppointment(tx, context, parsedInput.id);
+			if (locked.status !== 'pending') {
+				throw new Error('O agendamento foi alterado por outra operação. Atualize a página e tente novamente.');
+			}
+			const updated = await tx
+				.update(appointmentsTable)
+				.set({
+					status: 'confirmed',
+					updatedAt: new Date(),
+				})
+				.where(
+					and(
+						buildAppointmentAccessCondition(context, parsedInput.id),
+						eq(appointmentsTable.status, 'pending'),
+					),
+				)
+				.returning({ id: appointmentsTable.id });
 
-		if (updated.length !== 1) {
-			throw new Error('O agendamento foi alterado por outra operação. Atualize a página e tente novamente.');
-		}
+			if (updated.length !== 1) {
+				throw new Error('O agendamento foi alterado por outra operação. Atualize a página e tente novamente.');
+			}
+		});
 
 		revalidatePath('/appointments');
 	});
@@ -1037,28 +1078,37 @@ export const markAppointmentAsCompleted = actionClient
 			throw new Error('O agendamento precisa estar confirmado ou em atendimento para ser concluído');
 		}
 
-		const updated = await db
-			.update(appointmentsTable)
-			.set({
-				status: 'completed',
-				updatedAt: new Date(),
-			})
-			.where(
-				and(
-					eq(appointmentsTable.id, parsedInput.id),
-					or(eq(appointmentsTable.status, 'confirmed'), eq(appointmentsTable.status, 'in_progress')),
+		const reminder = await db.transaction(async (tx) => {
+			const locked = await lockAccessibleAppointment(tx, context, parsedInput.id);
+			if (locked.status !== 'confirmed' && locked.status !== 'in_progress') {
+				throw new Error('O status do atendimento mudou. Atualize a página antes de concluí-lo.');
+			}
+			const updated = await tx
+				.update(appointmentsTable)
+				.set({
+					status: 'completed',
+					updatedAt: new Date(),
+				})
+				.where(
+					and(
+						buildAppointmentAccessCondition(context, parsedInput.id),
+						or(eq(appointmentsTable.status, 'confirmed'), eq(appointmentsTable.status, 'in_progress')),
+					),
+				)
+				.returning({ id: appointmentsTable.id });
+
+			if (updated.length !== 1) {
+				throw new Error('O status do atendimento mudou. Atualize a página antes de concluí-lo.');
+			}
+
+			// Somente retornos convertidos abrem automaticamente o registro da nova dose.
+			return tx.query.careRemindersTable.findFirst({
+				where: and(
+					eq(careRemindersTable.appointmentId, parsedInput.id),
+					eq(careRemindersTable.status, 'pending'),
 				),
-			)
-			.returning({ id: appointmentsTable.id });
-
-		if (updated.length !== 1) {
-			throw new Error('O status do atendimento mudou. Atualize a página antes de concluí-lo.');
-		}
-
-		// Somente retornos convertidos abrem automaticamente o registro da nova dose.
-		const reminder = await db.query.careRemindersTable.findFirst({
-			where: and(eq(careRemindersTable.appointmentId, parsedInput.id), eq(careRemindersTable.status, 'pending')),
-			with: { sourceVaccine: { columns: { serviceId: true } } },
+				with: { sourceVaccine: { columns: { serviceId: true } } },
+			});
 		});
 		revalidatePath('/appointments');
 		if (!reminder) return { vaccineFlow: null };
@@ -1090,10 +1140,19 @@ export const markAppointmentAsCancelled = actionClient
 		}
 
 		await db.transaction(async (tx) => {
+			const locked = await lockAccessibleAppointment(tx, context, parsedInput.id);
+			if (locked.status !== 'pending') {
+				throw new Error('O agendamento foi alterado por outra operação e não pode mais ser cancelado.');
+			}
 			const updated = await tx
 				.update(appointmentsTable)
 				.set({ status: 'cancelled', updatedAt: new Date() })
-				.where(and(eq(appointmentsTable.id, parsedInput.id), eq(appointmentsTable.status, 'pending')))
+				.where(
+					and(
+						buildAppointmentAccessCondition(context, parsedInput.id),
+						eq(appointmentsTable.status, 'pending'),
+					),
+				)
 				.returning({ id: appointmentsTable.id });
 			if (updated.length !== 1) {
 				throw new Error('O agendamento foi alterado por outra operação e não pode mais ser cancelado.');
