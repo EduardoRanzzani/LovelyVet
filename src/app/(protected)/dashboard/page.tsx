@@ -1,6 +1,4 @@
 import { getAppointments } from '@/api/actions/appointments.actions';
-import { getCreatedCustomers } from '@/api/actions/customers.actions';
-import { getCreatedPets } from '@/api/actions/pets.actions';
 import { getShifts } from '@/api/actions/shifts.actions';
 import {
 	PageContainer,
@@ -17,7 +15,8 @@ import { auth } from '@clerk/nextjs/server';
 import { eq } from 'drizzle-orm';
 import type { ReactNode } from 'react';
 import OnboardingCustomerFormDialog from '../customers/_component/onboarding-customer-form';
-import DashboardCards from './_components/dashboard-cards';
+import AdminDashboard from './_components/admin-dashboard';
+import { getAdminDashboard } from '@/lib/dashboard/admin-dashboard-queries';
 import DoctorDashboard from './_components/doctor-dashboard';
 
 interface DashboardPageProps {
@@ -55,22 +54,8 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
 	let needsToCreateCustomer = false;
 
 	if (existingUser.role === 'admin') {
-		const [shifts, appointments, createdPets, createdCustomers] =
-			await Promise.all([
-				getShifts(params.month, false),
-				getAppointments(params.month, false),
-				getCreatedPets(params.month),
-				getCreatedCustomers(params.month),
-			]);
-
-		dashboardContent = (
-			<DashboardCards
-				shifts={shifts}
-				appointments={appointments}
-				createdPets={createdPets}
-				createdCustomers={createdCustomers}
-			/>
-		);
+		const data = await getAdminDashboard(params.month);
+		dashboardContent = <AdminDashboard data={data} />;
 	} else if (existingUser.role === 'doctor') {
 		const [shifts, appointments] = await Promise.all([
 			getShifts(params.month, false),
