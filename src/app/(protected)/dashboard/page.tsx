@@ -1,5 +1,4 @@
-import { getAppointments } from '@/api/actions/appointments.actions';
-import { getShifts } from '@/api/actions/shifts.actions';
+import { getDoctorDashboard } from '@/lib/dashboard/doctor-dashboard-queries';
 import {
 	PageContainer,
 	PageContent,
@@ -18,6 +17,8 @@ import OnboardingCustomerFormDialog from '../customers/_component/onboarding-cus
 import AdminDashboard from './_components/admin-dashboard';
 import { getAdminDashboard } from '@/lib/dashboard/admin-dashboard-queries';
 import DoctorDashboard from './_components/doctor-dashboard';
+import CustomerDashboard from './_components/customer-dashboard';
+import { getCustomerDashboard } from '@/lib/dashboard/customer-dashboard-queries';
 
 interface DashboardPageProps {
 	searchParams: Promise<{ month?: string }>;
@@ -57,20 +58,18 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
 		const data = await getAdminDashboard(params.month);
 		dashboardContent = <AdminDashboard data={data} />;
 	} else if (existingUser.role === 'doctor') {
-		const [shifts, appointments] = await Promise.all([
-			getShifts(params.month, false),
-			getAppointments(params.month, false),
-		]);
-
-		dashboardContent = (
-			<DoctorDashboard shifts={shifts} appointments={appointments} />
-		);
+		const data = await getDoctorDashboard(params.month);
+		dashboardContent = <DoctorDashboard data={data} />;
 	} else if (existingUser.role === 'customer') {
 		const existingCustomer = await db.query.customersTable.findFirst({
 			where: eq(customersTable.userId, existingUser.id),
 		});
 
 		needsToCreateCustomer = !existingCustomer;
+		if (existingCustomer) {
+			const data = await getCustomerDashboard();
+			dashboardContent = <CustomerDashboard data={data} tutorName={existingUser.name} />;
+		}
 	}
 
 	return (
@@ -82,7 +81,9 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
 			</PageHeader>
 
 			<PageContent>
-				<PageDescription>Olá, {existingUser.name}!</PageDescription>
+				{(existingUser.role !== 'customer' || needsToCreateCustomer) && (
+					<PageDescription>Olá, {existingUser.name}!</PageDescription>
+				)}
 
 				{dashboardContent}
 
