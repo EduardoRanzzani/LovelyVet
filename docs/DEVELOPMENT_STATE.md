@@ -1,13 +1,38 @@
 # LovelyVet — estado do desenvolvimento
 
-## Checkpoint vigente — fechamento local 1.5.0 (25/11/2026)
+## Checkpoint vigente — release 1.5.0 em produção (25/11/2026)
+
+- **Estado: 1.5.0 publicada e homologada.** Em 25/11/2026, o desenvolvedor confirmou expressamente a publicação e a aprovação dos 12 itens do checklist de produção. Evidência declaratória do desenvolvedor; não houve acesso independente ao ambiente, ao Git remoto ou aos logs de deploy. Hash do commit de release e URL/provedor não fornecidos; complementar quando disponíveis, sem inventar valores.
+- Última validação local comprovada: 731 testes em 85 arquivos (19,29 s), frozen-lock, Prettier, ESLint sem warnings, TypeScript, Drizzle check e build Next 16.4.5/Turbopack aprovados. `pnpm audit --prod`: nenhuma vulnerabilidade conhecida; audit-all reprovado pelos dois advisories moderados DEV aceitos (esbuild e minimatch), sem novos alertas no último log. Lockfile SHA-256 `fdaf5809425bbd43a3cd0e2b3a6906e1d96db66977b4521ed7dd513efee0f406`. Sem nova execução nesta entrega documental.
+- Limpeza 4.5 confirmada pelo desenvolvedor: histórico fictício do pet Teste (uma vacina, um vínculo de serviço e um atendimento previstos), preservando cadastro, foto e três vínculos com tutores. Backup e inventário posterior não apresentados. Não repetir SQL de limpeza nem a migration 0047, já aplicada anteriormente.
+- Homologação em produção (12/12), conforme confirmação expressa do desenvolvedor:
+
+    1. Deploy concluído com sucesso.
+    2. Versão 1.5.0 exibida para Admin.
+    3. Login Admin.
+    4. Login Doctor.
+    5. Login Customer.
+    6. Dashboard e indicadores.
+    7. Agendamentos e agenda.
+    8. Novo layout dos detalhes do pet.
+    9. Histórico clínico e Linha do Tempo.
+    10. Receitas, assinatura digital e impressão.
+    11. Financeiro e portal do tutor.
+    12. Ausência de novos erros nos logs durante a homologação.
+
+- O checklist confirma os fluxos listados, não uma auditoria integral, testes específicos de e-mail/mobile ou aceite explícito separado da política de acesso público aos PDFs assinados. Manter essas ressalvas no backlog, bem como a revisão financeira e de segurança complementar.
+- Próxima ação: aplicar e versionar este fechamento documental em commit separado (`docs: record v1.5.0 production release`), conferir o Git e sincronizar pelo fluxo habitual. Não fazer novo commit de release, tag ou deploy automaticamente. Depois, iniciar planejamento da 1.6.0 (Mercado Pago) a partir da base mais recente, sem modificar o fluxo manual existente.
+
+Os registros anteriores são históricos e refletem o conhecimento disponível na data de cada etapa; este checkpoint substitui instruções anteriores de retomada e bloqueios já resolvidos ou aceitos.
+
+## Histórico — Checkpoint vigente — fechamento local 1.5.0 (25/11/2026)
 
 - Revisão final aplicada no Mac. Frozen-lock, Prettier, ESLint sem warnings, TypeScript e Vitest 4.1.12 aprovados: **731 testes em 85 arquivos**, 19,29 s. Os 13 casos adicionais de HTML, busca de pets e cadastro de clientes passaram. Lockfile SHA-256 `fdaf5809425bbd43a3cd0e2b3a6906e1d96db66977b4521ed7dd513efee0f406`. Audit-prod sem vulnerabilidades conhecidas. Audit-all reprovado apenas por duas ocorrências moderadas DEV já aceitas expressamente; nenhuma nova ocorrência. Drizzle check aprovado e build Next 16.4.5/Turbopack aprovado (compilação 4,7 s, TypeScript 5,1 s, geração 24/24). Evidências do log enviado, não execução neste ambiente.
 - Limpeza 4.5: pet Teste, UUID `c943e3cd-d2bb-4c19-a386-5a8e56899128`, banco `lovelyvet-application`. Inventário anterior: 1 pet, 3 vínculos com tutores, 1 atendimento, 1 item de serviço, 1 vacina; demais 12 indicadores de histórico zerados. Conferidas nove foreign keys no banco real. Escopo aprovado: preservar cadastro, foto, tutores e demais pets; limpar apenas histórico fictício. Desenvolvedor confirmou a conclusão da limpeza. Três exclusões previstas (vacina, vínculo de serviço e atendimento); não foi apresentado o log de execução, inventário posterior ou comprovante do backup. Não reexecutar o SQL; conferir estado pós-limpeza sem escrita se necessário. Nenhuma nova migration; 0047 já aplicada.
 - Git status após revisão: 31 arquivos modificados e 8 novos, 39 no total. Últimos commits comprovados a242e84, 5e5bf2d e 5ccb794. Entrega exclusivamente documental; não altera código, dependências ou banco. Desenvolvedor solicitou commit e publicação. Preparar stage explícito e revisar diff; commit `release: v1.5.0`. Hash, push e deploy ainda não comprovados.
 - Antes do push: confirmar política de acesso aos PDFs assinados por link (risco residual de acesso por portador do link), regressão manual mínima Admin/Doctor/Customer e mobile, assinatura/ITI, e-mail (Nodemailer 10), uploads, agenda e financeiro. O aceite desktop e a homologação das exclusões clínicas foram confirmados anteriormente; não há evidência individual dos demais fluxos no histórico disponível. Revisão estática foi focal, não auditoria integral/pentest. Não declarar homologação plena nem produção publicada sem evidência. Após deploy, registrar hash, ambiente, versão e homologação, mantendo backlog de riscos e 1.6.0 para depois.
 
-## Checkpoint vigente — revisão estática final, 25/11/2026
+## Histórico — Checkpoint vigente — revisão estática final, 25/11/2026
 
 - ZIP completo recebido antes do commit: 399 arquivos TS/TSX/MTS contabilizados como TS/TSX (399 TS/TSX), 83 arquivos de teste, package.json 1.5.0, Next 16.4.5, Vitest 4.1.12, sem CLI Shadcn. Lockfile SHA-256 `fdaf5809425bbd43a3cd0e2b3a6906e1d96db66977b4521ed7dd513efee0f406`, igual ao log do checkpoint. Migration 0047 SHA-256 igual ao histórico; não reaplicar. Última validação comprovada: 718/83, audit-prod limpo, audit-all duas moderadas DEV, Drizzle check e build aprovados. Não reexecutados neste ambiente.
 - O desenvolvedor aceitou expressamente, em 25/11/2026, manter temporariamente as duas ocorrências moderadas exclusivamente DEV: GHSA-67mh-4wv8-2f99 (esbuild via Drizzle Kit) e GHSA-g3hv-75wg-m249 (minimatch via TypeScript ESLint). Aguardar atualização compatível dos consumidores, sem forçar majors, sem ocultar advisories e sem expor servidores dev a terceiros. Aceite restrito a esses dois advisories, condicionado a audit-prod sem alertas e ausência de novos advisories ou mudança de gravidade/escopo. Audit-all continua com seu resultado real; qualquer alerta adicional bloqueia o release. Fixes transitivos existem segundo o log, mas a compatibilidade não foi demonstrada. Revisar no próximo ciclo de manutenção.
@@ -15,7 +40,7 @@
 - 13 testes adicionais previstos (4 HTML, 4 busca, 5 cadastro), total esperado 731 testes/85 arquivos. Validar Prettier, ESLint, TypeScript, Vitest, auditorias e build no Mac. Testes e build anteriores não validam este novo patch. Revisão não equivale a pentest nem auditoria exaustiva. Não há acesso ao banco, ambiente Clerk, SMTP ou Cloudinary real neste ambiente.
 - Próxima ação: instalar pacote de revisão, enviar log e inventário SQL somente leitura. Limpeza dos registros fictícios será antes do commit; aprovar IDs, dependências, backup e transação explícita. Não excluir dados reais, PDFs assinados, pagamentos, cadastros/configurações ou identidades Clerk sem decisão específica. Não executar migration 0047. Política de acesso público por link e homologações manuais restantes não foram expressamente confirmadas pelo usuário no histórico disponível; solicitar confirmação específica antes do deploy. Após revisão e limpeza, revalidar, registrar resultados, preparar git add explícito e commit `release: v1.5.0`; deploy e homologação em produção ainda pendentes. Não iniciar 1.6.0.
 
-## Checkpoint prioritário — candidato 1.5.0 compilado (25/11/2026)
+## Histórico — Checkpoint prioritário — candidato 1.5.0 compilado (25/11/2026)
 
 - Pacote auditoria-dev instalado no Mac com pnpm 12.21.0; remoção confirmada de shadcn 3.8.5 e 197 pacotes. Instalação estrita e frozen-lock aprovados; Prettier, ESLint sem warnings, TypeScript e Vitest 4.1.12 aprovados: 718 testes em 83 arquivos, 18,06 s. Os dois logs de falha de foto são cenários negativos esperados e as suítes passaram.
 - Audit-prod: nenhuma vulnerabilidade conhecida. Audit-all: duas ocorrências moderadas (esbuild GHSA-67mh-4wv8-2f99 e minimatch GHSA-g3hv-75wg-m249); zero críticas/altas/baixas no relatório atual. Histórico: 150 -> 4 -> 2. Drizzle check aprovado; verifica consistência local, não aplica migrations nem prova estado do banco. Build Next 16.4.5/Turbopack aprovado, compilação 10,8 s, TypeScript 10,2 s, geração 24/24. O instalador retornou falha pelo gate audit-all; build e Drizzle check foram diagnósticos. Não houve publicação.
@@ -23,20 +48,20 @@
 - Este pacote registra evidências apenas, sem alterar código, manifestos, lockfile ou regras dos gates. Proposta para decisão do desenvolvedor: aceite temporário e explícito dos dois advisories DEV, condicionado a manter audit-prod limpo, sem novas ocorrências e sem expor servidores de desenvolvimento ou executar lint/Drizzle com entradas não confiáveis. Priorizar atualização compatível dos consumidores no próximo ciclo de manutenção; não usar overrides de major nem ignore para zerar o relatório. Sem aceite registrado, publicação permanece bloqueada.
 - Antes de publicar: confirmar política de acesso por link a PDFs assinados (SEC-006), regressão manual mínima Admin/Doctor/Customer e mobile, assinatura/validação ITI, e-mail após Nodemailer 10, upload, agenda e financeiro; revisão integral restante ainda não comprovada. Identificar dados fictícios antes de qualquer exclusão ou decidir explicitamente adiar a limpeza. Não aplicar migration 0047 novamente. Após aceite, registrar decisões/pendências, commit revisado, publicação e homologação em produção. Não antecipar 1.6.0.
 
-## Checkpoint prioritário — auditoria residual de desenvolvimento (25/11/2026)
+## Histórico — Checkpoint prioritário — auditoria residual de desenvolvimento (25/11/2026)
 
 - Hotfix de peers aplicado e confirmado no Mac com pnpm 12.21.0. Instalação estrita, frozen-lock, Prettier, ESLint sem warnings, TypeScript e Vitest 4.1.12 aprovados: 718 testes em 83 arquivos, 19,11 s.
 - Audit de produção: nenhuma vulnerabilidade conhecida. Audit completo: 4 ocorrências (1 alta, 3 moderadas, zero críticas), redução de 150 para 4. Zod 3 e @hono/node-server via Shadcn CLI; esbuild legado via Drizzle Kit; minimatch via Shadcn CLI e ESLint. Drizzle check e build não executados pelo gate anterior.
 - Entrega `LovelyVet-1.5.0-auditoria-dev.zip`: retirar somente Shadcn CLI das devDependencies; no código de referência, não há importação do pacote nem script que o execute. Componentes UI e components.json preservados. Manter workspace, strict peers e lockfile real; não forçar majors de esbuild/minimatch. Conferir o código local antes de aplicar; CLI futuro deve ser avaliado e invocado sob demanda com versão auditada.
 - Executar instalação, frozen-lock, format, check, audit-prod, audit-all, Drizzle check e build. Caso apenas audit-all falhe, rodar Drizzle check e build como diagnóstico local; manter retorno não zero e bloqueio de publicação. Não confundir sucesso de build com aceite de risco. Se restarem alertas, analisar caminhos/versões e eventual decisão explícita sobre risco residual de desenvolvimento; não registrar aceite presumido. Pendências manuais, SEC-006, revisão restante, identificação de dados fictícios, commits e deploy continuam abertas.
 
-## Checkpoint prioritário — hotfix de peer dependencies (25/11/2026)
+## Histórico — Checkpoint prioritário — hotfix de peer dependencies (25/11/2026)
 
 - Saneamento inicial aplicado no Mac. A instalação baixou Next 16.4.5 e resolveu 73 adições/80 remoções, mas terminou com `ERR_PNPM_PEER_DEP_ISSUES`: node-forge instalado 1.4.4 versus exigido 1.4.3; Zod 3.25.76 (ferramentas) e 4.6.7 (aplicação) versus exigido 4.6.6. Não houve nova execução dos testes, auditorias, Drizzle check ou build. Última evidência: 718 testes/83 arquivos aprovados antes da atualização das dependências; audit anterior 150 ocorrências, cinco críticas.
 - Hotfix: fixar dependências diretas node-forge 1.4.4 e Zod 4.6.7; remover somente os dois overrides globais que interferem nas faixas de peers; preservar compatibilidade do Zod 3 nas ferramentas, sujeito a nova auditoria. Manter instalação estrita. Não aprovar skills de terceiros automaticamente.
 - Aplicar `LovelyVet-1.5.0-hotfix-peer-dependencies.zip` sobre o primeiro saneamento já aplicado. O lockfile pode ter sido modificado pela tentativa anterior; não substituir por lockfile antigo, guardar cópia do lockfile presente e regenerar com pnpm. Confirmar install, frozen-lock, format, check, audit-prod, audit-all, Drizzle check e build. Se houver falhas, não publicar. Não há nova contagem de testes nem auditoria aprovada. Pendências manuais, SEC-006 e revisão restante continuam abertas; commits e deploy não confirmados.
 
-## Checkpoint prioritário — auditoria bloqueou a publicação (25/11/2026)
+## Histórico — Checkpoint prioritário — auditoria bloqueou a publicação (25/11/2026)
 
 - Preparação 1.5.0 aplicada; log do Mac: Prettier, ESLint sem warnings, TypeScript e Vitest aprovados; **718 testes em 83 arquivos**, 21,71 s. Layout final e testes dos PDFs/uploads incluídos. A contagem de 708 anterior era previsão, não execução isolada.
 - `pnpm audit` falhou: 150 ocorrências (5 críticas, 43 altas, 81 moderadas, 21 baixas). Drizzle check e build não foram executados pelo instalador (gate interrompido). Nenhum deploy ou commit confirmado.
@@ -45,7 +70,7 @@
 
 Atualização: 2026-11-25 (America/Campo_Grande).
 
-## Checkpoint prioritário — preparação consolidada da 1.5.0
+## Histórico — Checkpoint prioritário — preparação consolidada da 1.5.0
 
 - O desenvolvedor pediu consolidar o fechamento em uma entrega (25/11/2026). Este pedido não altera as regras de acesso nem autoriza excluir dados reais ou marcar etapas sem evidência.
 - `package.json` passa a 1.5.0 localmente; ainda não é release publicado. Changelog preparado. Pacote aceita V4 aprovada ou limpeza final já instalada.
@@ -66,7 +91,7 @@ O checkpoint acima prevalece sobre os registros históricos abaixo; eles foram p
 - Pacotes: `/Users/eduardoranzzani/Downloads/LovelyVet`.
 - Banco: `lovelyvet-application`. Development e Production compartilham PostgreSQL; Clerk separado por ambiente.
 
-## Checkpoint atual — 4.1.4
+## Histórico — Checkpoint atual — 4.1.4
 
 Segurança dos registros clínicos (SEC-005). Política compartilhada entre Admin e Doctor aprovada explicitamente em 25/11/2026. Implementação aplicada, suíte de 691 testes em 80 arquivos aprovada e homologação de exclusão confirmada. Correção visual de observações entregue no fechamento; validar novamente antes do commit. A 4.1.3 foi homologada; o desenvolvedor autorizou continuar, mas a execução/hash dos commits anteriores não foi confirmado.
 
@@ -92,7 +117,7 @@ Segurança dos registros clínicos (SEC-005). Política compartilhada entre Admi
 - Total inicial de registros: 0 (evidência histórica, não contagem atual).
 - Não reaplicar 0047. Não usar `drizzle-kit push` para este fluxo.
 
-## Próximas ações exatas
+## Histórico — Próximas ações exatas
 
 1. Aplicar `LovelyVet-preview-layout-pet-final.zip` sobre a v4 instalada e aprovada visualmente pelo desenvolvedor. Remove backup comentado e modos de layout legado; não muda a apresentação aprovada. Confirmar Prettier, ESLint, TypeScript e Vitest (708 testes em 82 arquivos previstos, última contagem real 691/80).
 2. Conferir regressão visual desktop e telas menores, perfil Customer (somente Linha do Tempo, sem observações internas ou exclusão, com edição exclusiva da foto) e formatação de observações fictícias. Aceite visual desktop confirmado; demais cenários ainda sem evidência específica.

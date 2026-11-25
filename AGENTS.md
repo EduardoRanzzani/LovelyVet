@@ -1,12 +1,20 @@
 # LovelyVet — instruções de desenvolvimento
 
-## Checkpoint vigente — candidato 1.5.0 pronto para commit (25/11/2026)
+## Checkpoint vigente — 1.5.0 publicada e homologada (25/11/2026)
+
+A versão 1.5.0 está publicada e homologada em produção conforme confirmação expressa do desenvolvedor em 25/11/2026. Os 12 itens do checklist de produção foram aprovados. Última suíte local comprovada: 731 testes em 85 arquivos; frozen-lock, Prettier, ESLint, TypeScript, audit-prod, Drizzle check e build Next 16.4.5 aprovados. Não confundir essa evidência local com execução de testes em produção. Hash do commit de release, URL e logs de deploy não foram fornecidos; registrar quando disponíveis.
+
+Próxima etapa de desenvolvimento: planejamento da 1.6.0 (Mercado Pago), após versionar este fechamento exclusivamente documental. Ler os quatro documentos em `docs/` e `changelog.md` antes de retomar; usar o ZIP mais recente. Não reabrir a 1.5.0 sem motivo concreto, não repetir a limpeza do pet Teste nem a migration 0047. Manter pet, foto e tutores para homologações. Os dois advisories moderados exclusivamente DEV continuam aceitos temporariamente; não ocultar alertas. SEC-006 (política pública de PDFs por link), revisões complementares e riscos residuais permanecem registrados, sem presumir aceite específico da política ou auditoria integral. Não alterar versão, código, dependências ou banco nesta entrega.
+
+Os checkpoints anteriores abaixo são históricos, não instruções vigentes. Em caso de divergência, este checkpoint e os registros vigentes dos quatro documentos prevalecem. Toda entrega, inclusive hotfix, deve atualizar os seis Markdown conforme os resultados reais e decisões pertinentes.
+
+## Histórico — Checkpoint vigente — candidato 1.5.0 pronto para commit (25/11/2026)
 
 O log final do Mac confirmou 731 testes em 85 arquivos, Prettier, ESLint, TypeScript, frozen-lock, audit-prod, Drizzle check e build Next 16.4.5 aprovados. Audit-all permaneceu reprovado exclusivamente por GHSA-67mh-4wv8-2f99 e GHSA-g3hv-75wg-m249, moderadas DEV expressamente aceitas até atualização compatível. Não ocultar alertas; bloquear novos advisories ou alterações de gravidade/escopo. O desenvolvedor confirmou a limpeza do histórico fictício do pet Teste, mantendo seu cadastro, foto e três vínculos com tutores, e solicitou commit e publicação. Não repetir o SQL de limpeza nem a migration 0047. A confirmação é do desenvolvedor; backup e inventário pós-exclusão não foram apresentados. Registrar evidências adicionais quando disponíveis.
 
 Este checkpoint prevalece sobre os históricos abaixo. Preparar commit explícito `release: v1.5.0` com os 39 caminhos do último Git status; não publicar automaticamente. Antes do push para a branch de produção, verificar os fluxos manuais restantes e o aceite da política de PDF público por link; não presumir homologação. Registrar hash do commit, deploy e homologação real em `docs/DEVELOPMENT_STATE.md` após confirmação. Não iniciar 1.6.0 antes do fechamento em produção. Preservar os seis Markdown.
 
-## Checkpoint vigente — revisão final 1.5.0 (25/11/2026)
+## Histórico — Checkpoint vigente — revisão final 1.5.0 (25/11/2026)
 
 O desenvolvedor aceitou expressamente, em 25/11/2026, manter temporariamente as duas ocorrências moderadas exclusivamente DEV: GHSA-67mh-4wv8-2f99 (esbuild via Drizzle Kit) e GHSA-g3hv-75wg-m249 (minimatch via TypeScript ESLint). Aguardar atualização compatível dos consumidores, sem forçar majors, sem ocultar advisories e sem expor servidores dev a terceiros. Aceite restrito a esses dois advisories, condicionado a audit-prod sem alertas e ausência de novos advisories ou mudança de gravidade/escopo. Audit-all continua com seu resultado real; qualquer alerta adicional bloqueia o release. Fixes transitivos existem segundo o log, mas a compatibilidade não foi demonstrada. Revisar no próximo ciclo de manutenção.
 

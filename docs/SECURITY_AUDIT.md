@@ -1,5 +1,17 @@
 # LovelyVet — auditoria de segurança
 
+## Estado vigente de segurança após publicação 1.5.0 — 25/11/2026
+
+Publicação e homologação dos 12 itens do checklist confirmadas pelo desenvolvedor em produção, incluindo autenticação por perfil, histórico, receitas/assinatura/impressão e financeiro. Ausência de novos erros nos logs durante a homologação também confirmada; não equivale a pentest, auditoria integral, inspeção independente de logs ou prova de ausência de vulnerabilidades.
+
+Última evidência local: 731 testes/85 arquivos, frozen-lock, Prettier, ESLint, TypeScript, Drizzle check e build aprovados; `pnpm audit --prod` sem vulnerabilidades conhecidas. `pnpm audit` completo permaneceu reprovado apenas por duas moderadas DEV aceitas expressamente: GHSA-67mh-4wv8-2f99 (esbuild via Drizzle Kit) e GHSA-g3hv-75wg-m249 (minimatch via TypeScript ESLint). Não suprimir, não forçar versões incompatíveis, não expor servidores de desenvolvimento ou aceitar entradas não confiáveis nas ferramentas. Reavaliar a cada ciclo e bloquear novos releases caso surjam outros alertas, alterações de gravidade/escopo ou falha de audit-prod. Sem nova auditoria neste pacote.
+
+SEC-001 a SEC-005: manter proteções implementadas e testadas, inclusive autorização transacional, identidades Clerk e política de exclusão clínica. SEC-006 permanece como risco residual: acesso aos PDFs assinados por portador do link. Cabeçalhos de privacidade mitigam exposição acidental, não são autorização. A homologação funcional de receitas não constitui aceite específico dessa política; registrar decisão separada quando houver. Preservar QR/ITI e bytes assinados existentes. Revisões complementares de billing, uploads, logs, identidades, concorrência e privacidade histórica permanecem no backlog; não afirmar encerramento integral.
+
+Limpeza fictícia confirmada no escopo do pet Teste; cadastro, foto e tutores preservados conforme escopo. Não repetir SQL ou migration 0047. Comprovante de backup e inventário posterior não fornecidos. Nenhuma alteração de código, banco ou configuração de auditoria neste fechamento. Hash de release e logs de deploy não apresentados.
+
+As evidências abaixo são históricas; seus estados de bloqueio/pêndencia devem ser interpretados à luz deste checkpoint.
+
 ## Evidência de fechamento local — 25/11/2026
 
 Validação final após a revisão de HTML, busca de pets e cadastro privilegiado: 731 testes/85 arquivos, Prettier, ESLint, TypeScript, frozen-lock, Drizzle check e build aprovados no Mac. Audit-prod sem vulnerabilidades conhecidas. Audit-all continua reprovado exclusivamente pelos dois advisories moderados DEV expressamente aceitos: GHSA-67mh-4wv8-2f99 (esbuild) e GHSA-g3hv-75wg-m249 (minimatch). Nenhuma ocorrência nova ou crítica/alta no relatório. Acompanhar versões compatíveis dos consumidores, não expor servidores dev, não processar entradas não confiáveis nas ferramentas e não ocultar alertas. Aceite restrito; alteração do perfil do risco ou novo alerta bloqueia publicação.

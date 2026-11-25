@@ -1,5 +1,15 @@
 # LovelyVet — decisões técnicas e de negócio
 
+## Decisões vigentes após homologação 1.5.0 — 25/11/2026
+
+- Registrar a publicação e os 12 itens da homologação em produção conforme confirmação expressa do desenvolvedor. A 1.5.0 é a base estável vigente; hash do commit e URL/logs de deploy ainda não documentados. Separar este commit documental do commit de release; não criar automaticamente novo deploy ou tag.
+- Preservar a política clínica e o layout definitivo V4: foto grande, sete ações coloridas de altura uniforme, largura completa da coluna, divisão 50/50 em telas grandes e empilhamento responsivo; Customer somente Linha do Tempo e alteração exclusiva da foto, respeitando privacidade. As decisões de previews anteriores são históricas.
+- Manter os dois riscos DEV expressamente aceitos até haver atualização compatível; não omitir advisories nem desativar strict peers. O aceite não se estende ao PDF público por link ou a outros riscos. Revisão focal não equivale a auditoria integral; manter backlog complementar sem modificar a versão publicada neste fechamento.
+- Manter pet Teste, foto e três vínculos com tutores para homologação. Limpeza do histórico fictício confirmada; não repetir SQL. Sanitização de HTML continua valendo para todos os pets. Não repetir a migration 0047.
+- Próximo ciclo: 1.6.0, Mercado Pago no portal `/my-finance`, com webhooks seguros, idempotência, conciliação, atualização automática da cobrança e prevenção de duplicidade inclusive entre tutores do mesmo pet; preservar pagamentos manuais. Não incluir estornos, não solicitar credenciais reais nem escolher arquitetura detalhada sem revisar o código atualizado. Planejamento ainda não iniciado; nenhuma implementação de 1.6.0 neste pacote.
+
+O presente checkpoint prevalece sobre estados históricos de preparação e decisões provisórias dos previews. Preservar os seis Markdown em toda entrega.
+
 ## Decisões de fechamento local 1.5.0 — 25/11/2026
 
 - Manter o pet Teste como cadastro de homologação, inclusive foto e três vínculos com tutores. Limpar exclusivamente o histórico fictício identificado por UUID, nunca por nome isolado. Desenvolvedor confirmou a limpeza; não repetir a transação. Não alterar cadastros de terceiros nem identidades Clerk. Banco compartilhado exige backup e escopo explícito em futuras operações.
