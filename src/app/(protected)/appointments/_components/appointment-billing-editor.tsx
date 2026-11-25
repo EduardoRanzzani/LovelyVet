@@ -9,6 +9,7 @@ import type { AppointmentListItem } from '@/api/schema/appointments.schema';
 import MoneyInputForm from '@/components/form/money-input-form';
 import SelectForm from '@/components/form/select-form';
 import { Button } from '@/components/ui/button';
+import { ChargeStatusBadge } from '@/components/shared/charge-status-badge';
 import {
 	AlertDialog,
 	AlertDialogCancel,
@@ -208,19 +209,9 @@ export default function AppointmentBillingEditor({
 							<span>Saldo</span>
 							<strong>{formatCurrencyFromCents(billing.balanceInCents)}</strong>
 						</div>
-						<p className='text-xs text-muted-foreground'>
-							Situação:{' '}
-							{
-								(
-									{
-										pending: 'Pendente',
-										partial: 'Parcial',
-										paid: 'Pago',
-										void: 'Cancelada',
-									} as const
-								)[billing.status]
-							}
-						</p>
+						<div className='flex flex-wrap items-center gap-2 text-xs text-muted-foreground'>
+							Situação: <ChargeStatusBadge status={billing.status} />
+						</div>
 					</div>
 					<section className='space-y-2 text-sm'>
 						<strong>Histórico de recebimentos</strong>

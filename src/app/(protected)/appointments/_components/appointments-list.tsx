@@ -24,6 +24,7 @@ import EditButton from '@/components/list/edit-button';
 import SearchInput from '@/components/list/search-input';
 import Pagination from '@/components/list/table-pagination';
 import { Button } from '@/components/ui/button';
+import { ChargeStatusBadge } from '@/components/shared/charge-status-badge';
 import { MonthNavigator } from '@/components/ui/month-navigator';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import {
@@ -554,9 +555,9 @@ export default function AppointmentsListClient({
 										{formatCurrencyFromCents(appointment.totalPriceInCents)}
 									</span>
 									{billed[appointment.id] && (
-										<p className='text-xs text-muted-foreground'>
-											Cobrança: {billed[appointment.id].status}
-										</p>
+										<div className='mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground'>
+											Cobrança: <ChargeStatusBadge status={billed[appointment.id].status} />
+										</div>
 									)}
 								</TableCell>
 								<TableCell>
@@ -615,6 +616,11 @@ export default function AppointmentsListClient({
 								<Wallet className='mr-2 inline size-4' />
 								{formatCurrencyFromCents(appointment.totalPriceInCents)}
 							</p>
+							{billed[appointment.id] && (
+								<div className='flex flex-wrap items-center gap-1 text-xs text-muted-foreground'>
+									Cobrança: <ChargeStatusBadge status={billed[appointment.id].status} />
+								</div>
+							)}
 						</div>
 						<div className='flex justify-end border-t pt-2'>
 							{renderActions(appointment)}

@@ -1,3 +1,6 @@
+import { ChevronRight } from 'lucide-react';
+import { ChargeStatusBadge } from '@/components/shared/charge-status-badge';
+import { FinanceSummaryCards } from './_components/finance-summary-cards';
 import { FinanceMonthFilter } from './_components/finance-month-filter';
 import Link from 'next/link';
 import { getFinancialReport, getFinancialCustomerNames } from '@/lib/finance/financial-report-queries';
@@ -27,29 +30,34 @@ export default async function FinancePage({searchParams}: {searchParams: Promise
   <PageContent>
    <PageDescription>Faturamento, recebimentos e saldos dos atendimentos. Não inclui plantões.</PageDescription>
    <FinanceMonthFilter selected={selected} />
-   <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4'>
-    {[
-     ['Faturado no mês',report.billedInCents],
-     ['Recebido no mês',report.receivedInCents],
-     ['Saldo total em aberto',report.outstandingInCents],
-    ].map(([label,value]) => <section key={String(label)} className='rounded-lg border p-4'><p className='text-sm text-muted-foreground'>{label}</p><p className='mt-2 text-2xl font-bold tabular-nums'>{formatCurrencyFromCents(Number(value))}</p></section>)}
-    <section className='rounded-lg border p-4'><p className='text-sm text-muted-foreground'>Cobranças emitidas no mês</p><p className='mt-2 text-2xl font-bold'>{report.invoicedCount}</p></section>
-   </div>
-   <p className='text-xs text-muted-foreground'>Faturado: cobranças emitidas no mês selecionado. Recebido: pagamentos registrados nesse mês, mesmo de cobranças anteriores. Em aberto: saldo atual de todas as cobranças não canceladas. Valores em reais.</p>
+   <FinanceSummaryCards
+    billedInCents={report.billedInCents}
+    receivedInCents={report.receivedInCents}
+    outstandingInCents={report.outstandingInCents}
+    invoicedCount={report.invoicedCount}
+   />
+   <p className='text-xs text-muted-foreground'>Faturado e cobranças válidas: cobranças emitidas no mês selecionado, exceto canceladas. Recebido: pagamentos registrados nesse mês, mesmo de cobranças anteriores. Em aberto: saldo atual de todas as cobranças não canceladas. Valores em reais.</p>
    <section className='space-y-3'>
     <h2 className='text-lg font-semibold'>Tutores com saldo pendente</h2>
     {byCustomer.size === 0 ? <p className='rounded-lg border border-dashed p-4 text-sm text-muted-foreground'>Nenhum saldo pendente nos atendimentos acessíveis.</p> :
      <div className='space-y-2'>{[...byCustomer.entries()].sort((a,b)=>b[1].total-a[1].total).map(([id,value]) =>
-      <Link key={id} href={`/finance/customers/${id}?month=${selected}`} className='flex flex-wrap items-center justify-between gap-2 rounded-lg border p-4 hover:bg-muted/50'>
-       <span className='font-medium'>{names[id] ?? 'Tutor'}</span><span className='text-sm tabular-nums'>{value.count} cobrança(s) · {formatCurrencyFromCents(value.total)}</span>
+      <Link key={id} href={`/finance/customers/${id}?month=${selected}`} className='group flex min-w-0 items-center gap-3 rounded-lg border p-3 hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-ring sm:p-4'>
+       <div className='flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-4 gap-y-1'>
+        <div className='min-w-0'>
+         <p className='font-medium wrap-anywhere'>{names[id] ?? 'Tutor'}</p>
+         <p className='text-xs text-muted-foreground'>{value.count} {value.count === 1 ? 'cobrança pendente' : 'cobranças pendentes'}</p>
+        </div>
+        <p className='min-w-0 font-semibold tabular-nums wrap-anywhere text-amber-700 dark:text-amber-300'>{formatCurrencyFromCents(value.total)}</p>
+       </div>
+       <ChevronRight aria-hidden='true' className='size-4 shrink-0 text-muted-foreground' />
       </Link>)}</div>}
    </section>
    <section className='space-y-3'>
-    <h2 className='text-lg font-semibold'>Cobranças recentes</h2>
-    {report.statements.length === 0 ? <p className='text-sm text-muted-foreground'>Nenhuma cobrança registrada.</p> :
-     <div className='space-y-2'>{report.statements.slice().sort((a,b)=>b.createdAt.getTime()-a.createdAt.getTime()).slice(0,30).map(item =>
+    <h2 className='text-lg font-semibold'>Cobranças do mês</h2>
+    {report.monthlyStatements.length === 0 ? <p className='text-sm text-muted-foreground'>Nenhuma cobrança registrada no mês selecionado.</p> :
+     <div className='space-y-2'>{report.monthlyStatements.slice().sort((a,b)=>b.createdAt.getTime()-a.createdAt.getTime()).slice(0,30).map(item =>
       <Link href={`/finance/customers/${item.customerId}?month=${selected}`} key={item.id} className='flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 hover:bg-muted/50'>
-       <div><p className='font-medium'>{names[item.customerId] ?? 'Tutor'} · {item.petName}</p><p className='text-xs text-muted-foreground'>{dateFormatter.format(item.createdAt)} · {item.financialStatus}</p></div>
+       <div><p className='font-medium'>{names[item.customerId] ?? 'Tutor'} · {item.petName}</p><div className='mt-1 flex flex-wrap items-center gap-2'><p className='text-xs text-muted-foreground'>{dateFormatter.format(item.createdAt)}</p><ChargeStatusBadge status={item.financialStatus} /></div></div>
        <div className='text-right text-sm tabular-nums'><p>{formatCurrencyFromCents(item.totalInCents)}</p><p className='text-muted-foreground'>Saldo: {formatCurrencyFromCents(item.balanceInCents)}</p></div>
       </Link>)}</div>}
    </section>

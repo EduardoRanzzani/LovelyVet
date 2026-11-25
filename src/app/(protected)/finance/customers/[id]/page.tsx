@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ChargeStatusBadge } from '@/components/shared/charge-status-badge';
 import { notFound } from 'next/navigation';
 import { z } from 'zod';
 import { getFinancialCustomerNames, getFinancialReport } from '@/lib/finance/financial-report-queries';
@@ -33,7 +34,7 @@ export default async function TutorStatement({params, searchParams}: {params:Pro
    <p className='text-xs text-muted-foreground'>Os indicadores de faturamento e recebimento usam o mês selecionado; os lançamentos abaixo mostram o histórico completo deste tutor.</p>
    <div className='space-y-3'>{statement.map(charge =>
     <section key={charge.id} className='rounded-lg border p-4'>
-     <div className='flex flex-wrap justify-between gap-2'><div><p className='font-semibold'>{charge.petName}</p><p className='text-xs text-muted-foreground'>Cobrança {dateFormatter.format(charge.createdAt)} · {charge.financialStatus}</p></div><div className='text-right text-sm tabular-nums'><p>Total: {formatCurrencyFromCents(charge.totalInCents)}</p><p>Saldo: {formatCurrencyFromCents(charge.balanceInCents)}</p></div></div>
+     <div className='flex flex-wrap justify-between gap-2'><div><p className='font-semibold'>{charge.petName}</p><div className='mt-1 flex flex-wrap items-center gap-2'><p className='text-xs text-muted-foreground'>Cobrança {dateFormatter.format(charge.createdAt)}</p><ChargeStatusBadge status={charge.financialStatus} /></div></div><div className='text-right text-sm tabular-nums'><p>Total: {formatCurrencyFromCents(charge.totalInCents)}</p><p>Saldo: {formatCurrencyFromCents(charge.balanceInCents)}</p></div></div>
      {charge.payments.length > 0 && <div className='mt-3 space-y-1 border-t pt-3'>{charge.payments.map(payment=>
       <div key={payment.id} className='flex flex-wrap justify-between gap-2 text-sm'><span>{dateFormatter.format(payment.receivedAt)} · {paymentMethod[payment.method] ?? payment.method}</span><span className='tabular-nums'>{formatCurrencyFromCents(payment.amountInCents)}</span></div>
      )}</div>}

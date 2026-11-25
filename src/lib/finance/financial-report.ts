@@ -36,7 +36,9 @@ export function buildFinancialReport(charges: readonly FinancialCharge[], paymen
   const balance = calculateChargeBalance(charge.totalInCents, entries, charge.status === 'void');
   return { ...charge, ...{paidInCents: balance.paidInCents, balanceInCents: balance.status === 'void' ? 0 : balance.balanceInCents, financialStatus: balance.status}, payments: entries };
  });
- const currentCharges = statements.filter((charge) => charge.createdAt >= start && charge.createdAt < end && charge.financialStatus !== 'void');
+ // O histórico completo continua necessário para o saldo global e o extrato.
+ const monthlyStatements = statements.filter((charge) => charge.createdAt >= start && charge.createdAt < end);
+ const currentCharges = monthlyStatements.filter((charge) => charge.financialStatus !== 'void');
  const received = statements.flatMap((charge) => charge.payments).filter((payment) => payment.receivedAt >= start && payment.receivedAt < end);
  return {
   billedInCents: currentCharges.reduce((sum, charge) => sum + charge.totalInCents, 0),
@@ -45,5 +47,6 @@ export function buildFinancialReport(charges: readonly FinancialCharge[], paymen
   invoicedCount: currentCharges.length,
   outstandingCount: statements.filter((charge) => charge.balanceInCents > 0).length,
   statements,
+  monthlyStatements,
  };
 }
