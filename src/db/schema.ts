@@ -86,6 +86,17 @@ export const clerkIdentitiesTable = pgTable(
 	],
 );
 
+// Histórico de vínculos manuais: IDs preservados mesmo após exclusões de cadastros.
+export const clerkIdentityLinkAuditTable = pgTable('clerk_identity_link_audit', {
+	id: uuid('id').defaultRandom().primaryKey(),
+	adminUserId: uuid('admin_user_id').notNull(),
+	adminClerkUserId: text('admin_clerk_user_id').notNull(),
+	targetUserId: uuid('target_user_id').notNull(),
+	environment: clerkEnvironmentEnum('environment').notNull(),
+	clerkUserId: text('clerk_user_id').notNull(),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 // Veterinários
 export const doctorsTable = pgTable('doctors', {
 	id: uuid('id').primaryKey().defaultRandom(),

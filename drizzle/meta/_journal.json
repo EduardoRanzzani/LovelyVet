@@ -330,6 +330,13 @@
       "when": 1795520000000,
       "tag": "0046_reminder_appointment_link",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1795550000000,
+      "tag": "0047_clerk_identity_link_audit",
+      "breakpoints": true
     }
   ]
 }
