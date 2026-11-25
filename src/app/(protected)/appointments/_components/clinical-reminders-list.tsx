@@ -38,7 +38,7 @@ const ClinicalRemindersList = ({ reminders }: ClinicalRemindersListProps) => {
 					</p>
 				</div>
 				<span className='rounded-full border px-2.5 py-1 text-xs font-medium'>
-					{metadata.totalCount} pendente(s)
+					{metadata.totalCount} {metadata.totalCount === 1 ? 'pendente' : 'pendentes'}
 				</span>
 			</div>
 

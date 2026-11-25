@@ -94,12 +94,6 @@ export const HistoryItem = ({
 				</div>
 				<Separator className='mt-2' />
 
-				{/* <div
-					className='prose prose-sm dark:prose-invert max-w-none'
-					dangerouslySetInnerHTML={{
-						__html: content as string,
-					}}
-				/> */}
 				<div className='min-w-0 overflow-x-auto break-words text-sm [overflow-wrap:anywhere] [&_*]:max-w-full'>
 					{content}
 				</div>

@@ -9,6 +9,7 @@ import SearchInput from '@/components/list/search-input';
 import TableComponent from '@/components/list/table-component';
 import { Separator } from '@/components/ui/separator';
 import { TableCell, TableRow } from '@/components/ui/table';
+import { richTextToPlainText, sanitizeRichTextHtml } from '@/lib/security/html';
 import { handleNavigation } from '@/lib/utils';
 import { NotebookIcon, PillBottleIcon } from 'lucide-react';
 import { useAction } from 'next-safe-action/hooks';
@@ -24,11 +25,6 @@ interface PrescriptionsItemsListClientProps {
 export const PrescriptionsItemsListClient = ({ prescriptionsItems }: PrescriptionsItemsListClientProps) => {
 	const prescriptionsItemsResolved = use(prescriptionsItems);
 	const searchParams = useSearchParams();
-
-	const stripHtml = (html: string) => {
-		const doc = new DOMParser().parseFromString(html, 'text/html');
-		return doc.body.textContent || '';
-	};
 
 	const handlePageChange = (page: number) => {
 		const params = new URLSearchParams(searchParams.toString());
@@ -65,7 +61,7 @@ export const PrescriptionsItemsListClient = ({ prescriptionsItems }: Prescriptio
 				<TableCell>{item.name}</TableCell>
 				<TableCell>{item.pharmacy}</TableCell>
 				<TableCell>{item.quantity}</TableCell>
-				<TableCell>{stripHtml(item.orientations)}</TableCell>
+				<TableCell>{richTextToPlainText(item.orientations)}</TableCell>
 				<TableCell className='w-20 space-x-2'>
 					<EditButton
 						tooltip={`Editar ${item.name}`}
@@ -103,12 +99,15 @@ export const PrescriptionsItemsListClient = ({ prescriptionsItems }: Prescriptio
 						<span className='text-sm'>{item.pharmacy}</span>
 					</p>
 
-					<p className='flex gap-2 items-start'>
+					<div className='flex gap-2 items-start'>
 						<span className='text-sm font-semibold'>
 							<NotebookIcon className='h-4 w-4' />
 						</span>
-						<span className='text-sm' dangerouslySetInnerHTML={{ __html: item.orientations }} />
-					</p>
+						<div
+							className='text-sm'
+							dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(item.orientations) }}
+						/>
+					</div>
 				</div>
 			</div>
 		);

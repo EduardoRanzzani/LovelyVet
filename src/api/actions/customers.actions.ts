@@ -7,7 +7,7 @@ import { getClerkEnvironment } from '@/lib/integrations/clerk-environment';
 import { provisionClerkIdentity } from '@/lib/security/clerk-identity-provisioning';
 import { actionClient } from '@/lib/next-safe-action';
 import { requireAuthContext } from '@/lib/security/auth-context';
-import { requireRole, requireStaff } from '@/lib/security/authorization';
+import { requireAdmin, requireRole, requireStaff } from '@/lib/security/authorization';
 import { endOfMonth, startOfMonth } from 'date-fns';
 import { and, asc, count, eq, gte, ilike, lte, or, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
@@ -192,6 +192,11 @@ export const upsertCustomer = actionClient.schema(createCustomerWithUserSchema).
 			where: eq(usersTable.email, parsedInput.email),
 		}));
 
+	// Um Doctor pode gerir clientes, mas não alterar a conta de outro membro da equipe.
+	if (existingUser && existingUser.role !== 'customer') {
+		requireAdmin(context);
+	}
+
 	if (!existingCustomer && existingUser) {
 		const linkedCustomer = await db.query.customersTable.findFirst({
 			where: eq(customersTable.userId, existingUser.id),
@@ -230,7 +235,9 @@ export const upsertCustomer = actionClient.schema(createCustomerWithUserSchema).
 				image: parsedInput.image,
 				updatedAt: new Date(),
 			})
-			.where(eq(usersTable.id, userId))
+			.where(
+				and(eq(usersTable.id, userId), context.role === 'admin' ? undefined : eq(usersTable.role, 'customer')),
+			)
 			.returning();
 
 		if (!user) throw new Error('Usuário base não encontrado');

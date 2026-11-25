@@ -6,12 +6,36 @@ const FONT_SIZES = new Set([10, 12, 14, 16, 18, 20, 22, 24]);
 
 const TEXT_ALIGNMENTS = new Set(['left', 'center', 'right', 'justify']);
 
+// Declarações fixas da representação HTML gerada por prescriptions.actions.ts.
+const PRESCRIPTION_LAYOUT_STYLES = new Set([
+	'display: flex',
+	'flex-direction: column',
+	'gap: 0px',
+	'gap: 4px',
+	'margin-bottom: 12px',
+	'margin-bottom: 3px',
+	'margin-bottom: 24px',
+	'margin-top: 2px',
+	'margin: 0 0 12px',
+	'align-items: baseline',
+	'width: 100%',
+	'font-size: 15px',
+	'font-size: 13px',
+	'font-weight: bold',
+	'white-space: nowrap',
+	'flex: 1',
+	'border-bottom: 1px solid #000',
+	'line-height: 1.5',
+	'text-transform: uppercase',
+]);
+const PRESCRIPTION_CLASSES = new Set(['prescription-content', 'orientations-box', 'rich-text-content']);
+
 /**
  * Preserva apenas CSS seguro gerado pelo editor.
  * Não permite cores arbitrárias, position,
  * fontes externas ou demais propriedades CSS.
  */
-const keepSafeStyles = (html: string): string => {
+const keepSafeStyles = (html: string, preservePrescriptionLayout = false): string => {
 	return html.replace(/\sstyle=(["'])([\s\S]*?)\1/gi, (_match, _quote, styleValue: string) => {
 		const safeDeclarations: string[] = [];
 
@@ -26,6 +50,11 @@ const keepSafeStyles = (html: string): string => {
 				.slice(separator + 1)
 				.trim()
 				.toLowerCase();
+
+			if (preservePrescriptionLayout && PRESCRIPTION_LAYOUT_STYLES.has(`${property}: ${value}`)) {
+				safeDeclarations.push(`${property}: ${value}`);
+				continue;
+			}
 
 			if (property === 'text-align' && TEXT_ALIGNMENTS.has(value)) {
 				safeDeclarations.push(`text-align: ${value}`);
@@ -56,6 +85,29 @@ export const sanitizeRichTextHtml = (html: string): string => {
 	});
 
 	return keepSafeStyles(sanitized);
+};
+
+/** Sanitiza o HTML histórico sem remover a estrutura da receita gerada pelo servidor. */
+export const sanitizePrescriptionPreviewHtml = (html: string): string => {
+	const sanitized = DOMPurify.sanitize(html, {
+		ALLOWED_TAGS: ['div', 'section', 'h3', ...RICH_TEXT_TAGS],
+		ALLOWED_ATTR: ['style', 'class'],
+		ALLOW_DATA_ATTR: false,
+		ALLOW_ARIA_ATTR: false,
+	});
+
+	const safeClasses = sanitized.replace(/\sclass=(["'])([\s\S]*?)\1/gi, (_match, _quote, value: string) => {
+		const classes = value.split(/\s+/).filter((name) => PRESCRIPTION_CLASSES.has(name));
+		return classes.length ? ` class="${classes.join(' ')}"` : '';
+	});
+
+	return keepSafeStyles(safeClasses, true);
+};
+
+/** Extrai texto também durante SSR; não depende do DOMParser global do navegador. */
+export const richTextToPlainText = (html: string): string => {
+	const body = DOMPurify.sanitize(html, { ALLOWED_TAGS: [], ALLOWED_ATTR: [], RETURN_DOM: true });
+	return body.textContent ?? '';
 };
 
 export const escapeHtml = (value: string): string => {

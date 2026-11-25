@@ -12,7 +12,7 @@ interface PetTimelineClientProps {
 
 const PetTimelineClient = ({ historyEvents, canDelete, onDelete }: PetTimelineClientProps) => {
 	return (
-		<div className='min-w-0 md:max-h-70 md:overflow-y-auto md:pr-2 md:scrollbar-thin md:scrollbar-thumb-muted'>
+		<div aria-label='Registros do histórico' className='min-w-0'>
 			{historyEvents.length > 0 ? (
 				historyEvents.map((event, idx) => (
 					<HistoryItem

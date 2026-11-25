@@ -7,6 +7,7 @@ import TableComponent from '@/components/list/table-component';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
+import { sanitizePrescriptionPreviewHtml } from '@/lib/security/html';
 import { handleNavigation } from '@/lib/utils';
 import { DownloadIcon, FilePenLineIcon, HistoryIcon, PlusIcon, ShieldCheckIcon } from 'lucide-react';
 import Link from 'next/link';
@@ -130,7 +131,7 @@ const PrescriptionsListClient = ({ prescriptions }: PrescriptionsListClientProps
 			<div
 				className='prose prose-sm dark:prose-invert max-w-none line-clamp-4'
 				dangerouslySetInnerHTML={{
-					__html: prescription.content,
+					__html: sanitizePrescriptionPreviewHtml(prescription.content),
 				}}
 			/>
 

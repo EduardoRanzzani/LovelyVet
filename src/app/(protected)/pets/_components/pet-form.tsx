@@ -160,7 +160,7 @@ const PetFormClient = ({ pet, species, breeds, customers, onSuccess }: PetFormCl
 						/>
 
 						<SelectForm
-							label='Tutor(es):'
+							label='Tutores:'
 							control={form.control}
 							name='customerIds'
 							multiple

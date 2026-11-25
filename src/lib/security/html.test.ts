@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sanitizeRichTextHtml } from './html';
+import { richTextToPlainText, sanitizePrescriptionPreviewHtml, sanitizeRichTextHtml } from './html';
 
 describe('sanitizeRichTextHtml', () => {
 	it('preserva o alinhamento justificado', () => {
@@ -43,5 +43,43 @@ describe('sanitizeRichTextHtml', () => {
 
 		expect(result).not.toContain('onclick');
 		expect(result).toContain('Texto seguro');
+	});
+});
+
+describe('sanitizePrescriptionPreviewHtml', () => {
+	it('preserva estrutura e estilos fixos do HTML gerado pela receita', () => {
+		const result = sanitizePrescriptionPreviewHtml(
+			'<div class="prescription-content" style="display: flex; flex-direction: column; gap: 4px"><section><h3 style="text-transform: uppercase; text-align: center">Uso oral</h3><div style="flex: 1; border-bottom: 1px solid #000"></div><div class="orientations-box rich-text-content" style="font-size: 13px; line-height: 1.5"><p><strong>Medicamento</strong></p></div></section></div>',
+		);
+		expect(result).toContain('class="prescription-content"');
+		expect(result).toContain('<section>');
+		expect(result).toContain('<h3 style="text-transform: uppercase; text-align: center">');
+		expect(result).toContain('border-bottom: 1px solid #000');
+		expect(result).toContain('font-size: 13px; line-height: 1.5');
+		expect(result).toContain('<strong>Medicamento</strong>');
+	});
+
+	it('remove HTML ativo, classes externas e CSS arbitrário de registros antigos', () => {
+		const result = sanitizePrescriptionPreviewHtml(
+			'<div class="rich-text-content fixed" onclick="alert(1)" style="position: fixed; background: url(https://example.com); display: flex"><img src=x onerror=alert(1)><script>alert(1)</script><p>Seguro</p></div>',
+		);
+		expect(result).toContain('class="rich-text-content"');
+		expect(result).toContain('display: flex');
+		expect(result).toContain('<p>Seguro</p>');
+		for (const forbidden of ['onclick', '<img', '<script', 'position:', 'background:', ' fixed']) {
+			expect(result).not.toContain(forbidden);
+		}
+	});
+});
+
+describe('richTextToPlainText', () => {
+	it('retorna texto e entidades decodificadas sem depender de DOMParser global', () => {
+		expect(richTextToPlainText('<p>Água &amp; <strong>alimento</strong></p>')).toBe('Água & alimento');
+	});
+
+	it('não retorna marcação ativa', () => {
+		expect(richTextToPlainText('<p>Seguro</p><script>alert(1)</script><img src=x onerror=alert(1)>')).toBe(
+			'Seguro',
+		);
 	});
 });

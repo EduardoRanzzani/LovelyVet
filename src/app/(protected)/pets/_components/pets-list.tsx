@@ -70,7 +70,7 @@ const PetsListClient = ({ pets, species, breeds, customers, viewerRole }: PetsLi
 		{ header: 'Nome', accessorKey: 'name' },
 		{ header: 'Idade', accessorKey: 'age' },
 		{ header: 'Peso', accessorKey: 'weight' },
-		{ header: 'Tutor(es)', accessorKey: 'tutor' },
+		{ header: 'Tutores', accessorKey: 'tutor' },
 		{
 			header: 'Ações',
 			accessorKey: 'actions',

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { deleteTimelineItemSchema } from './timeline.schema';
+import { canDeleteTimelineItem, deletableTimelineItemTypes, deleteTimelineItemSchema } from './timeline.schema';
 
 const validInput = {
 	id: '8dfc76df-67dc-456f-b7ed-aa13b99a0123',
@@ -50,5 +50,28 @@ describe('deleteTimelineItemSchema', () => {
 		});
 
 		expect(result.success).toBe(false);
+	});
+});
+
+describe('canDeleteTimelineItem', () => {
+	it.each(deletableTimelineItemTypes)('allows shared clinical deletion of %s for Admin and Doctor only', (type) => {
+		const item = { id: validInput.id, type };
+		expect(canDeleteTimelineItem('admin', item)).toBe(true);
+		expect(canDeleteTimelineItem('doctor', item)).toBe(true);
+		expect(canDeleteTimelineItem('customer', item)).toBe(false);
+	});
+
+	it.each(['prescription', 'vaccine'] as const)('respects a protected %s for both staff profiles', (type) => {
+		const item = { id: validInput.id, type, canDelete: false };
+		expect(canDeleteTimelineItem('admin', item)).toBe(false);
+		expect(canDeleteTimelineItem('doctor', item)).toBe(false);
+	});
+
+	it.each(['record', 'appointment', 'pathology', 'attachment'] as const)('blocks unsupported %s', (type) => {
+		expect(canDeleteTimelineItem('admin', { id: validInput.id, type, canDelete: true })).toBe(false);
+	});
+
+	it('blocks a missing id', () => {
+		expect(canDeleteTimelineItem('doctor', { type: 'note' })).toBe(false);
 	});
 });

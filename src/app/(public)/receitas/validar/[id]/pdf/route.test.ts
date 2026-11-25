@@ -149,3 +149,21 @@ describe('ITI browser cross-origin access', () => {
 		expect(limit).not.toHaveBeenCalled();
 	});
 });
+
+describe('privacidade dos links públicos', () => {
+	it.each(['', '?raw=1', '?_format=application/validador-iti+json&_secretCode=ABC123'])(
+		'evita indexação e envio de referrer para %s',
+		async (query) => {
+			const response = await get(query);
+			expect(response.headers.get('referrer-policy')).toBe('no-referrer');
+			expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow, noarchive');
+		},
+	);
+	it('mantém os cabeçalhos de privacidade quando o documento não existe', async () => {
+		limit.mockResolvedValue([]);
+		const response = await get('?raw=1');
+		expect(response.status).toBe(404);
+		expect(response.headers.get('referrer-policy')).toBe('no-referrer');
+		expect(response.headers.get('x-robots-tag')).toContain('noindex');
+	});
+});

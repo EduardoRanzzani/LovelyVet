@@ -12,7 +12,6 @@ import {
 	petWeightsTable,
 	prescriptionsTable,
 	speciesTable,
-	usersTable,
 } from '@/db/schema';
 import { sendEmailMessage } from '@/lib/integrations/email';
 import { actionClient } from '@/lib/next-safe-action';
@@ -20,6 +19,7 @@ import type { AuthContext } from '@/lib/security/auth-context';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
 import { buildPetAccessCondition } from '@/lib/security/pet-access';
+import { buildPetTutorSearchCondition } from '@/lib/security/pet-tutor-search';
 import { filterPetForViewer } from '@/lib/security/pet-visibility';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { normalizePagination } from '@/lib/pagination';
@@ -57,15 +57,7 @@ const buildPetsListWhere = (context: AuthContext, search?: string): SQL | undefi
 						.innerJoin(speciesTable, eq(breedsTable.specieId, speciesTable.id))
 						.where(ilike(speciesTable.name, s)),
 				),
-				inArray(
-					petsTable.id,
-					db
-						.select({ petId: petTutorsTable.petId })
-						.from(petTutorsTable)
-						.innerJoin(customersTable, eq(petTutorsTable.customerId, customersTable.id))
-						.innerJoin(usersTable, eq(customersTable.userId, usersTable.id))
-						.where(ilike(usersTable.name, s)),
-				),
+				buildPetTutorSearchCondition(context, s),
 			)!,
 		);
 	}

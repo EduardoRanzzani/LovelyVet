@@ -8,47 +8,24 @@ import {
 	prescriptionsTable,
 	vaccinesTable,
 } from '@/db/schema';
+import { deletableTimelineItemTypes, type DeletableTimelineItemType } from '@/api/schema/timeline.schema';
 
 const mocks = vi.hoisted(() => ({
-	vaccineFindFirst: vi.fn(),
-	weightFindFirst: vi.fn(),
-	noteFindFirst: vi.fn(),
-	prescriptionFindFirst: vi.fn(),
-	clinicalDocumentFindFirst: vi.fn(),
-	deleteWhere: vi.fn(),
-	dbDelete: vi.fn(),
-	transaction: vi.fn(),
-	transactionDelete: vi.fn(),
 	requireAuthContext: vi.fn(),
-	requireStaff: vi.fn(),
-	assertPrescriptionIsUnsigned: vi.fn(),
+	transaction: vi.fn(),
+	select: vi.fn(),
+	from: vi.fn(),
+	selectWhere: vi.fn(),
+	lock: vi.fn(),
+	signatureFindFirst: vi.fn(),
+	dbDelete: vi.fn(),
+	txDelete: vi.fn(),
+	deleteWhere: vi.fn(),
+	returning: vi.fn(),
 	revalidatePath: vi.fn(),
 }));
 
-vi.mock('@/db', () => ({
-	db: {
-		query: {
-			vaccinesTable: {
-				findFirst: mocks.vaccineFindFirst,
-			},
-			petWeightsTable: {
-				findFirst: mocks.weightFindFirst,
-			},
-			petNotesTable: {
-				findFirst: mocks.noteFindFirst,
-			},
-			prescriptionsTable: {
-				findFirst: mocks.prescriptionFindFirst,
-			},
-			clinicalDocumentsTable: {
-				findFirst: mocks.clinicalDocumentFindFirst,
-			},
-		},
-		delete: mocks.dbDelete,
-		transaction: mocks.transaction,
-	},
-}));
-
+vi.mock('@/db', () => ({ db: { delete: mocks.dbDelete, transaction: mocks.transaction } }));
 vi.mock('@/lib/next-safe-action', () => ({
 	actionClient: {
 		schema: () => ({
@@ -57,28 +34,13 @@ vi.mock('@/lib/next-safe-action', () => ({
 		}),
 	},
 }));
-
-vi.mock('@/lib/security/auth-context', () => ({
-	requireAuthContext: mocks.requireAuthContext,
-}));
-
-vi.mock('@/lib/security/authorization', () => ({
-	requireStaff: mocks.requireStaff,
-}));
-
-vi.mock('@/lib/prescriptions/prescription-signature', () => ({
-	assertPrescriptionIsUnsigned: mocks.assertPrescriptionIsUnsigned,
-}));
-
-vi.mock('next/cache', () => ({
-	revalidatePath: mocks.revalidatePath,
-}));
+vi.mock('@/lib/security/auth-context', () => ({ requireAuthContext: mocks.requireAuthContext }));
+vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidatePath }));
 
 import { deleteTimelineItem } from './timeline.actions';
 
 const PET_ID = '11111111-1111-4111-8111-111111111111';
 const ITEM_ID = '22222222-2222-4222-8222-222222222222';
-
 const doctorContext = {
 	clerkUserId: 'clerk-doctor',
 	userId: 'user-doctor',
@@ -86,263 +48,167 @@ const doctorContext = {
 	customerId: null,
 	doctorId: '33333333-3333-4333-8333-333333333333',
 };
+const remove = (type: DeletableTimelineItemType) => deleteTimelineItem({ id: ITEM_ID, petId: PET_ID, type });
+const dialect = new PgDialect();
+
+const simpleCases = [
+	['weight', petWeightsTable, 'Peso não encontrado'],
+	['note', petNotesTable, 'Observação não encontrada'],
+	['referral', clinicalDocumentsTable, 'Documento clínico não encontrado'],
+	['exam_request', clinicalDocumentsTable, 'Documento clínico não encontrado'],
+] as const;
+
+const expectScope = (condition: Parameters<PgDialect['sqlToQuery']>[0]) => {
+	const query = dialect.sqlToQuery(condition);
+	expect(query.sql).toContain('pet_id');
+	expect(query.params).toContain(ITEM_ID);
+	expect(query.params).toContain(PET_ID);
+	return query;
+};
 
 describe('deleteTimelineItem', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
-
 		mocks.requireAuthContext.mockResolvedValue(doctorContext);
-		mocks.requireStaff.mockReturnValue(undefined);
-		mocks.assertPrescriptionIsUnsigned.mockResolvedValue(undefined);
-		mocks.deleteWhere.mockResolvedValue(undefined);
-		mocks.dbDelete.mockReturnValue({
-			where: mocks.deleteWhere,
-		});
-
-		mocks.transactionDelete.mockImplementation(() => ({
-			where: mocks.deleteWhere,
-		}));
-
-		mocks.transaction.mockImplementation(
-			async (
-				callback: (tx: {
-					query: {
-						vaccinesTable: {
-							findFirst: typeof mocks.vaccineFindFirst;
-						};
-					};
-					delete: typeof mocks.transactionDelete;
-				}) => Promise<unknown>,
-			) => {
-				return callback({
-					query: {
-						vaccinesTable: {
-							findFirst: mocks.vaccineFindFirst,
-						},
-					},
-					delete: mocks.transactionDelete,
-				});
-			},
+		mocks.select.mockReturnValue({ from: mocks.from });
+		mocks.from.mockReturnValue({ where: mocks.selectWhere });
+		mocks.selectWhere.mockReturnValue({ for: mocks.lock });
+		// Um registro de outro profissional permanece elegível pela política aprovada.
+		mocks.lock.mockResolvedValue([{ id: ITEM_ID, appointmentId: null, doctorId: 'other-doctor' }]);
+		mocks.signatureFindFirst.mockResolvedValue(undefined);
+		mocks.returning.mockResolvedValue([{ id: ITEM_ID }]);
+		mocks.deleteWhere.mockReturnValue({ returning: mocks.returning });
+		mocks.dbDelete.mockReturnValue({ where: mocks.deleteWhere });
+		mocks.txDelete.mockReturnValue({ where: mocks.deleteWhere });
+		mocks.transaction.mockImplementation(async (callback) =>
+			callback({
+				select: mocks.select,
+				delete: mocks.txDelete,
+				query: { prescriptionSignaturesTable: { findFirst: mocks.signatureFindFirst } },
+			}),
 		);
 	});
 
-	it('requires staff before deleting timeline item', async () => {
-		mocks.requireStaff.mockImplementation(() => {
-			throw new Error('Usuário não autorizado');
-		});
-
-		await expect(
-			deleteTimelineItem({
-				id: ITEM_ID,
-				petId: PET_ID,
-				type: 'vaccine',
-			}),
-		).rejects.toThrow('Usuário não autorizado');
-
-		expect(mocks.vaccineFindFirst).not.toHaveBeenCalled();
+	it.each(deletableTimelineItemTypes)('rejects Customer for %s using real authorization', async (type) => {
+		mocks.requireAuthContext.mockResolvedValue({ ...doctorContext, role: 'customer', doctorId: null });
+		await expect(remove(type)).rejects.toThrow('Usuário não autorizado');
 		expect(mocks.dbDelete).not.toHaveBeenCalled();
+		expect(mocks.transaction).not.toHaveBeenCalled();
+		expect(mocks.revalidatePath).not.toHaveBeenCalled();
 	});
 
-	it('deletes vaccine and linked reminders regardless of status', async () => {
-		mocks.vaccineFindFirst.mockResolvedValue({
-			id: ITEM_ID,
-			petId: PET_ID,
-		});
+	it('rejects unauthenticated requests before accessing the database', async () => {
+		mocks.requireAuthContext.mockRejectedValue(new Error('Usuário não autenticado'));
+		await expect(remove('note')).rejects.toThrow('Usuário não autenticado');
+		expect(mocks.dbDelete).not.toHaveBeenCalled();
+		expect(mocks.transaction).not.toHaveBeenCalled();
+	});
 
-		await deleteTimelineItem({
-			id: ITEM_ID,
-			petId: PET_ID,
-			type: 'vaccine',
-		});
-
-		expect(mocks.transaction).toHaveBeenCalledTimes(1);
-
-		expect(mocks.transactionDelete).toHaveBeenNthCalledWith(1, careRemindersTable);
-
-		expect(mocks.transactionDelete).toHaveBeenNthCalledWith(2, vaccinesTable);
-
-		expect(mocks.deleteWhere).toHaveBeenCalledTimes(2);
-
-		const [reminderCondition] = mocks.deleteWhere.mock.calls[0];
-
-		const query = new PgDialect().sqlToQuery(reminderCondition);
-
-		expect(query.sql).toContain('source_vaccine_id');
-		expect(query.sql).toContain('pet_id');
-
-		// Nenhum filtro por status: remove pendentes,
-		// concluídos e cancelados vinculados à vacina.
-		expect(query.sql).not.toContain('"status"');
-
-		expect(query.params).toContain(ITEM_ID);
-		expect(query.params).toContain(PET_ID);
-
+	it.each(deletableTimelineItemTypes)('allows Admin to delete eligible %s', async (type) => {
+		mocks.requireAuthContext.mockResolvedValue({ ...doctorContext, role: 'admin', doctorId: null });
+		await remove(type);
+		expect(mocks.returning).toHaveBeenCalledTimes(1);
 		expect(mocks.revalidatePath).toHaveBeenCalledWith(`/pets/${PET_ID}`);
+	});
 
+	it.each(simpleCases)('allows Doctor to delete %s without filtering by author', async (type, table) => {
+		await remove(type);
+		expect(mocks.dbDelete).toHaveBeenCalledWith(table);
+		const query = expectScope(mocks.deleteWhere.mock.calls[0][0]);
+		expect(query.sql).not.toMatch(/author_id|doctor_id/);
+		if (type === 'referral' || type === 'exam_request') {
+			expect(query.sql).toContain('"type"');
+			expect(query.params).toContain(type);
+		}
+		expect(mocks.returning).toHaveBeenCalledTimes(1);
+		expect(mocks.revalidatePath).toHaveBeenCalledWith(`/pets/${PET_ID}`);
+	});
+
+	it.each(simpleCases)('rejects missing or wrong-scope %s atomically', async (type, _table, error) => {
+		mocks.returning.mockResolvedValue([]);
+		await expect(remove(type)).rejects.toThrow(error);
+		expectScope(mocks.deleteWhere.mock.calls[0][0]);
+		expect(mocks.revalidatePath).not.toHaveBeenCalled();
+	});
+
+	it('locks an eligible vaccine before removing its reminders and itself', async () => {
+		await remove('vaccine');
+		expect(mocks.transaction).toHaveBeenCalledTimes(1);
+		expect(mocks.from).toHaveBeenCalledWith(vaccinesTable);
+		expectScope(mocks.selectWhere.mock.calls[0][0]);
+		expect(mocks.lock).toHaveBeenCalledWith('update');
+		expect(mocks.txDelete).toHaveBeenNthCalledWith(1, careRemindersTable);
+		expect(mocks.txDelete).toHaveBeenNthCalledWith(2, vaccinesTable);
+		const reminder = expectScope(mocks.deleteWhere.mock.calls[0][0]);
+		expect(reminder.sql).toContain('source_vaccine_id');
+		expect(reminder.sql).not.toContain('"status"');
+		const vaccine = expectScope(mocks.deleteWhere.mock.calls[1][0]);
+		expect(vaccine.sql).toContain('"appointment_id" is null');
+		expect(mocks.lock.mock.invocationCallOrder[0]).toBeLessThan(mocks.txDelete.mock.invocationCallOrder[0]);
+		expect(mocks.dbDelete).not.toHaveBeenCalled();
 		expect(mocks.revalidatePath).toHaveBeenCalledWith('/agenda');
 		expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard');
 	});
 
-	it('rejects vaccine that does not belong to pet', async () => {
-		mocks.vaccineFindFirst.mockResolvedValue(null);
-
-		await expect(
-			deleteTimelineItem({
-				id: ITEM_ID,
-				petId: PET_ID,
-				type: 'vaccine',
-			}),
-		).rejects.toThrow('Vacina não encontrada');
-
-		expect(mocks.transactionDelete).not.toHaveBeenCalled();
+	it.each(['admin', 'doctor'] as const)('blocks linked vaccine for %s before deleting reminders', async (role) => {
+		mocks.requireAuthContext.mockResolvedValue({ ...doctorContext, role });
+		mocks.lock.mockResolvedValue([{ id: ITEM_ID, appointmentId: 'appointment-id' }]);
+		await expect(remove('vaccine')).rejects.toThrow('Vacina vinculada a atendimento');
+		expect(mocks.txDelete).not.toHaveBeenCalled();
+		expect(mocks.revalidatePath).not.toHaveBeenCalled();
 	});
 
-	it('deletes weight from pet timeline', async () => {
-		mocks.weightFindFirst.mockResolvedValue({
-			id: ITEM_ID,
-			petId: PET_ID,
-		});
-
-		await deleteTimelineItem({
-			id: ITEM_ID,
-			petId: PET_ID,
-			type: 'weight',
-		});
-
-		expect(mocks.weightFindFirst).toHaveBeenCalledTimes(1);
-		expect(mocks.dbDelete).toHaveBeenCalledWith(petWeightsTable);
-		expect(mocks.deleteWhere).toHaveBeenCalledTimes(1);
+	it('rejects a missing or wrong-pet vaccine before deleting reminders', async () => {
+		mocks.lock.mockResolvedValue([]);
+		await expect(remove('vaccine')).rejects.toThrow('Vacina não encontrada');
+		expect(mocks.txDelete).not.toHaveBeenCalled();
 	});
 
-	it('rejects weight that does not belong to pet', async () => {
-		mocks.weightFindFirst.mockResolvedValue(null);
+	it('rejects the transaction if the vaccine deletion returns no row', async () => {
+		mocks.returning.mockResolvedValue([]);
+		await expect(remove('vaccine')).rejects.toThrow('Vacina não encontrada ou vinculada a atendimento');
+		expect(mocks.txDelete).toHaveBeenCalledTimes(2);
+		expect(mocks.revalidatePath).not.toHaveBeenCalled();
+	});
 
-		await expect(
-			deleteTimelineItem({
-				id: ITEM_ID,
-				petId: PET_ID,
-				type: 'weight',
-			}),
-		).rejects.toThrow('Peso não encontrado');
-
+	it('locks the prescription before checking its signature in the same transaction', async () => {
+		await remove('prescription');
+		expect(mocks.from).toHaveBeenCalledWith(prescriptionsTable);
+		expectScope(mocks.selectWhere.mock.calls[0][0]);
+		expect(mocks.lock).toHaveBeenCalledWith('update');
+		expect(mocks.lock.mock.invocationCallOrder[0]).toBeLessThan(
+			mocks.signatureFindFirst.mock.invocationCallOrder[0],
+		);
+		expect(mocks.signatureFindFirst.mock.invocationCallOrder[0]).toBeLessThan(
+			mocks.txDelete.mock.invocationCallOrder[0],
+		);
+		expect(mocks.signatureFindFirst).toHaveBeenCalledWith(expect.objectContaining({ columns: { id: true } }));
+		expect(mocks.txDelete).toHaveBeenCalledWith(prescriptionsTable);
+		expectScope(mocks.deleteWhere.mock.calls[0][0]);
 		expect(mocks.dbDelete).not.toHaveBeenCalled();
 	});
 
-	it('deletes note from pet timeline', async () => {
-		mocks.noteFindFirst.mockResolvedValue({
-			id: ITEM_ID,
-			petId: PET_ID,
-		});
-
-		await deleteTimelineItem({
-			id: ITEM_ID,
-			petId: PET_ID,
-			type: 'note',
-		});
-
-		expect(mocks.noteFindFirst).toHaveBeenCalledTimes(1);
-		expect(mocks.dbDelete).toHaveBeenCalledWith(petNotesTable);
-		expect(mocks.deleteWhere).toHaveBeenCalledTimes(1);
-	});
-
-	it('rejects note that does not belong to pet', async () => {
-		mocks.noteFindFirst.mockResolvedValue(null);
-
-		await expect(
-			deleteTimelineItem({
-				id: ITEM_ID,
-				petId: PET_ID,
-				type: 'note',
-			}),
-		).rejects.toThrow('Observação não encontrada');
-
-		expect(mocks.dbDelete).not.toHaveBeenCalled();
-	});
-
-	it('deletes unsigned prescription from pet timeline', async () => {
-		mocks.prescriptionFindFirst.mockResolvedValue({
-			id: ITEM_ID,
-			petId: PET_ID,
-		});
-
-		await deleteTimelineItem({
-			id: ITEM_ID,
-			petId: PET_ID,
-			type: 'prescription',
-		});
-
-		expect(mocks.prescriptionFindFirst).toHaveBeenCalledTimes(1);
-		expect(mocks.assertPrescriptionIsUnsigned).toHaveBeenCalledWith(ITEM_ID);
-		expect(mocks.dbDelete).toHaveBeenCalledWith(prescriptionsTable);
-		expect(mocks.deleteWhere).toHaveBeenCalledTimes(1);
-	});
-
-	it('rejects prescription that does not belong to pet', async () => {
-		mocks.prescriptionFindFirst.mockResolvedValue(null);
-
-		await expect(
-			deleteTimelineItem({
-				id: ITEM_ID,
-				petId: PET_ID,
-				type: 'prescription',
-			}),
-		).rejects.toThrow('Prescrição não encontrada');
-
-		expect(mocks.assertPrescriptionIsUnsigned).not.toHaveBeenCalled();
-		expect(mocks.dbDelete).not.toHaveBeenCalled();
-	});
-
-	it('does not delete signed prescription', async () => {
-		mocks.prescriptionFindFirst.mockResolvedValue({
-			id: ITEM_ID,
-			petId: PET_ID,
-		});
-		mocks.assertPrescriptionIsUnsigned.mockRejectedValue(new Error('Prescrição assinada não pode ser excluída'));
-
-		await expect(
-			deleteTimelineItem({
-				id: ITEM_ID,
-				petId: PET_ID,
-				type: 'prescription',
-			}),
-		).rejects.toThrow('Prescrição assinada não pode ser excluída');
-
-		expect(mocks.dbDelete).not.toHaveBeenCalled();
-	});
-
-	it.each(['referral', 'exam_request'] as const)('deletes %s from pet timeline', async (type) => {
-		mocks.clinicalDocumentFindFirst.mockResolvedValue({
-			id: ITEM_ID,
-			petId: PET_ID,
-			type,
-		});
-
-		await deleteTimelineItem({
-			id: ITEM_ID,
-			petId: PET_ID,
-			type,
-		});
-
-		expect(mocks.clinicalDocumentFindFirst).toHaveBeenCalledTimes(1);
-		expect(mocks.dbDelete).toHaveBeenCalledWith(clinicalDocumentsTable);
-		expect(mocks.deleteWhere).toHaveBeenCalledTimes(1);
-		expect(mocks.revalidatePath).toHaveBeenCalledWith(`/pets/${PET_ID}`);
-	});
-
-	it.each(['referral', 'exam_request'] as const)(
-		'rejects %s that does not belong to pet or has different type',
-		async (type) => {
-			mocks.clinicalDocumentFindFirst.mockResolvedValue(null);
-
-			await expect(
-				deleteTimelineItem({
-					id: ITEM_ID,
-					petId: PET_ID,
-					type,
-				}),
-			).rejects.toThrow('Documento clínico não encontrado');
-
-			expect(mocks.dbDelete).not.toHaveBeenCalled();
+	it.each(['admin', 'doctor'] as const)(
+		'rejects a prescription signed before lock acquisition for %s',
+		async (role) => {
+			mocks.requireAuthContext.mockResolvedValue({ ...doctorContext, role });
+			mocks.signatureFindFirst.mockResolvedValue({ id: 'signature-id' });
+			await expect(remove('prescription')).rejects.toThrow('Esta receita foi assinada digitalmente');
+			expect(mocks.txDelete).not.toHaveBeenCalled();
+			expect(mocks.revalidatePath).not.toHaveBeenCalled();
 		},
 	);
+
+	it('rejects a missing or wrong-pet prescription before querying signatures', async () => {
+		mocks.lock.mockResolvedValue([]);
+		await expect(remove('prescription')).rejects.toThrow('Prescrição não encontrada');
+		expect(mocks.signatureFindFirst).not.toHaveBeenCalled();
+		expect(mocks.txDelete).not.toHaveBeenCalled();
+	});
+
+	it('rejects a prescription delete with no returned row', async () => {
+		mocks.returning.mockResolvedValue([]);
+		await expect(remove('prescription')).rejects.toThrow('Prescrição não encontrada');
+		expect(mocks.revalidatePath).not.toHaveBeenCalled();
+	});
 });

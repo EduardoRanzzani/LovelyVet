@@ -1,5 +1,6 @@
 'use server';
 
+import { matchesPetPhotoSignature } from '@/lib/pets/pet-photo';
 import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireAdmin, requireStaff } from '@/lib/security/authorization';
 import { v2 as cloudinary } from 'cloudinary';
@@ -38,8 +39,17 @@ export const uploadImageAction = async (formData: FormData): Promise<string> => 
 		throw new Error('Formato de imagem não permitido');
 	}
 
+	if (file.size === 0) {
+		throw new Error('Selecione uma imagem não vazia');
+	}
+
 	if (file.size > MAX_IMAGE_SIZE) {
 		throw new Error('A imagem deve possuir no máximo 5 MB');
+	}
+
+	const bytes = new Uint8Array(await file.arrayBuffer());
+	if (!matchesPetPhotoSignature(file.type, bytes)) {
+		throw new Error('O conteúdo do arquivo não corresponde a uma imagem permitida');
 	}
 
 	const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
@@ -56,9 +66,7 @@ export const uploadImageAction = async (formData: FormData): Promise<string> => 
 		api_secret: apiSecret,
 	});
 
-	const arrayBuffer = await file.arrayBuffer();
-
-	const buffer = Buffer.from(arrayBuffer);
+	const buffer = Buffer.from(bytes);
 
 	return new Promise<string>((resolve, reject) => {
 		cloudinary.uploader

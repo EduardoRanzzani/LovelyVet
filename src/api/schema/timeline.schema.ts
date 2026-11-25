@@ -1,3 +1,4 @@
+import type { UserRole } from '@/lib/security/roles';
 import { JSX } from 'react';
 import z from 'zod';
 
@@ -55,6 +56,16 @@ export const deletableTimelineItemTypes = [
 ] as const;
 
 export type DeletableTimelineItemType = (typeof deletableTimelineItemTypes)[number];
+
+// Controle de apresentação; a Server Action valida a autorização e o estado no banco.
+export const canDeleteTimelineItem = (
+	role: UserRole,
+	item: Pick<TimelineItem, 'id' | 'type' | 'canDelete'>,
+): item is { id: string; type: DeletableTimelineItemType; canDelete?: boolean } =>
+	(role === 'admin' || role === 'doctor') &&
+	Boolean(item.id) &&
+	item.canDelete !== false &&
+	deletableTimelineItemTypes.some((type) => type === item.type);
 
 export const deleteTimelineItemSchema = z.object({
 	type: z.enum(deletableTimelineItemTypes, {

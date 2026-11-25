@@ -1,5 +1,23 @@
 ## Histórico de alterações
 
+> Candidato local 1.5.0: 731 testes em 85 arquivos, audit-prod sem vulnerabilidades conhecidas, Drizzle check e build Next 16.4.5 aprovados em 25/11/2026. Audit-all mantém duas ocorrências moderadas DEV aceitas temporariamente. Limpeza do histórico fictício do pet Teste confirmada pelo desenvolvedor. Commit, publicação e homologação em produção ainda pendentes.
+
+### [1.5.0] - Candidato a release (25/11/2026)
+
+- Agendamentos, reagendamento, vacinação, retornos e lembretes clínicos.
+- Financeiro com cobranças, pagamentos manuais integrais e parciais, extratos e portal do tutor.
+- Dashboards por perfil e alteração exclusiva de fotos de pets pelo tutor autorizado.
+- Segurança Clerk por ambiente, vinculação administrativa e auditoria (migration 0047, já aplicada).
+- Revalidação de autorização dos agendamentos e proteção transacional de exclusões clínicas.
+- Correção da apresentação de observações com HTML sanitizado; layout responsivo dos detalhes do pet aprovado no desktop.
+- Cabeçalhos de privacidade na validação pública de receitas, preservando a interoperabilidade atual com o ITI.
+- Validação do conteúdo de imagens nos uploads da equipe e ajustes pontuais de pluralização.
+- Sanitização adicional de HTML histórico nas telas, extração isomórfica de texto no catálogo e proteção de privacidade da busca de pets.
+- Restrição de alteração de contas privilegiadas por Doctor no cadastro de clientes.
+- Documentação de continuidade versionada; ver checkpoint e auditoria para validações e riscos ainda pendentes.
+
+A versão ainda não está publicada. Validações automatizadas locais aprovadas; confirmar política de acesso público aos PDFs e homologação manual restante antes do push. Ver documentação de continuidade.
+
 ### [1.2.0] - 06/09/2026
 
 - hardening de roles e autorização

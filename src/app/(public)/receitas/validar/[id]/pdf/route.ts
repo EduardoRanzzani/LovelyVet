@@ -13,6 +13,8 @@ import { z } from 'zod';
 const publicPdfHeaders = {
 	'Access-Control-Allow-Origin': 'https://validar.iti.gov.br',
 	'Cache-Control': 'private, no-store',
+	'Referrer-Policy': 'no-referrer',
+	'X-Robots-Tag': 'noindex, nofollow, noarchive',
 };
 
 export function OPTIONS() {

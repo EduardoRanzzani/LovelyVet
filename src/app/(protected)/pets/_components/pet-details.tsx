@@ -5,12 +5,7 @@ import { CustomersWithRelations } from '@/api/schema/customers.schema';
 import { DoctorsWithRelations } from '@/api/schema/doctors.schema';
 import { formatPetTutorNames, PetsWithRelations } from '@/api/schema/pets.schema';
 import { Species } from '@/api/schema/species.schema';
-import {
-	DeletableTimelineItemType,
-	deletableTimelineItemTypes,
-	TimelineItem,
-	toTimelinePerson,
-} from '@/api/schema/timeline.schema';
+import { canDeleteTimelineItem, TimelineItem, toTimelinePerson } from '@/api/schema/timeline.schema';
 import { formatAge } from '@/api/util';
 import DocumentPdfDownloadButton from '@/components/clinical-documents/document-pdf-download-button';
 import { GoogleMapsIcon } from '@/components/icons/icon-googlemaps';
@@ -21,6 +16,8 @@ import LoadingDialog from '@/components/ui/loading';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
+import { sanitizePrescriptionPreviewHtml, sanitizeRichTextHtml } from '@/lib/security/html';
 import type { UserRole } from '@/lib/security/roles';
 import { formatVaccineNextDose } from '@/lib/vaccines/format-next-dose';
 import { format, formatDate } from 'date-fns';
@@ -47,6 +44,7 @@ import { toast } from 'sonner';
 import PetFormClient from './pet-form';
 import TutorPetPhotoDialog from './tutor-pet-photo-dialog';
 import TabHistory from './tabs/tab-history';
+import ClinicalNoteContent from './tabs/history/clinical-note-content';
 import TabTimeline from './tabs/tab-timeline';
 
 interface PetDetailsClientProps {
@@ -58,9 +56,6 @@ interface PetDetailsClientProps {
 	customersPromise: Promise<CustomersWithRelations[]>;
 	viewerRole: UserRole;
 }
-
-const isDeletableTimelineItemType = (type: TimelineItem['type']): type is DeletableTimelineItemType =>
-	deletableTimelineItemTypes.some((deletableType) => deletableType === type);
 
 const PetDetailsClient = ({
 	pet,
@@ -138,7 +133,7 @@ const PetDetailsClient = ({
 					<div
 						className='prose prose-sm dark:prose-invert max-w-none'
 						dangerouslySetInnerHTML={{
-							__html: p.content as string,
+							__html: sanitizePrescriptionPreviewHtml(p.content),
 						}}
 					/>
 
@@ -195,7 +190,7 @@ const PetDetailsClient = ({
 						<div
 							className='prose prose-sm dark:prose-invert max-w-none'
 							dangerouslySetInnerHTML={{
-								__html: document.content,
+								__html: sanitizeRichTextHtml(document.content),
 							}}
 						/>
 
@@ -249,6 +244,7 @@ const PetDetailsClient = ({
 		...(pet.vaccines?.map((v) => ({
 			type: 'vaccine' as const,
 			id: v.id,
+			canDelete: !v.appointmentId,
 			date: new Date(v.applicationDate),
 			title: 'Vacina',
 			doctor: v.doctor?.user?.name || 'Não atribuído',
@@ -300,23 +296,25 @@ const PetDetailsClient = ({
 			icon: <FileIcon className='w-5 h-5 text-accent-foreground' />,
 			color: 'bg-document/30',
 		})) || []),
-		...(pet.notes?.map((n) => ({
-			type: 'note' as const,
-			id: n.id,
-			date: new Date(n.createdAt),
-			title: 'Observação',
-			doctor: n.author.name,
-			avatarPerson: toTimelinePerson(n.author),
-			content: n.content,
-			icon: <MessageCircleIcon className='w-5 h-5 text-accent-foreground' />,
-			color: 'bg-notes/80',
-		})) || []),
-	].sort((a, b) => b.date.getTime() - a.date.getTime());
+		...(!isCustomer
+			? pet.notes?.map((n) => ({
+					type: 'note' as const,
+					id: n.id,
+					date: new Date(n.createdAt),
+					title: 'Observação',
+					doctor: n.author.name,
+					avatarPerson: toTimelinePerson(n.author),
+					content: <ClinicalNoteContent content={n.content} />,
+					icon: <MessageCircleIcon className='w-5 h-5 text-accent-foreground' />,
+					color: 'bg-notes/80',
+				})) || []
+			: []),
+	]
+		.map((item) => ({ ...item, canDelete: canDeleteTimelineItem(viewerRole, item) }))
+		.sort((a, b) => b.date.getTime() - a.date.getTime());
 
 	const handleDelete = (item: TimelineItem) => {
-		if (!item.id) return;
-
-		if (!isDeletableTimelineItemType(item.type)) {
+		if (!canDeleteTimelineItem(viewerRole, item)) {
 			return;
 		}
 
@@ -329,7 +327,7 @@ const PetDetailsClient = ({
 
 	return (
 		<div className='flex flex-col gap-4 w-full'>
-			<div className='flex flex-col md:flex-row gap-4 w-full'>
+			<div className='flex flex-col lg:flex-row gap-4 w-full'>
 				{/* Card da Foto e Nome */}
 				<div className='flex flex-col items-center justify-start gap-4 p-5 w-full lg:min-w-75 lg:w-1/3 border border-muted rounded-lg bg-card'>
 					{isCustomer ? (
@@ -381,7 +379,7 @@ const PetDetailsClient = ({
 
 					<Separator />
 
-					<div className='grid grid-cols-2 gap-y-3 gap-x-4 text-sm'>
+					<div className='grid min-w-0 grid-cols-1 gap-y-3 gap-x-4 text-sm sm:grid-cols-2'>
 						<p>
 							<span className='font-semibold text-muted-foreground'>Espécie:</span>{' '}
 							{pet.breed.specie.name}
@@ -409,20 +407,22 @@ const PetDetailsClient = ({
 							<span className='font-semibold text-muted-foreground'>Idade:</span> {age}
 						</p>
 
-						<p className='col-span-2 w-full'>
-							<span className='font-semibold text-muted-foreground'>Tutor(es):</span>{' '}
+						<p className='sm:col-span-2 w-full'>
+							<span className='font-semibold text-muted-foreground'>
+								{pet.petTutors.length === 1 ? 'Tutor:' : 'Tutores:'}
+							</span>{' '}
 							{formatPetTutorNames(pet)}
 						</p>
 
 						{!isCustomer && (
 							<>
-								<p className='col-span-2'>
+								<p className='sm:col-span-2'>
 									<span className='font-semibold text-muted-foreground'>Endereço:</span>{' '}
 									{fullAddress || '—'}
 								</p>
 
 								{googleMapsUrl ? (
-									<div className='col-span-2 pt-2'>
+									<div className='sm:col-span-2 pt-2'>
 										<Button asChild variant='outline' className='w-full gap-2'>
 											<Link href={googleMapsUrl} target='_blank'>
 												<GoogleMapsIcon className='w-4 h-4' />
@@ -438,36 +438,43 @@ const PetDetailsClient = ({
 			</div>
 
 			<div className='flex w-full min-w-0 flex-col gap-4 rounded-lg border border-muted bg-card p-3 sm:p-5'>
-				<h2 className='text-xl font-semibold'>Informações Adicionais</h2>
+				<h2 className='text-xl font-semibold'>Acompanhamento do paciente</h2>
 				<Separator />
 
 				<Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
 					{/* VIEW MOBILE: Dropdown (Select) */}
-					<div className='w-full lg:hidden'>
-						<Select value={activeTab} onValueChange={setActiveTab}>
-							<SelectTrigger className='w-full bg-muted/50 h-12'>
-								<SelectValue placeholder='Selecione uma categoria' />
-							</SelectTrigger>
-							<SelectContent>
-								{visibleTabs.map((tab) => (
-									<SelectItem key={tab.id} value={tab.id}>
-										<div className='flex items-center gap-2'>
-											<tab.icon className='w-4 h-4' />
-											<span>{tab.label}</span>
-										</div>
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</div>
+					{!isCustomer && (
+						<div className='w-full lg:hidden'>
+							<Select value={activeTab} onValueChange={setActiveTab}>
+								<SelectTrigger className='w-full bg-muted/50 h-12'>
+									<SelectValue placeholder='Selecione uma categoria' />
+								</SelectTrigger>
+								<SelectContent>
+									{visibleTabs.map((tab) => (
+										<SelectItem key={tab.id} value={tab.id}>
+											<div className='flex items-center gap-2'>
+												<tab.icon className='w-4 h-4' />
+												<span>{tab.label}</span>
+											</div>
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+					)}
 
 					{/* VIEW DESKTOP: Tabs tradicionais */}
-					<TabsList className='hidden lg:flex w-full min-w-0 justify-start h-auto flex-wrap gap-1 p-1 bg-muted/50 border'>
+					<TabsList
+						className={cn(
+							'w-full min-w-0 justify-start flex-wrap gap-1 border bg-muted/50 p-1 group-data-[orientation=horizontal]/tabs:h-auto',
+							!isCustomer && 'hidden lg:flex',
+						)}
+					>
 						{visibleTabs.map((tab) => (
 							<TabsTrigger
 								key={tab.id}
 								value={tab.id}
-								className='flex min-w-0 gap-2 px-3 py-2 text-sm hover:cursor-pointer'
+								className='flex h-10 min-w-0 gap-2 whitespace-normal px-3 py-2 text-sm hover:cursor-pointer'
 							>
 								<tab.icon className='w-4 h-4' />
 								{tab.label}
@@ -476,28 +483,33 @@ const PetDetailsClient = ({
 					</TabsList>
 
 					<div className='min-w-0 rounded-md border bg-card p-2 sm:p-4'>
-						<TabHistory
-							doctors={doctors}
-							vaccineServices={vaccineServices}
-							historyEvents={historyEvents}
-							petId={pet.id}
-							canDelete={!isCustomer}
-							onDelete={handleDelete}
-						/>
-
-						<TabsContent value='protocols'>
-							<h1>Protocolos Clínicos</h1>
-						</TabsContent>
-
+						{!isCustomer && (
+							<>
+								<TabHistory
+									doctors={doctors}
+									vaccineServices={vaccineServices}
+									historyEvents={historyEvents}
+									petId={pet.id}
+									canDelete
+									onDelete={handleDelete}
+								/>
+								{[
+									{ id: 'protocols', title: 'Protocolos Clínicos' },
+									{ id: 'schedule', title: 'Próximos Agendamentos' },
+									{ id: 'sales', title: 'Histórico de Vendas' },
+								].map(({ id, title }) => (
+									<TabsContent key={id} value={id} className='w-full min-w-0'>
+										<section className='w-full min-w-0 rounded-xl border bg-muted/20 p-3 sm:p-6'>
+											<h3 className='border-b pb-3 text-base font-bold sm:text-lg'>{title}</h3>
+											<p className='py-6 text-sm text-muted-foreground'>
+												Conteúdo ainda não disponível nesta aba.
+											</p>
+										</section>
+									</TabsContent>
+								))}
+							</>
+						)}
 						<TabTimeline historyEvents={historyEvents} canDelete={!isCustomer} onDelete={handleDelete} />
-
-						<TabsContent value='schedule'>
-							<h1>Próximos Agendamentos</h1>
-						</TabsContent>
-
-						<TabsContent value='sales'>
-							<h1>Histórico de Vendas</h1>
-						</TabsContent>
 					</div>
 				</Tabs>
 			</div>
