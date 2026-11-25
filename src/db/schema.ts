@@ -7,6 +7,7 @@ import {
 	check,
 	customType,
 	date,
+	foreignKey,
 	index,
 	integer,
 	jsonb,
@@ -16,6 +17,7 @@ import {
 	text,
 	time,
 	timestamp,
+	unique,
 	uniqueIndex,
 	uuid,
 } from 'drizzle-orm/pg-core';
@@ -364,6 +366,68 @@ export const appointmentChargesTable = pgTable(
 	],
 );
 
+// Uma tentativa de pagamento online; o UUID identifica a referência externa e a chave de idempotência.
+export const onlinePaymentAttemptsTable = pgTable(
+	'online_payment_attempts',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		chargeId: uuid('charge_id')
+			.notNull()
+			.references(() => appointmentChargesTable.id),
+		initiatedBy: uuid('initiated_by')
+			.notNull()
+			.references(() => usersTable.id),
+		environment: text('environment').notNull(),
+		collectorId: text('collector_id').notNull(),
+		amountInCents: integer('amount_in_cents').notNull(),
+		method: text('method').notNull(),
+		installments: integer('installments').notNull().default(1),
+		status: text('status').notNull().default('created'),
+		providerOrderId: text('provider_order_id'),
+		providerPaymentId: text('provider_payment_id'),
+		providerStatus: text('provider_status'),
+		providerStatusDetail: text('provider_status_detail'),
+		reconciliationReason: text('reconciliation_reason'),
+		expiresAt: timestamp('expires_at'),
+		approvedAt: timestamp('approved_at'),
+		createdAt: timestamp('created_at').notNull().defaultNow(),
+		updatedAt: timestamp('updated_at').notNull().defaultNow(),
+	},
+	(table) => [
+		check('online_attempt_environment_valid', sql`${table.environment} IN ('test','production')`),
+		check('online_attempt_amount_positive', sql`${table.amountInCents} > 0`),
+		check('online_attempt_method_valid', sql`${table.method} IN ('pix','credit_card','debit_card')`),
+		check(
+			'online_attempt_installments_valid',
+			sql`${table.installments} BETWEEN 1 AND 24 AND (${table.method} = 'credit_card' OR ${table.installments} = 1)`,
+		),
+		check(
+			'online_attempt_status_valid',
+			sql`${table.status} IN ('created','processing','pending','approved','rejected','cancelled','expired','review')`,
+		),
+		check('online_attempt_collector_valid', sql`length(btrim(${table.collectorId})) > 0`),
+		check(
+			'online_attempt_order_id_valid',
+			sql`${table.providerOrderId} IS NULL OR length(btrim(${table.providerOrderId})) > 0`,
+		),
+		check(
+			'online_attempt_payment_id_valid',
+			sql`${table.providerPaymentId} IS NULL OR length(btrim(${table.providerPaymentId})) > 0`,
+		),
+		check(
+			'online_attempt_approval_valid',
+			sql`${table.status} <> 'approved' OR (${table.providerOrderId} IS NOT NULL AND ${table.providerPaymentId} IS NOT NULL AND ${table.approvedAt} IS NOT NULL)`,
+		),
+		unique('online_attempt_ledger_identity_unique').on(table.id, table.chargeId, table.amountInCents, table.method),
+		index('online_attempt_charge_idx').on(table.chargeId),
+		uniqueIndex('online_attempt_provider_order_unique').on(table.environment, table.providerOrderId),
+		uniqueIndex('online_attempt_provider_payment_unique').on(table.environment, table.providerPaymentId),
+		uniqueIndex('online_attempt_one_active_per_charge')
+			.on(table.chargeId)
+			.where(sql`${table.status} IN ('created','processing','pending')`),
+	],
+);
+
 export const chargePaymentsTable = pgTable(
 	'charge_payments',
 	{
@@ -374,9 +438,10 @@ export const chargePaymentsTable = pgTable(
 		operationKey: uuid('operation_key').notNull(),
 		amountInCents: integer('amount_in_cents').notNull(),
 		method: text('method').notNull(),
-		receivedBy: uuid('received_by')
-			.notNull()
-			.references(() => usersTable.id),
+		// Recebimentos manuais têm autor; os automáticos têm uma tentativa vinculada.
+		source: text('source').default('manual').notNull(),
+		onlinePaymentAttemptId: uuid('online_payment_attempt_id'),
+		receivedBy: uuid('received_by').references(() => usersTable.id),
 		receivedAt: timestamp('received_at').defaultNow().notNull(),
 	},
 	(table) => [
@@ -387,6 +452,21 @@ export const chargePaymentsTable = pgTable(
 			sql`${table.method} IN ('pix','cash','credit_card','debit_card','transfer')`,
 		),
 		index('charge_payments_charge_idx').on(table.chargeId),
+		uniqueIndex('charge_payments_online_attempt_unique').on(table.onlinePaymentAttemptId),
+		check(
+			'charge_payment_source_valid',
+			sql`(${table.source} = 'manual' AND ${table.receivedBy} IS NOT NULL AND ${table.onlinePaymentAttemptId} IS NULL) OR (${table.source} = 'mercado_pago' AND ${table.receivedBy} IS NULL AND ${table.onlinePaymentAttemptId} IS NOT NULL AND ${table.operationKey} = ${table.onlinePaymentAttemptId})`,
+		),
+		foreignKey({
+			name: 'charge_payment_online_attempt_identity_fk',
+			columns: [table.onlinePaymentAttemptId, table.chargeId, table.amountInCents, table.method],
+			foreignColumns: [
+				onlinePaymentAttemptsTable.id,
+				onlinePaymentAttemptsTable.chargeId,
+				onlinePaymentAttemptsTable.amountInCents,
+				onlinePaymentAttemptsTable.method,
+			],
+		}),
 	],
 );
 

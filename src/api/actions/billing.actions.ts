@@ -100,7 +100,11 @@ export const recordChargePayment = actionClient.schema(receivePaymentSchema).act
 				),
 			);
 		if (existing) {
-			if (existing.amountInCents !== parsedInput.amountInCents || existing.method !== parsedInput.method)
+			if (
+				existing.source !== 'manual' ||
+				existing.amountInCents !== parsedInput.amountInCents ||
+				existing.method !== parsedInput.method
+			)
 				throw new Error('Chave de operação já utilizada com outros dados.');
 			return { paymentId: existing.id, repeated: true };
 		}
@@ -117,6 +121,7 @@ export const recordChargePayment = actionClient.schema(receivePaymentSchema).act
 				operationKey: parsedInput.operationKey,
 				amountInCents: parsedInput.amountInCents,
 				method: parsedInput.method,
+				source: 'manual',
 				receivedBy: context.userId,
 			})
 			.returning({ id: chargePaymentsTable.id });
