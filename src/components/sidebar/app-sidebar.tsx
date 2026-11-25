@@ -87,8 +87,8 @@ const AppSidebar = ({ role }: AppSidebarProps) => {
 			icon: CalendarIcon,
 		},
 		{
-			title: 'Financeiro',
-			url: '/finance',
+			title: role === 'customer' ? 'Meu financeiro' : 'Financeiro',
+			url: role === 'customer' ? '/my-finance' : '/finance',
 			icon: WalletIcon,
 		},
 		{

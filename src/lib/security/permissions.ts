@@ -42,6 +42,7 @@ export const ROUTE_PERMISSIONS: Record<UserRole, readonly string[]> = {
 	],
 	customer: [
 		'/dashboard',
+		'/my-finance',
 		'/pets',
 		'/appointments',
 		'/prescriptions/print',

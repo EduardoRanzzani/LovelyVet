@@ -11,6 +11,7 @@ describe('canAccessPath', () => {
 		['doctor', '/finance/customers/abc'],
 		['doctor', '/prescriptions/123'],
 		['customer', '/pets/123'],
+		['customer', '/my-finance'],
 		['customer', '/prescriptions/print/123'],
 	] as const)('allows %s to access %s', (role, pathname) => {
 		expect(canAccessPath(role, pathname)).toBe(true);
@@ -22,6 +23,10 @@ describe('canAccessPath', () => {
 		['customer', '/agenda'],
 		['customer', '/products'],
 		['customer', '/finance'],
+		['customer', '/finance/customers/abc'],
+		['customer', '/my-finance-other'],
+		['admin', '/my-finance'],
+		['doctor', '/my-finance'],
 		['customer', '/prescriptions'],
 		['customer', '/prescriptions-items'],
 		['admin', '/unknown'],

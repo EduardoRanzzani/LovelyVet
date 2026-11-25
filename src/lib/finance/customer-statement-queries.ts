@@ -4,21 +4,30 @@ import {
  appointmentChargesTable, appointmentItemsTable, appointmentProductItemsTable,
  appointmentsTable, productsTable, servicesTable,
 } from '@/db/schema';
-import { requireAuthContext } from '@/lib/security/auth-context';
+import { requireAuthContext, type AuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
-import { buildAppointmentAccessCondition } from '@/lib/security/appointment-access';
+import { buildFinancialAccessCondition, requireFinancialTutorId } from './financial-access';
 import { and, eq, inArray } from 'drizzle-orm';
 import { groupStatementItems, type StatementItem } from './customer-statement';
 
-/** Somente itens das cobranças autorizadas do tutor selecionado. */
+/** Extrato administrativo: somente itens das cobranças autorizadas do titular selecionado. */
 export async function getCustomerStatementItems(customerId: string, chargeIds: readonly string[]) {
  const context = await requireAuthContext();
  requireStaff(context);
+ return loadStatementItems(context, chargeIds, customerId);
+}
+
+export async function getOwnStatementItems(chargeIds: readonly string[]) {
+ const context = await requireAuthContext();
+ requireFinancialTutorId(context);
+ return loadStatementItems(context, chargeIds);
+}
+
+async function loadStatementItems(context: AuthContext, chargeIds: readonly string[], customerId?: string) {
  if (!chargeIds.length) return groupStatementItems([]);
  const condition = and(
-  eq(appointmentChargesTable.customerId, customerId),
+  buildFinancialAccessCondition(context, customerId),
   inArray(appointmentChargesTable.id, [...new Set(chargeIds)]),
-  buildAppointmentAccessCondition(context),
  );
  const [services, products] = await Promise.all([
   db.select({

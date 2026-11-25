@@ -8,16 +8,29 @@ import {
 	petsTable,
 	usersTable,
 } from '@/db/schema';
-import { requireAuthContext } from '@/lib/security/auth-context';
+import { requireAuthContext, type AuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
 import { buildAppointmentAccessCondition } from '@/lib/security/appointment-access';
 import { and, eq, inArray } from 'drizzle-orm';
 import { buildFinancialReport, getMonthBounds } from './financial-report';
+import { buildFinancialAccessCondition, requireFinancialTutorId } from './financial-access';
 
 export async function getFinancialReport(month: string, customerId?: string) {
 	const context = await requireAuthContext();
 	requireStaff(context);
+	return loadFinancialReport(context, month, customerId);
+}
+
+/** Financeiro dos pets vinculados ao tutor autenticado, sem filtro por titular. */
+export async function getOwnFinancialReport(month: string) {
+	const context = await requireAuthContext();
+	requireFinancialTutorId(context);
+	return loadFinancialReport(context, month);
+}
+
+async function loadFinancialReport(context: AuthContext, month: string, customerId?: string) {
 	const { start, end } = getMonthBounds(month);
+	const condition = buildFinancialAccessCondition(context, customerId);
 	const charges = await db
 		.select({
 			id: appointmentChargesTable.id,
@@ -34,14 +47,7 @@ export async function getFinancialReport(month: string, customerId?: string) {
 			eq(appointmentChargesTable.appointmentId, appointmentsTable.id),
 		)
 		.innerJoin(petsTable, eq(appointmentsTable.petId, petsTable.id))
-		.where(
-			and(
-				buildAppointmentAccessCondition(context),
-				customerId
-					? eq(appointmentChargesTable.customerId, customerId)
-					: undefined,
-			),
-		);
+		.where(condition);
 	const paymentRows = charges.length
 		? await db
 				.select({
@@ -60,14 +66,7 @@ export async function getFinancialReport(month: string, customerId?: string) {
 					appointmentsTable,
 					eq(appointmentChargesTable.appointmentId, appointmentsTable.id),
 				)
-				.where(
-					and(
-						buildAppointmentAccessCondition(context),
-						customerId
-							? eq(appointmentChargesTable.customerId, customerId)
-							: undefined,
-					),
-				)
+				.where(condition)
 		: [];
 	return buildFinancialReport(charges, paymentRows, start, end);
 }
