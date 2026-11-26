@@ -10,7 +10,11 @@ import {
 import type { OnlinePaymentInput } from '@/api/schema/online-payment.schema';
 import { requireFinancialTutorId, buildFinancialAccessCondition } from '@/lib/finance/financial-access';
 import { assertOnlinePaymentScope } from '@/lib/finance/online-payment-scope';
-import { assertNoBlockingOnlinePayment, getOnlinePaymentAmount } from '@/lib/finance/online-payment-reservation';
+import {
+	assertExpectedOnlinePaymentBalance,
+	assertNoBlockingOnlinePayment,
+	getOnlinePaymentAmount,
+} from '@/lib/finance/online-payment-reservation';
 import { assertMercadoPagoEnabled, getMercadoPagoConfig } from '@/lib/integrations/mercado-pago-config';
 import { getMercadoPagoOrderClient } from '@/lib/integrations/mercado-pago';
 import { lockAccessibleAppointment } from '@/lib/security/appointment-access';
@@ -63,6 +67,7 @@ export async function createOnlinePayment(context: AuthContext, input: OnlinePay
 					.from(chargePaymentsTable)
 					.where(eq(chargePaymentsTable.chargeId, charge.id));
 				const amountInCents = getOnlinePaymentAmount(charge, payments);
+				assertExpectedOnlinePaymentBalance(input, amountInCents);
 				const [user] = await tx
 					.select({ email: usersTable.email })
 					.from(usersTable)

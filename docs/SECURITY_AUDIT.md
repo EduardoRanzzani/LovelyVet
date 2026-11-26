@@ -331,3 +331,26 @@ V4 aprovada visualmente pelo desenvolvedor no desktop. Removido o código coment
 - Validação local informada: Prettier, ESLint e TypeScript aprovados; Vitest: 982/983 testes, 107/108 arquivos, 11,02 s.
 - Fix no teste `src/server/payments/staff-payment-sync.service.test.ts`: verificar o retorno do serviço, não o retorno indefinido do mock de conciliação. Mantidas as verificações de transação e privacidade.
 - Reexecução da suíte, Drizzle check, auditoria e homologação visual pendentes; etapa 4.2 ainda não encerrada. Sem alterações de runtime, migration, versão ou banco.
+
+## Checkpoint 5.1A-01 — 2026-11-26
+
+- Etapa 4.2 encerrada: 983 testes em 108 arquivos, Prettier, ESLint, TypeScript, Drizzle check e auditoria de produção aprovados conforme confirmação local; aceite visual Admin (6/6), Doctor (3/3) e Customer (4/4). Commit `feat(payments): add staff online payment monitoring` confirmado pelo desenvolvedor; hash não informado. Este checkpoint prevalece sobre registros históricos de pendências da etapa 4.2 de pagamentos.
+- DEV: credenciais renovadas, segredo do webhook rotacionado e Cloudflare Tunnel configurado conforme relato do desenvolvedor; autenticação com as novas credenciais ainda não verificada.
+- 5.1A-01: cartão exige `expectedBalanceInCents` inteiro positivo seguro, usado exclusivamente como precondição. Saldo recalculado sob lock existente; divergência impede reserva e chamada externa. Pix preservado. Brick remontado quando cobrança/saldo apresentado muda. O campo não é encaminhado ao Mercado Pago.
+- Testes de schema, payload, componentes, regra de saldo e orquestração atualizados. Validação Node/pnpm/Vitest ainda pendente localmente; concorrência real no PostgreSQL não comprovada por mocks.
+- Sem mudanças em migrations (0048), versão (1.5.0), dependências, banco ou gate de criação. Manter `MERCADO_PAGO_ENABLED=false`. Dois alertas DEV conhecidos (esbuild e minimatch) permanecem aceitos temporariamente; reavaliar auditoria local.
+- Próximos passos: validar 5.1A-01, revisar credenciais/recebedor e liberação DEV (5.1A-02), homologar Pix e cartão, concorrência, segurança e limpeza controlada. Não executar push para master.
+
+Arquivos de código e testes alterados:
+
+- `src/api/schema/online-payment.schema.ts`
+- `src/api/schema/online-payment.schema.test.ts`
+- `src/lib/finance/online-card-payment.ts`
+- `src/lib/finance/online-card-payment.test.ts`
+- `src/app/(protected)/my-finance/_components/online-card-payment-brick.test.tsx`
+- `src/app/(protected)/my-finance/_components/online-payment-checkout.test.tsx`
+- `src/lib/finance/online-payment-reservation.ts`
+- `src/server/payments/payment.service.ts`
+- `src/lib/finance/online-payment-reservation.test.ts`
+- `src/server/payments/payment-orchestrator.test.ts`
+- `src/app/(protected)/my-finance/_components/online-payment-checkout.tsx`

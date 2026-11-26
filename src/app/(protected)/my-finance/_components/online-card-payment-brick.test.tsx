@@ -66,6 +66,7 @@ describe('OnlineCardPaymentBrick', () => {
 			expect(onPayment).toHaveBeenCalledExactlyOnceWith({
 				chargeId,
 				method: 'credit_card',
+				expectedBalanceInCents: 20000,
 				token: 'fake_token',
 				paymentMethodId: 'visa',
 				installments: 1,

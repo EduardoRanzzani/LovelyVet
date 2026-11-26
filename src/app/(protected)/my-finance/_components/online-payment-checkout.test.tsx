@@ -10,13 +10,16 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: mocks.refresh }
 vi.mock('./online-card-payment-brick', () => ({
 	default: ({
 		canSubmit,
+		balanceInCents,
 		onPayment,
 		chargeId,
 	}: {
 		canSubmit: boolean;
+		balanceInCents: number;
 		onPayment: (input: {
 			chargeId: string;
 			method: 'credit_card';
+			expectedBalanceInCents: number;
 			token: string;
 			paymentMethodId: string;
 			installments: number;
@@ -30,6 +33,7 @@ vi.mock('./online-card-payment-brick', () => ({
 				void onPayment({
 					chargeId,
 					method: 'credit_card',
+					expectedBalanceInCents: balanceInCents,
 					token: 'fake_token',
 					paymentMethodId: 'visa',
 					installments: 1,
@@ -93,6 +97,7 @@ describe('OnlinePaymentCheckout', () => {
 			expect(mocks.start).toHaveBeenCalledExactlyOnceWith({
 				chargeId: 'charge',
 				method: 'credit_card',
+				expectedBalanceInCents: 20000,
 				token: 'fake_token',
 				paymentMethodId: 'visa',
 				installments: 1,

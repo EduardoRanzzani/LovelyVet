@@ -257,6 +257,7 @@ export function OnlinePaymentCheckout({ chargeId, balanceInCents, option }: Prop
 								}
 							>
 								<OnlineCardPaymentBrick
+									key={`${chargeId}:${balanceInCents}`}
 									chargeId={chargeId}
 									balanceInCents={balanceInCents}
 									canSubmit={option.canStart}

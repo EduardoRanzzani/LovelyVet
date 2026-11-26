@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { assertExpectedOnlinePaymentBalance, getOnlinePaymentAmount } from '@/lib/finance/online-payment-reservation';
 import { buildOrderRequest, readOrderIdentifiers, type ReservedPayment } from './order-request';
 import { submitOnlinePayment } from './payment-orchestrator';
 import type { OnlinePaymentInput } from '@/api/schema/online-payment.schema';
@@ -15,6 +16,7 @@ const pix = { chargeId: attempt.chargeId, method: 'pix' } as const;
 const card: OnlinePaymentInput = {
 	chargeId: attempt.chargeId,
 	method: 'credit_card',
+	expectedBalanceInCents: 15001,
 	token: 'token-ficticio',
 	paymentMethodId: 'visa',
 	installments: 2,
@@ -88,6 +90,18 @@ describe('Orders', () => {
 		deps.reserve.mockRejectedValueOnce(new Error('sem acesso'));
 		await expect(submitOnlinePayment(pix, deps)).rejects.toThrow('sem acesso');
 		expect(deps.createOrder).not.toHaveBeenCalled();
+	});
+	it('não chama o provedor se o saldo mudou durante o preenchimento do cartão', async () => {
+		const deps = dependencies();
+		deps.reserve.mockImplementationOnce(async () => {
+			const amount = getOnlinePaymentAmount({ status: 'open', totalInCents: 15001 }, [{ amountInCents: 5000 }]);
+			assertExpectedOnlinePaymentBalance(card, amount);
+			return { ...attempt, amountInCents: amount };
+		});
+		await expect(submitOnlinePayment(card, deps)).rejects.toThrow('saldo da cobrança mudou');
+		expect(deps.createOrder).not.toHaveBeenCalled();
+		expect(deps.persist).not.toHaveBeenCalled();
+		expect(deps.markUncertain).not.toHaveBeenCalled();
 	});
 	it('timeout preserva tentativa sem repetir requisição nem expor erro', async () => {
 		const deps = dependencies();

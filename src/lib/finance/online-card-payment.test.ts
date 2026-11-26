@@ -16,6 +16,7 @@ describe('card payment payload', () => {
 		expect(buildCardPaymentPayload(chargeId, 20000, form, 'credit_card')).toEqual({
 			chargeId,
 			method: 'credit_card',
+			expectedBalanceInCents: 20000,
 			token: 'token_teste',
 			paymentMethodId: 'visa',
 			installments: 2,
@@ -48,6 +49,7 @@ describe('card payment payload', () => {
 		expect(buildCardPaymentPayload(chargeId, 20000, { ...form, payer: undefined }, 'credit_card')).toEqual({
 			chargeId,
 			method: 'credit_card',
+			expectedBalanceInCents: 20000,
 			token: 'token_teste',
 			paymentMethodId: 'visa',
 			installments: 2,

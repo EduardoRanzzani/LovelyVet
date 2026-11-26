@@ -35,6 +35,7 @@ export function buildCardPaymentPayload(
 	const parsed = onlinePaymentSchema.safeParse({
 		chargeId,
 		method: 'credit_card',
+		expectedBalanceInCents: balanceInCents,
 		token: form.token,
 		paymentMethodId: form.payment_method_id,
 		installments: form.installments,

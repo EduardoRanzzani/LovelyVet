@@ -1,3 +1,4 @@
+import type { OnlinePaymentInput } from '@/api/schema/online-payment.schema';
 import { calculateChargeBalance } from './ledger';
 
 // Review bloqueia novas tentativas até resolução humana; approved também bloqueia
@@ -18,4 +19,11 @@ export function getOnlinePaymentAmount(
 	const { balanceInCents } = calculateChargeBalance(charge.totalInCents, payments);
 	if (balanceInCents <= 0) throw new Error('Cobrança já quitada.');
 	return balanceInCents;
+}
+
+// Comparar somente após calcular o saldo autoritativo sob o lock do atendimento.
+export function assertExpectedOnlinePaymentBalance(input: OnlinePaymentInput, balanceInCents: number): void {
+	if (input.method === 'credit_card' && input.expectedBalanceInCents !== balanceInCents) {
+		throw new Error('O saldo da cobrança mudou. Atualize a página antes de tentar novamente.');
+	}
 }

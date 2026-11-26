@@ -5,13 +5,15 @@ const identification = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('CNPJ'), number: z.string().regex(/^\d{14}$/) }).strict(),
 ]);
 
-// Somente token do Brick; nunca PAN, CVV, valor, ambiente ou identidade do tutor.
+// Saldo esperado é apenas uma precondição; nunca define o valor cobrado.
+// Não aceitar PAN, CVV, valor a cobrar, ambiente ou identidade do tutor.
 export const onlinePaymentSchema = z.discriminatedUnion('method', [
 	z.object({ chargeId: z.uuid(), method: z.literal('pix') }).strict(),
 	z
 		.object({
 			chargeId: z.uuid(),
 			method: z.literal('credit_card'),
+			expectedBalanceInCents: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
 			token: z
 				.string()
 				.min(1)
