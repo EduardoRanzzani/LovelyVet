@@ -1,3 +1,37 @@
+## 1.6.0 — fechamento da etapa 4.2 — 26/11/2026
+
+Este checkpoint prevalece sobre os registros anteriores do ciclo Mercado Pago.
+
+- Fix 01 aplicado; desenvolvedor confirmou Prettier, ESLint, TypeScript, Vitest (983 testes em 108 arquivos), Drizzle check e audit-prod aprovados. Duração da suíte final não informada; 11,02 s refere-se à execução anterior com uma falha.
+- Audit-all: somente as duas moderadas DEV previamente aceitas, esbuild (GHSA-67mh-4wv8-2f99) e minimatch (GHSA-g3hv-75wg-m249). Não equivale a auditoria integral.
+- Homologação visual confirmada pelo desenvolvedor: Admin 6/6 (extrato, origem manual, métodos, atendimento, valores/saldos, desktop/mobile); Doctor 3/3 (escopo, recebimentos, restrições); Customer 4/4 (Meu financeiro, cobrança de R$ 200,00 do pet Teste, ausência de controles staff, fluxo anterior preservado).
+- Etapa 4.2 concluída quanto à implementação, regressão automatizada e aceite visual. Sincronização com provedor, tentativas reais, pagamentos tardios, concorrência real e conciliação ponta a ponta continuam pendentes na 5.1; mocks não comprovam esses cenários.
+- Versão 1.5.0 mantida até fechamento da 1.6.0; migration 0048 preservada. Nenhuma alteração de código, dependências ou banco neste checkpoint. Commit proposto: `feat(payments): add staff online payment monitoring` (ainda não confirmado).
+- Próximo passo: 5.1 — preparação segura da homologação integrada. Manter `MERCADO_PAGO_ENABLED=false` e gate de criação fechado até verificar saldo esperado no servidor, credenciais/ambiente/recebedor, rotação do segredo de webhook e compatibilidade com 1.5.0 no banco compartilhado. Somente pet Teste (`c943e3cd-d2bb-4c19-a386-5a8e56899128`); limpeza posterior autorizada e conferida, nunca automática. Preservar pendência de revisão de PDFs assinados. Não fazer push/deploy.
+
+## 1.6.0 — etapa 4.2 — acompanhamento financeiro pela equipe (25/11/2026)
+
+Entrega preparada, aguardando aplicação e validação local. Extrato do tutor pela equipe e financeiro do atendimento passam a distinguir origem manual/Mercado Pago e tentativas online dos recebimentos confirmados. Sincronização staff reutiliza conciliação, restringe Admin/Doctor pelo atendimento, ambiente e recebedor, verifica escopo do pet, reserva intervalo de 15 segundos e consulta o provedor fora da transação. Revisão financeira permanece bloqueada para baixa automática; dados de cartão, Pix e identificadores externos não são retornados. Configuração ausente mantém o financeiro manual disponível. Testes novos de escopo, autorização, sincronização, estados e interface preparados, não executados neste ambiente (dependências indisponíveis). Última evidência anterior: 954 testes/104 arquivos; erro de tipagem do checkout resolvido pelo desenvolvedor após atualização do TypeScript, sem alteração de fonte. Commit da interface informado: `feat(payments): add dedicated customer checkout`. Sem migration, dependências, alteração de banco ou versão (1.5.0); 0048 preservada. Manter gate de criação fechado, risco de banco compartilhado e pendências de segurança anteriores, inclusive rotação do segredo e revisão de PDFs. Validar instalação, formatação, check, Drizzle e auditorias; homologar Admin/Doctor/Customer e depois avançar à 5.1, incluindo concorrência real e pagamentos de teste. Não fazer push nem commit automático.
+
+Arquivos de código desta entrega:
+
+- `src/api/actions/online-payment.actions.ts`
+- `src/app/(protected)/appointments/_components/appointment-billing-editor.tsx`
+- `src/app/(protected)/finance/_components/customer-charge-card.test.tsx`
+- `src/app/(protected)/finance/_components/customer-charge-card.tsx`
+- `src/app/(protected)/finance/_components/staff-online-payment-history.test.tsx`
+- `src/app/(protected)/finance/_components/staff-online-payment-history.tsx`
+- `src/app/(protected)/finance/customers/[id]/page.tsx`
+- `src/lib/finance/billing-queries.ts`
+- `src/lib/finance/financial-report-queries.ts`
+- `src/lib/finance/financial-report.ts`
+- `src/lib/finance/staff-online-payment-queries.test.ts`
+- `src/lib/finance/staff-online-payment-queries.ts`
+- `src/lib/finance/staff-online-payment.test.ts`
+- `src/lib/finance/staff-online-payment.ts`
+- `src/server/payments/staff-payment-sync.service.test.ts`
+- `src/server/payments/staff-payment-sync.service.ts`
+
 # LovelyVet — instruções de desenvolvimento
 
 ## Checkpoint vigente — 1.6.0 / interface 4.1 validada (25/11/2026)
@@ -185,3 +219,9 @@ Toda entrega, inclusive hotfix ou ajuste visual, deve atualizar os documentos de
 Registrar resultado de `pnpm audit` e `pnpm audit --prod`, versões propostas e lockfile real; não ocultar advisories nem forçar majors transitivas sem verificar compatibilidade. Preservar backup do lockfile. Falha de build, audit-prod ou novos advisories bloqueia publicação. Para audit-all, a única exceção de risco aceita é o par DEV descrito no checkpoint vigente; não modificar o comando ou ocultar sua falha. Exigir revisão do relatório antes do release.
 
 Não desativar a validação estrita de peer dependencies para contornar conflitos; verificar o efeito dos overrides em faixas de peers e preservar o lockfile atual sob backup após tentativas interrompidas. Não aprovar skills de terceiros automaticamente.
+
+## Checkpoint 4.2 — 2026-11-26 (fix 01)
+
+- Validação local informada: Prettier, ESLint e TypeScript aprovados; Vitest: 982/983 testes, 107/108 arquivos, 11,02 s.
+- Fix no teste `src/server/payments/staff-payment-sync.service.test.ts`: verificar o retorno do serviço, não o retorno indefinido do mock de conciliação. Mantidas as verificações de transação e privacidade.
+- Reexecução da suíte, Drizzle check, auditoria e homologação visual pendentes; etapa 4.2 ainda não encerrada. Sem alterações de runtime, migration, versão ou banco.

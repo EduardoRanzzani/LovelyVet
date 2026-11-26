@@ -14,6 +14,7 @@ export type FinancialPayment = {
 	chargeId: string;
 	amountInCents: number;
 	method: string;
+	source?: string;
 	receivedAt: Date;
 };
 export type FinancialStatementRow = FinancialCharge & {

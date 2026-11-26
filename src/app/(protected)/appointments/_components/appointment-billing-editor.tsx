@@ -31,6 +31,7 @@ import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
+import { StaffOnlinePaymentHistory } from '@/app/(protected)/finance/_components/staff-online-payment-history';
 
 const methodLabels = {
 	pix: 'Pix',
@@ -130,7 +131,7 @@ export default function AppointmentBillingEditor({
 				<DialogTitle>Financeiro do atendimento</DialogTitle>
 				<DialogDescription>
 					{appointment.pet.name} — {formatCurrencyFromCents(appointment.totalPriceInCents)}. Cobranças e
-					pagamentos são lançamentos manuais.
+					pagamentos podem ser manuais ou confirmados pelo Mercado Pago.
 				</DialogDescription>
 			</DialogHeader>
 			{!billing ? (
@@ -195,11 +196,13 @@ export default function AppointmentBillingEditor({
 								<p key={p.id} className='wrap-break-word'>
 									{new Date(p.receivedAt).toLocaleDateString('pt-BR')} ·{' '}
 									{methodLabels[p.method as Method] ?? p.method} ·{' '}
+									{p.source === 'mercado_pago' ? 'Mercado Pago' : 'Manual'} ·{' '}
 									{formatCurrencyFromCents(p.amountInCents)}
 								</p>
 							))
 						)}
 					</section>
+					<StaffOnlinePaymentHistory attempts={billing.onlineAttempts} compact />
 					{billing.status !== 'void' && billing.balanceInCents > 0 && (
 						<div className='space-y-3 border-t pt-3'>
 							<MoneyInputForm<BillingForm>

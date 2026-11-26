@@ -3,6 +3,8 @@ import { ChargeStatusBadge } from '@/components/shared/charge-status-badge';
 import { formatCurrencyFromCents } from '@/helpers/currency';
 import { getMonthBounds, type FinancialStatementRow } from '@/lib/finance/financial-report';
 import type { StatementItem } from '@/lib/finance/customer-statement';
+import type { StaffOnlinePaymentAttempt } from '@/lib/finance/staff-online-payment';
+import { StaffOnlinePaymentHistory } from './staff-online-payment-history';
 
 const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
 	timeZone: 'America/Campo_Grande',
@@ -26,11 +28,13 @@ export function CustomerChargeCard({
 	items,
 	month,
 	paymentAction,
+	onlineAttempts,
 }: {
 	charge: FinancialStatementRow;
 	items: readonly StatementItem[];
 	month: string;
 	paymentAction?: ReactNode;
+	onlineAttempts?: readonly StaffOnlinePaymentAttempt[];
 }) {
 	const { start, end } = getMonthBounds(month);
 	const inMonth = (date: Date) => date >= start && date < end;
@@ -107,6 +111,7 @@ export function CustomerChargeCard({
 										{paymentMethods[payment.method] ?? payment.method}
 									</p>
 									<p className='text-xs text-muted-foreground'>
+										{payment.source === 'mercado_pago' ? 'Mercado Pago' : 'Manual'} ·{' '}
 										{dateFormatter.format(payment.receivedAt)}
 									</p>
 									<p className='text-xs text-muted-foreground'>
@@ -121,6 +126,7 @@ export function CustomerChargeCard({
 					</ul>
 				)}
 			</div>
+			{onlineAttempts && <StaffOnlinePaymentHistory attempts={onlineAttempts} />}
 		</article>
 	);
 }

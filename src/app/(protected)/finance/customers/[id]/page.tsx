@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation';
 import { z } from 'zod';
 import { getFinancialCustomerNames, getFinancialReport } from '@/lib/finance/financial-report-queries';
 import { getCustomerStatementItems } from '@/lib/finance/customer-statement-queries';
+import { getStaffOnlinePaymentAttempts } from '@/lib/finance/staff-online-payment-queries';
+import { requireAuthContext } from '@/lib/security/auth-context';
 import { resolveStatementMonth, selectStatementCharges } from '@/lib/finance/customer-statement';
 import { requirePageAccess } from '@/lib/security/authorization';
 import {
@@ -36,10 +38,15 @@ export default async function TutorStatement({
 	// Autoriza pelo histórico completo, não apenas pelos lançamentos do mês.
 	if (!report.statements.length) notFound();
 	const statement = selectStatementCharges(report.statements, selected, selectedScope);
-	const [names, items] = await Promise.all([
+	const context = await requireAuthContext();
+	const [names, items, onlineAttempts] = await Promise.all([
 		getFinancialCustomerNames([id]),
 		getCustomerStatementItems(
 			id,
+			statement.map((charge) => charge.id),
+		),
+		getStaffOnlinePaymentAttempts(
+			context,
 			statement.map((charge) => charge.id),
 		),
 	]);
@@ -114,6 +121,7 @@ export default async function TutorStatement({
 									charge={charge}
 									items={items.get(charge.id) ?? []}
 									month={selected}
+									onlineAttempts={onlineAttempts.filter((attempt) => attempt.chargeId === charge.id)}
 								/>
 							))}
 						</div>

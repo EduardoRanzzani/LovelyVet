@@ -5,6 +5,8 @@ import { requireAuthContext } from '@/lib/security/auth-context';
 import { requireStaff } from '@/lib/security/authorization';
 import { buildAppointmentAccessCondition } from '@/lib/security/appointment-access';
 import { calculateChargeBalance } from '@/lib/finance/ledger';
+import { getStaffOnlinePaymentAttempts } from '@/lib/finance/staff-online-payment-queries';
+import type { StaffOnlinePaymentAttempt } from '@/lib/finance/staff-online-payment';
 import { and, inArray } from 'drizzle-orm';
 
 // Retorna apenas cobranças de atendimentos autorizados; evita exposição cruzada entre veterinárias.
@@ -34,6 +36,10 @@ export async function getBillingOverviews(appointmentIds: string[]) {
 					),
 				)
 		: [];
+	const attempts = await getStaffOnlinePaymentAttempts(
+		context,
+		charges.map((charge) => charge.id),
+	);
 	const result: Record<string, BillingOverview> = {};
 	for (const charge of charges) {
 		const chargePayments = payments.filter((item) => item.chargeId === charge.id);
@@ -45,8 +51,10 @@ export async function getBillingOverviews(appointmentIds: string[]) {
 				id: p.id,
 				amountInCents: p.amountInCents,
 				method: p.method,
+				source: p.source,
 				receivedAt: p.receivedAt.toISOString(),
 			})),
+			onlineAttempts: attempts.filter((attempt) => attempt.chargeId === charge.id),
 		};
 	}
 	return result;
@@ -58,5 +66,6 @@ export type BillingOverview = {
 	paidInCents: number;
 	balanceInCents: number;
 	status: 'pending' | 'partial' | 'paid' | 'void';
-	payments: { id: string; amountInCents: number; method: string; receivedAt: string }[];
+	payments: { id: string; amountInCents: number; method: string; source: string; receivedAt: string }[];
+	onlineAttempts: StaffOnlinePaymentAttempt[];
 };

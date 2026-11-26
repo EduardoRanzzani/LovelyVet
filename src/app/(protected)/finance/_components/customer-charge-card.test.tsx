@@ -16,8 +16,22 @@ const charge: FinancialStatementRow = {
 	balanceInCents: 5500,
 	financialStatus: 'partial',
 	payments: [
-		{ id: 'p1', chargeId: 'a', amountInCents: 1000, method: 'cash', receivedAt: new Date('2026-10-12T12:00:00Z') },
-		{ id: 'p2', chargeId: 'a', amountInCents: 3000, method: 'pix', receivedAt: new Date('2026-11-02T12:00:00Z') },
+		{
+			id: 'p1',
+			chargeId: 'a',
+			amountInCents: 1000,
+			source: 'manual',
+			method: 'cash',
+			receivedAt: new Date('2026-10-12T12:00:00Z'),
+		},
+		{
+			id: 'p2',
+			chargeId: 'a',
+			amountInCents: 3000,
+			source: 'mercado_pago',
+			method: 'pix',
+			receivedAt: new Date('2026-11-02T12:00:00Z'),
+		},
 	],
 };
 const items: StatementItem[] = [
@@ -56,6 +70,8 @@ describe('CustomerChargeCard', () => {
 		expect(screen.getByText(/R\$\s*55,00/)).toBeInTheDocument();
 		expect(screen.getByText('Pix')).toBeInTheDocument();
 		expect(screen.getByText('Dinheiro')).toBeInTheDocument();
+		expect(screen.getByText(/Manual ·/)).toBeInTheDocument();
+		expect(screen.getByText(/Mercado Pago ·/)).toBeInTheDocument();
 		expect(screen.getByText('No mês selecionado')).toBeInTheDocument();
 		expect(screen.getByText('Fora do mês selecionado')).toBeInTheDocument();
 	});

@@ -67,6 +67,7 @@ async function loadFinancialReport(context: AuthContext, month: string, customer
 					chargeId: chargePaymentsTable.chargeId,
 					amountInCents: chargePaymentsTable.amountInCents,
 					method: chargePaymentsTable.method,
+					source: chargePaymentsTable.source,
 					receivedAt: chargePaymentsTable.receivedAt,
 				})
 				.from(chargePaymentsTable)
