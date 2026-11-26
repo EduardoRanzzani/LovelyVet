@@ -55,3 +55,29 @@ export function getMercadoPagoConfig() {
 		webhookSecret: required('MERCADO_PAGO_WEBHOOK_SECRET'),
 	};
 }
+
+// A homologação utiliza uma conta de teste dedicada. O prefixo APP_USR não prova o ambiente.
+// Consultar antes da reserva, sem cache e sem propagar dados/erros brutos do provedor.
+export async function assertMercadoPagoTestCollector(config: ReturnType<typeof getMercadoPagoConfig>): Promise<void> {
+	if (config.environment !== 'test') throw new Error('Conta de homologação obrigatória.');
+	let account: unknown;
+	try {
+		const response = await fetch('https://api.mercadolibre.com/users/me', {
+			method: 'GET',
+			headers: { Authorization: `Bearer ${config.accessToken}`, Accept: 'application/json' },
+			cache: 'no-store',
+			redirect: 'error',
+			signal: AbortSignal.timeout(10_000),
+		});
+		if (!response.ok) throw new Error('Consulta recusada.');
+		account = await response.json();
+	} catch {
+		throw new Error('Não foi possível validar a conta Mercado Pago de homologação.');
+	}
+	if (!account || typeof account !== 'object') throw new Error('Conta Mercado Pago de homologação incompatível.');
+	const { id, tags } = account as { id?: unknown; tags?: unknown };
+	const validId = typeof id === 'string' || (typeof id === 'number' && Number.isSafeInteger(id));
+	if (!validId || String(id) !== config.collectorId || !Array.isArray(tags) || !tags.includes('test_user')) {
+		throw new Error('Conta Mercado Pago de homologação incompatível.');
+	}
+}

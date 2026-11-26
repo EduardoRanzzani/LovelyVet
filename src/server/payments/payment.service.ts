@@ -15,7 +15,11 @@ import {
 	assertNoBlockingOnlinePayment,
 	getOnlinePaymentAmount,
 } from '@/lib/finance/online-payment-reservation';
-import { assertMercadoPagoEnabled, getMercadoPagoConfig } from '@/lib/integrations/mercado-pago-config';
+import {
+	assertMercadoPagoEnabled,
+	assertMercadoPagoTestCollector,
+	getMercadoPagoConfig,
+} from '@/lib/integrations/mercado-pago-config';
 import { getMercadoPagoOrderClient } from '@/lib/integrations/mercado-pago';
 import { lockAccessibleAppointment } from '@/lib/security/appointment-access';
 import type { AuthContext } from '@/lib/security/auth-context';
@@ -23,28 +27,33 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { submitOnlinePayment } from './payment-orchestrator';
 import type { ReservedPayment } from './order-request';
 
-// Gate de código, além da flag de ambiente. Remover somente após conciliação,
-// validação de conta/ambiente remoto e homologação dos bloqueios com a versão em uso.
-export function assertOnlinePaymentReleaseReady(): void {
-	throw new Error('Criação de pagamentos online ainda não liberada.');
+// Gate temporário: somente next dev + configuração de teste. Produção continua bloqueada.
+export function assertOnlinePaymentReleaseReady(
+	environment: ReturnType<typeof getMercadoPagoConfig>['environment'],
+): void {
+	if (environment !== 'test' || process.env.NODE_ENV !== 'development') {
+		throw new Error('Criação de pagamentos online liberada somente para homologação local.');
+	}
 }
 
 export async function createOnlinePayment(context: AuthContext, input: OnlinePaymentInput) {
 	requireFinancialTutorId(context);
 	assertMercadoPagoEnabled();
-	assertOnlinePaymentReleaseReady();
 	const config = getMercadoPagoConfig();
+	assertOnlinePaymentReleaseReady(config.environment);
+	// Autorizar antes da rede; repetir autorização e escopo sob lock na reserva.
+	const [candidate] = await db
+		.select({ appointmentId: appointmentChargesTable.appointmentId, petId: appointmentsTable.petId })
+		.from(appointmentChargesTable)
+		.innerJoin(appointmentsTable, eq(appointmentsTable.id, appointmentChargesTable.appointmentId))
+		.where(and(eq(appointmentChargesTable.id, input.chargeId), buildFinancialAccessCondition(context)));
+	if (!candidate) throw new Error('Cobrança não encontrada.');
+	assertOnlinePaymentScope({ environment: config.environment, petId: candidate.petId });
+	await assertMercadoPagoTestCollector(config);
 	const client = getMercadoPagoOrderClient();
 	return submitOnlinePayment(input, {
 		reserve: () =>
 			db.transaction(async (tx): Promise<ReservedPayment> => {
-				// Evita adquirir lock de atendimento alheio a partir de UUID arbitrário.
-				const [candidate] = await tx
-					.select({ appointmentId: appointmentChargesTable.appointmentId })
-					.from(appointmentChargesTable)
-					.innerJoin(appointmentsTable, eq(appointmentsTable.id, appointmentChargesTable.appointmentId))
-					.where(and(eq(appointmentChargesTable.id, input.chargeId), buildFinancialAccessCondition(context)));
-				if (!candidate) throw new Error('Cobrança não encontrada.');
 				const appointment = await lockAccessibleAppointment(tx, context, candidate.appointmentId);
 				assertOnlinePaymentScope({ environment: config.environment, petId: appointment.petId });
 				const [charge] = await tx

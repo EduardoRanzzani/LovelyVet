@@ -28,7 +28,7 @@ export async function getOwnOnlinePaymentOptions(
 	// Exibir prévia exclusivamente em teste; produção não recebe botão enquanto desabilitada.
 	let ready = false;
 	try {
-		assertOnlinePaymentReleaseReady();
+		assertOnlinePaymentReleaseReady(config.environment);
 		ready = enabled;
 	} catch {
 		/* Gate ainda fechado. */
