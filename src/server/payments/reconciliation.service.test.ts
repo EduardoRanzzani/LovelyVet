@@ -247,3 +247,49 @@ it('registra somente o principal de cartão parcelado aprovado', async () => {
 	);
 	expect(mocks.set).toHaveBeenCalledWith(expect.objectContaining({ isPaid: true }));
 });
+
+it('recupera revisão explícita de cartão parcial sem presumir total nem quitar saldo', async () => {
+	mocks.where
+		.mockReset()
+		.mockResolvedValueOnce([{ appointmentId: 'appointment' }])
+		.mockResolvedValueOnce([
+			{
+				...row,
+				attempt: {
+					...attempt,
+					method: 'credit_card',
+					installments: 2,
+					amountInCents: 8000,
+					status: 'review',
+					reconciliationReason: 'remote_paid_amount_mismatch',
+					providerOrderId: 'ORD123',
+					providerPaymentId: 'PAY123',
+					providerPaidAmountInCents: null,
+				},
+				charge: { ...row.charge, totalInCents: 20000 },
+			},
+		])
+		.mockResolvedValueOnce([]);
+	mocks.get.mockResolvedValue({
+		...order,
+		total_amount: '80.00',
+		total_paid_amount: '87.71',
+		transactions: {
+			payments: [
+				{
+					...order.transactions.payments[0],
+					amount: '80.00',
+					paid_amount: '87.72',
+					payment_method: { id: 'master', type: 'credit_card', installments: 2 },
+				},
+			],
+		},
+	});
+	await reconcileMercadoPagoOrder('ORD123', id, true);
+	expect(mocks.values).toHaveBeenCalledTimes(1);
+	expect(mocks.values).toHaveBeenCalledWith(expect.objectContaining({ amountInCents: 8000, operationKey: id }));
+	expect(mocks.set).toHaveBeenCalledWith(
+		expect.objectContaining({ status: 'approved', reconciliationReason: null, providerPaidAmountInCents: null }),
+	);
+	expect(mocks.set).not.toHaveBeenCalledWith(expect.objectContaining({ isPaid: true }));
+});

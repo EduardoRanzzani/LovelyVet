@@ -45,6 +45,7 @@ export function StaffOnlinePaymentHistory({
 		onSuccess: ({ data }) => {
 			if (data?.remoteUnavailable)
 				toast.warning('Mercado Pago indisponível ou Order não encontrada. Tente novamente.');
+			else if (data?.status === 'review') toast.warning('A tentativa continua em revisão financeira.');
 			else toast.success('Consulta concluída. Situação financeira atualizada.');
 			router.refresh();
 		},
@@ -86,7 +87,10 @@ export function StaffOnlinePaymentHistory({
 							)}
 							{attempt.status === 'review' && (
 								<p role='alert' className='text-xs font-medium text-destructive'>
-									{staffReviewMessage(attempt.reconciliationReason)}. Não efetuar baixa automática.
+									{staffReviewMessage(attempt.reconciliationReason)}.{' '}
+									{canStaffSyncAttempt(attempt.status, attempt)
+										? 'Sincronize para revalidar os dados no provedor.'
+										: 'Não efetuar baixa automática.'}
 								</p>
 							)}
 						</div>
@@ -94,7 +98,7 @@ export function StaffOnlinePaymentHistory({
 							<span className='font-medium tabular-nums'>
 								{formatCurrencyFromCents(attempt.amountInCents)}
 							</span>
-							{canStaffSyncAttempt(attempt.status) && (
+							{canStaffSyncAttempt(attempt.status, attempt) && (
 								<Button
 									type='button'
 									variant='outline'

@@ -125,6 +125,25 @@ describe('sincronização de pagamentos pela equipe', () => {
 		expect(mocks.claim).not.toHaveBeenCalled();
 		expect(mocks.reconcile).not.toHaveBeenCalled();
 	});
+	it('solicita revalidação explícita somente para revisão de total pago parcelado', async () => {
+		const reviewed = {
+			...row,
+			attempt: {
+				...attempt,
+				status: 'review',
+				method: 'credit_card',
+				installments: 2,
+				reconciliationReason: 'remote_paid_amount_mismatch',
+			},
+		};
+		mocks.where
+			.mockReset()
+			.mockResolvedValueOnce([reviewed])
+			.mockResolvedValueOnce([reviewed])
+			.mockResolvedValueOnce([reviewed]);
+		await expect(syncStaffOnlinePayment(context, id)).resolves.toMatchObject({ status: 'review' });
+		expect(mocks.reconcile).toHaveBeenCalledWith('ORD123', id, true);
+	});
 	it('oculta falhas remotas e mantém a tentativa bloqueada', async () => {
 		mocks.reconcile.mockRejectedValue(new Error('segredo remoto'));
 		await expect(syncStaffOnlinePayment(context, id)).resolves.toMatchObject({ remoteUnavailable: true });

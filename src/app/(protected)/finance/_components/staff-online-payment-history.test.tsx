@@ -48,6 +48,24 @@ describe('histórico online para equipe', () => {
 		expect(screen.getByRole('alert')).toHaveTextContent('Aprovação tardia');
 		expect(screen.queryByRole('button', { name: 'Sincronizar' })).not.toBeInTheDocument();
 	});
+	it('permite reconsulta explícita de divergência no total pago de cartão parcelado', () => {
+		render(
+			<StaffOnlinePaymentHistory
+				attempts={[
+					{
+						...attempt,
+						method: 'credit_card',
+						installments: 2,
+						status: 'review',
+						reconciliationReason: 'remote_paid_amount_mismatch',
+					},
+				]}
+			/>,
+		);
+		expect(screen.getByRole('alert')).toHaveTextContent('Sincronize para revalidar');
+		fireEvent.click(screen.getByRole('button', { name: 'Sincronizar' }));
+		expect(mocks.execute).toHaveBeenCalledWith({ attemptId: 'a' });
+	});
 	it('mostra parcelamento sem incluir QR Code, dados pessoais ou IDs externos', () => {
 		render(
 			<StaffOnlinePaymentHistory

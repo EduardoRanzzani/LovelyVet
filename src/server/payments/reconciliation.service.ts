@@ -14,7 +14,11 @@ import { planReconciliation, readReconciliationReference } from './reconciliatio
 import { readPendingPix, readPixExpiration } from './recovery-policy';
 import { calculateChargeBalance } from '@/lib/finance/ledger';
 
-export async function reconcileMercadoPagoOrder(orderId: string, expectedAttemptId?: string) {
+export async function reconcileMercadoPagoOrder(
+	orderId: string,
+	expectedAttemptId?: string,
+	allowStaffPaidAmountReview = false,
+) {
 	if (!/^[A-Za-z0-9_-]{1,128}$/.test(orderId)) throw new Error('Order inválida.');
 	const config = getMercadoPagoConfig();
 	// A flag de novas cobranças NÃO desliga conciliação de tentativas existentes.
@@ -61,6 +65,7 @@ export async function reconcileMercadoPagoOrder(orderId: string, expectedAttempt
 			row.attempt,
 			{ ...row.charge, appointmentStatus: row.appointment.status, isPaid: row.appointment.isPaid },
 			payments,
+			allowStaffPaidAmountReview && expectedAttemptId !== undefined,
 		);
 		if (plan.kind === 'ignore') return;
 		const now = new Date();

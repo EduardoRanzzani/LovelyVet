@@ -43,7 +43,7 @@ export async function syncStaffOnlinePayment(context: AuthContext, attemptId: st
 		if (!row) throw new Error('Tentativa não encontrada.');
 		assertOnlinePaymentScope({ environment: config.environment, petId: row.petId });
 		const attempt = row.attempt;
-		if (!canStaffSyncAttempt(attempt.status)) return { attempt, refresh: false };
+		if (!canStaffSyncAttempt(attempt.status, attempt)) return { attempt, refresh: false };
 		const now = new Date();
 		// Reserva curta no banco; chamadas à API ocorrem somente depois do commit.
 		const updated = await tx
@@ -68,8 +68,10 @@ export async function syncStaffOnlinePayment(context: AuthContext, attemptId: st
 				if (options)
 					orderId = findUniqueRecoveryOrder(await getMercadoPagoOrderClient().search({ options }), attemptId);
 			}
-			if (orderId) await reconcileMercadoPagoOrder(orderId, attemptId);
-			else remoteUnavailable = true;
+			if (orderId) {
+				if (claimed.attempt.status === 'review') await reconcileMercadoPagoOrder(orderId, attemptId, true);
+				else await reconcileMercadoPagoOrder(orderId, attemptId);
+			} else remoteUnavailable = true;
 		} catch {
 			// Erros remotos são ocultados para não divulgar payloads privados ao operador.
 			remoteUnavailable = true;

@@ -243,8 +243,8 @@ describe('aprovação de cartão parcelado com acréscimo', () => {
 			});
 		},
 	);
-	it('não aceita divergência entre os totais efetivamente pagos', () => {
-		expect(planReconciliation({ ...raw, total_paid_amount: '219.29' }, raw.id, card, bill, [])).toMatchObject({
+	it('não aceita divergência superior a um centavo entre os totais efetivamente pagos', () => {
+		expect(planReconciliation({ ...raw, total_paid_amount: '219.30' }, raw.id, card, bill, [])).toMatchObject({
 			kind: 'review',
 		});
 	});
@@ -335,6 +335,141 @@ describe('total confirmado pelo comprador', () => {
 				{ ...attempt, status: 'approved', providerPaidAmountInCents: attempt.amountInCents },
 				charge,
 				[ledger],
+			),
+		).toEqual({ kind: 'ignore' });
+	});
+});
+
+describe('arredondamento de cartão parcial e recuperação explícita', () => {
+	const card = { ...attempt, method: 'credit_card', installments: 2, amountInCents: 8000 };
+	const bill = { ...charge, totalInCents: 20000 };
+	const receipt = { ...ledger, method: 'credit_card', amountInCents: 8000 };
+	const reviewed = {
+		...card,
+		status: 'review',
+		reconciliationReason: 'remote_paid_amount_mismatch',
+		providerOrderId: order.id,
+		providerPaymentId: payment.id,
+		providerPaidAmountInCents: null,
+	};
+	const approved = { ...reviewed, status: 'approved' };
+	const remote = (orderPaid = '87.71', paymentPaid = '87.72') => ({
+		...order,
+		total_amount: '80.00',
+		total_paid_amount: orderPaid,
+		transactions: {
+			payments: [
+				{
+					...payment,
+					amount: '80.00',
+					paid_amount: paymentPaid,
+					payment_method: { id: 'master', type: 'credit_card', installments: 2 },
+				},
+			],
+		},
+	});
+	it.each([
+		['87.71', '87.72'],
+		['87.72', '87.71'],
+	])('credita principal parcial sem presumir total %s/%s', (a, b) => {
+		expect(planReconciliation(remote(a, b), order.id, card, bill, [])).toMatchObject({
+			kind: 'credit',
+			status: 'approved',
+			settlesCharge: false,
+			providerPaidAmountInCents: null,
+		});
+	});
+	it.each([
+		['87.71', '87.73'],
+		['79.99', '80.00'],
+		['80.00', '79.99'],
+		['87.7', '87.71'],
+		['21474836.48', '21474836.47'],
+	])('recusa totais inválidos %s/%s', (a, b) => {
+		expect(planReconciliation(remote(a, b), order.id, card, bill, [])).toEqual({
+			kind: 'review',
+			reason: 'remote_paid_amount_mismatch',
+		});
+	});
+	it('não tolera principal divergente nem estorno informado', () => {
+		expect(planReconciliation({ ...remote(), total_amount: '80.01' }, order.id, card, bill, [])).toMatchObject({
+			kind: 'review',
+			reason: 'remote_amount_mismatch',
+		});
+		expect(
+			planReconciliation({ ...remote(), total_refunded_amount: '0.01' }, order.id, card, bill, []),
+		).toMatchObject({
+			kind: 'review',
+			reason: 'remote_status_review',
+		});
+	});
+	it('não tolera um centavo para Pix ou cartão à vista', () => {
+		const pix = { ...order, total_paid_amount: '150.01' };
+		expect(planReconciliation(pix, order.id, attempt, charge, [])).toMatchObject({ kind: 'review' });
+		const one = {
+			...remote(),
+			transactions: {
+				payments: [
+					{
+						...remote().transactions.payments[0]!,
+						payment_method: { id: 'master', type: 'credit_card', installments: 1 },
+					},
+				],
+			},
+		};
+		expect(planReconciliation(one, order.id, { ...card, installments: 1 }, bill, [])).toMatchObject({
+			kind: 'review',
+		});
+	});
+	it('ignora duplicata sem total confirmado e complementa somente após concordância', () => {
+		expect(planReconciliation(remote(), order.id, approved, bill, [receipt])).toEqual({ kind: 'ignore' });
+		expect(planReconciliation(remote('87.72', '87.72'), order.id, approved, bill, [receipt])).toEqual({
+			kind: 'enrich',
+			providerPaidAmountInCents: 8772,
+		});
+	});
+	it('não sobrescreve total já confirmado quando os totais divergem posteriormente', () => {
+		expect(
+			planReconciliation(remote(), order.id, { ...approved, providerPaidAmountInCents: 8771 }, bill, [receipt]),
+		).toEqual({
+			kind: 'review',
+			reason: 'post_approval_amount_mismatch',
+		});
+	});
+	it('recupera somente por solicitação explícita da equipe', () => {
+		expect(planReconciliation(remote(), order.id, reviewed, bill, [])).toEqual({ kind: 'ignore' });
+		expect(planReconciliation(remote(), order.id, reviewed, bill, [], true)).toMatchObject({
+			kind: 'credit',
+			providerPaidAmountInCents: null,
+			settlesCharge: false,
+		});
+	});
+	it.each([
+		{ reconciliationReason: 'late_approval' },
+		{ providerOrderId: null },
+		{ providerPaymentId: 'OTHER' },
+		{ providerPaidAmountInCents: 8772 },
+	])('não recupera revisão fora das condições %j', (patch) => {
+		expect(planReconciliation(remote(), order.id, { ...reviewed, ...patch }, bill, [], true)).toEqual({
+			kind: 'ignore',
+		});
+	});
+	it('preserva revisão se já há recebimento, saldo insuficiente, identidade divergente ou resposta não aprovada', () => {
+		expect(planReconciliation(remote(), order.id, reviewed, bill, [receipt], true)).toEqual({ kind: 'ignore' });
+		expect(planReconciliation(remote(), order.id, reviewed, { ...bill, totalInCents: 7999 }, [], true)).toEqual({
+			kind: 'ignore',
+		});
+		expect(planReconciliation({ ...remote(), user_id: '999' }, order.id, reviewed, bill, [], true)).toEqual({
+			kind: 'ignore',
+		});
+		expect(
+			planReconciliation(
+				{ ...remote(), status: 'failed', status_detail: 'failed' },
+				order.id,
+				reviewed,
+				bill,
+				[],
+				true,
 			),
 		).toEqual({ kind: 'ignore' });
 	});

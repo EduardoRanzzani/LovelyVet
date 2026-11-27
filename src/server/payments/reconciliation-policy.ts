@@ -14,6 +14,7 @@ const providerOrder = reference.extend({
 	processing_mode: z.literal('automatic'),
 	total_amount: z.string(),
 	total_paid_amount: z.string().optional(),
+	total_refunded_amount: z.string().nullish(),
 	status: providerId,
 	status_detail: providerId,
 	transactions: z.object({
@@ -23,6 +24,7 @@ const providerOrder = reference.extend({
 					id: providerId,
 					amount: z.string(),
 					paid_amount: z.string().optional(),
+					refunded_amount: z.string().nullish(),
 					status: providerId,
 					status_detail: providerId,
 					payment_method: z.object({
@@ -56,6 +58,7 @@ type Attempt = {
 	providerOrderId: string | null;
 	providerPaymentId: string | null;
 	providerPaidAmountInCents?: number | null;
+	reconciliationReason?: string | null;
 };
 type Charge = { status: string; totalInCents: number; appointmentStatus: string; isPaid: boolean };
 type Payment = {
@@ -78,7 +81,7 @@ type Plan =
 			providerStatus: string;
 			providerStatusDetail: string;
 			settlesCharge: boolean;
-			providerPaidAmountInCents?: number;
+			providerPaidAmountInCents?: number | null;
 	  };
 
 const review = (reason: string): Plan => ({ kind: 'review', reason });
@@ -86,17 +89,27 @@ const terminal = ['rejected', 'cancelled', 'expired'];
 
 // O principal da Order e da transação é validado separadamente. Somente cartão
 // parcelado pode ter acréscimo pago pelo comprador; nunca creditar esse acréscimo.
-function hasConfirmedPaidAmount(
+function readPaidAmount(
 	attempt: Attempt,
 	amount: string,
 	orderPaid: string | undefined,
 	paymentPaid: string | undefined,
-): boolean {
+): { valid: true; cents: number | null } | { valid: false } {
 	if (attempt.method !== 'credit_card' || attempt.installments <= 1)
-		return orderPaid === amount && paymentPaid === amount;
-	if (!orderPaid || orderPaid !== paymentPaid || !/^(0|[1-9][0-9]{0,7})\.[0-9]{2}$/.test(orderPaid)) return false;
-	const cents = Number(orderPaid.replace('.', ''));
-	return Number.isSafeInteger(cents) && cents >= attempt.amountInCents && cents <= 2_147_483_647;
+		return orderPaid === amount && paymentPaid === amount
+			? { valid: true, cents: attempt.amountInCents }
+			: { valid: false };
+	const parse = (value: string | undefined) => {
+		if (!value || !/^(0|[1-9][0-9]{0,7})\.[0-9]{2}$/.test(value)) return null;
+		const cents = Number(value.replace('.', ''));
+		return Number.isSafeInteger(cents) && cents >= attempt.amountInCents && cents <= 2_147_483_647 ? cents : null;
+	};
+	const orderCents = parse(orderPaid);
+	const paymentCents = parse(paymentPaid);
+	if (orderCents === null || paymentCents === null || Math.abs(orderCents - paymentCents) > 1)
+		return { valid: false };
+	// Diferença de um centavo não altera o principal; não presumir desembolso.
+	return { valid: true, cents: orderCents === paymentCents ? orderCents : null };
 }
 
 // Política pura, chamada somente depois de obter a Order via API autenticada e travar o atendimento.
@@ -106,8 +119,25 @@ export function planReconciliation(
 	attempt: Attempt,
 	charge: Charge,
 	payments: readonly Payment[],
+	allowStaffPaidAmountReview = false,
 ): Plan {
-	if (attempt.status === 'review') return { kind: 'ignore' }; // revisão humana não é desfeita automaticamente
+	if (attempt.status === 'review') {
+		// Somente solicitação explícita da equipe; nunca webhook/polling. Revalidar tudo sob lock.
+		if (
+			!allowStaffPaidAmountReview ||
+			attempt.reconciliationReason !== 'remote_paid_amount_mismatch' ||
+			attempt.method !== 'credit_card' ||
+			attempt.installments <= 1 ||
+			!attempt.providerOrderId ||
+			!attempt.providerPaymentId ||
+			attempt.providerPaidAmountInCents !== null ||
+			payments.some((p) => p.onlinePaymentAttemptId === attempt.id || p.operationKey === attempt.id)
+		)
+			return { kind: 'ignore' };
+		const recovered = planReconciliation(raw, orderId, { ...attempt, status: 'processing' }, charge, payments);
+		// Não liberar revisão por resposta pendente, recusa ou nova divergência.
+		return recovered.kind === 'credit' ? recovered : { kind: 'ignore' };
+	}
 	const parsed = providerOrder.safeParse(raw);
 	if (!parsed.success) return review('invalid_remote_order');
 	const order = parsed.data;
@@ -150,8 +180,15 @@ export function planReconciliation(
 		].includes(payment.status_detail)
 			? 'rejected'
 			: normalizeMercadoPagoOrderStatus(payment.status, payment.status_detail);
-	if (order.transactions.refunds?.length || status === 'review' || paymentStatus === 'review')
+	if (
+		order.transactions.refunds?.length ||
+		(order.total_refunded_amount != null && order.total_refunded_amount !== '0.00') ||
+		(payment.refunded_amount != null && payment.refunded_amount !== '0.00') ||
+		status === 'review' ||
+		paymentStatus === 'review'
+	)
 		return review('remote_status_review');
+	const paidAmount = readPaidAmount(attempt, amount, order.total_paid_amount, payment.paid_amount);
 	const existing = payments.find((p) => p.onlinePaymentAttemptId === attempt.id);
 	if (existing) {
 		if (
@@ -163,14 +200,14 @@ export function planReconciliation(
 		)
 			return review('ledger_identity_mismatch');
 		if (terminal.includes(status) || terminal.includes(paymentStatus)) return review('post_approval_conflict');
-		if (
-			status === 'approved' &&
-			(paymentStatus !== 'approved' ||
-				!hasConfirmedPaidAmount(attempt, amount, order.total_paid_amount, payment.paid_amount))
-		)
+		if (status === 'approved' && (paymentStatus !== 'approved' || !paidAmount.valid))
 			return review('post_approval_amount_mismatch');
-		if (status === 'approved' && paymentStatus === 'approved') {
-			const paid = Number(order.total_paid_amount!.replace('.', ''));
+		if (status === 'approved' && paymentStatus === 'approved' && paidAmount.valid) {
+			const paid = paidAmount.cents;
+			if (paid === null)
+				return attempt.providerPaidAmountInCents === null
+					? { kind: 'ignore' }
+					: review('post_approval_amount_mismatch');
 			if (attempt.providerPaidAmountInCents === null) return { kind: 'enrich', providerPaidAmountInCents: paid };
 			if (attempt.providerPaidAmountInCents !== undefined && attempt.providerPaidAmountInCents !== paid)
 				return review('post_approval_amount_mismatch');
@@ -189,11 +226,7 @@ export function planReconciliation(
 		providerStatusDetail: order.status_detail,
 	};
 	if (status === 'approved' || paymentStatus === 'approved') {
-		if (
-			status !== 'approved' ||
-			paymentStatus !== 'approved' ||
-			!hasConfirmedPaidAmount(attempt, amount, order.total_paid_amount, payment.paid_amount)
-		)
+		if (status !== 'approved' || paymentStatus !== 'approved' || !paidAmount.valid)
 			return review('remote_paid_amount_mismatch');
 		if (charge.status !== 'open' || charge.appointmentStatus !== 'completed' || charge.isPaid)
 			return review('charge_not_available');
@@ -202,7 +235,7 @@ export function planReconciliation(
 			if (balance.balanceInCents < attempt.amountInCents) return review('payment_exceeds_balance');
 			return {
 				kind: 'credit',
-				providerPaidAmountInCents: Number(order.total_paid_amount!.replace('.', '')),
+				providerPaidAmountInCents: paidAmount.cents,
 				status,
 				...identifiers,
 				settlesCharge: balance.balanceInCents === attempt.amountInCents,

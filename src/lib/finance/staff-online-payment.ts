@@ -47,7 +47,16 @@ export function staffReviewMessage(reason: string | null): string {
 	return (reason && reviewLabels[reason]) || 'Conferir a tentativa manualmente antes de qualquer ajuste financeiro';
 }
 
-/** A revisão nunca é finalizada por uma sincronização automática. */
-export function canStaffSyncAttempt(status: string): boolean {
-	return status !== 'review' && status in staffPaymentStatusLabels;
+/** Somente a divergência do total pago de cartão parcelado admite reconsulta explícita. */
+export function canStaffSyncAttempt(
+	status: string,
+	attempt?: { reconciliationReason?: string | null; method: string; installments: number },
+): boolean {
+	if (status === 'review')
+		return (
+			attempt?.reconciliationReason === 'remote_paid_amount_mismatch' &&
+			attempt.method === 'credit_card' &&
+			attempt.installments > 1
+		);
+	return Object.prototype.hasOwnProperty.call(staffPaymentStatusLabels, status);
 }
