@@ -16,12 +16,16 @@ export function buildCardPaymentPayload(
 	balanceInCents: number,
 	form: CardForm,
 	paymentType: unknown,
+	amountInCents = balanceInCents,
 ): CardPaymentPayload | null {
 	if (
 		paymentType !== 'credit_card' ||
 		!Number.isSafeInteger(balanceInCents) ||
 		balanceInCents <= 0 ||
-		form.transaction_amount !== balanceInCents / 100
+		!Number.isSafeInteger(amountInCents) ||
+		amountInCents <= 0 ||
+		amountInCents > balanceInCents ||
+		form.transaction_amount !== amountInCents / 100
 	)
 		return null;
 	const document = form.payer?.identification;
@@ -36,6 +40,7 @@ export function buildCardPaymentPayload(
 		chargeId,
 		method: 'credit_card',
 		expectedBalanceInCents: balanceInCents,
+		amountInCents,
 		token: form.token,
 		paymentMethodId: form.payment_method_id,
 		installments: form.installments,

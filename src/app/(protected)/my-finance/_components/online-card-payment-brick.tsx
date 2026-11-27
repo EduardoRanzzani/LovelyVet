@@ -1,7 +1,7 @@
 'use client';
 
 import { CardPayment, initMercadoPago } from '@mercadopago/sdk-react';
-import { useCallback, useMemo, useState, type ComponentProps } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 import { buildCardPaymentPayload, type CardPaymentPayload } from '@/lib/finance/online-card-payment';
 
 const publicKey = process.env.NEXT_PUBLIC_MERCADO_PAGO_PUBLIC_KEY?.trim();
@@ -11,14 +11,28 @@ if (typeof window !== 'undefined' && publicKey) initMercadoPago(publicKey, { loc
 type Props = {
 	chargeId: string;
 	balanceInCents: number;
+	amountInCents?: number;
 	canSubmit: boolean;
 	onPayment: (input: CardPaymentPayload) => Promise<boolean>;
 };
 type BrickSubmit = NonNullable<ComponentProps<typeof CardPayment>['onSubmit']>;
 
-export default function OnlineCardPaymentBrick({ chargeId, balanceInCents, canSubmit, onPayment }: Props) {
+export default function OnlineCardPaymentBrick({
+	chargeId,
+	balanceInCents,
+	amountInCents = balanceInCents,
+	canSubmit,
+	onPayment,
+}: Props) {
 	const [message, setMessage] = useState('');
-	const initialization = useMemo(() => ({ amount: balanceInCents / 100 }), [balanceInCents]);
+	const mounted = useRef(false);
+	useEffect(() => {
+		mounted.current = true;
+		return () => {
+			mounted.current = false;
+		};
+	}, []);
+	const initialization = useMemo(() => ({ amount: amountInCents / 100 }), [amountInCents]);
 	const customization = useMemo<NonNullable<ComponentProps<typeof CardPayment>['customization']>>(
 		() => ({
 			paymentMethods: {
@@ -35,8 +49,14 @@ export default function OnlineCardPaymentBrick({ chargeId, balanceInCents, canSu
 	}, []);
 	const onSubmit = useCallback<BrickSubmit>(
 		async (form, additionalData) => {
-			if (!canSubmit) throw new Error('Pagamento indisponível.');
-			const payload = buildCardPaymentPayload(chargeId, balanceInCents, form, additionalData?.paymentTypeId);
+			if (!canSubmit || !mounted.current) throw new Error('Pagamento indisponível.');
+			const payload = buildCardPaymentPayload(
+				chargeId,
+				balanceInCents,
+				form,
+				additionalData?.paymentTypeId,
+				amountInCents,
+			);
 			if (!payload) {
 				setMessage('Confira os dados do cartão de crédito e o valor da cobrança.');
 				throw new Error('Dados inválidos.');
@@ -44,7 +64,7 @@ export default function OnlineCardPaymentBrick({ chargeId, balanceInCents, canSu
 			setMessage('');
 			if (!(await onPayment(payload))) throw new Error('Não foi possível confirmar a solicitação.');
 		},
-		[canSubmit, chargeId, balanceInCents, onPayment],
+		[canSubmit, chargeId, balanceInCents, amountInCents, onPayment],
 	);
 	if (!publicKey)
 		return (

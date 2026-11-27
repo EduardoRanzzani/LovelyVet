@@ -55,6 +55,7 @@ type Attempt = {
 	status: string;
 	providerOrderId: string | null;
 	providerPaymentId: string | null;
+	providerPaidAmountInCents?: number | null;
 };
 type Charge = { status: string; totalInCents: number; appointmentStatus: string; isPaid: boolean };
 type Payment = {
@@ -68,6 +69,7 @@ type Payment = {
 type Plan =
 	| { kind: 'ignore' }
 	| { kind: 'review'; reason: string }
+	| { kind: 'enrich'; providerPaidAmountInCents: number }
 	| {
 			kind: 'update' | 'credit';
 			status: string;
@@ -76,10 +78,26 @@ type Plan =
 			providerStatus: string;
 			providerStatusDetail: string;
 			settlesCharge: boolean;
+			providerPaidAmountInCents?: number;
 	  };
 
 const review = (reason: string): Plan => ({ kind: 'review', reason });
 const terminal = ['rejected', 'cancelled', 'expired'];
+
+// O principal da Order e da transação é validado separadamente. Somente cartão
+// parcelado pode ter acréscimo pago pelo comprador; nunca creditar esse acréscimo.
+function hasConfirmedPaidAmount(
+	attempt: Attempt,
+	amount: string,
+	orderPaid: string | undefined,
+	paymentPaid: string | undefined,
+): boolean {
+	if (attempt.method !== 'credit_card' || attempt.installments <= 1)
+		return orderPaid === amount && paymentPaid === amount;
+	if (!orderPaid || orderPaid !== paymentPaid || !/^(0|[1-9][0-9]{0,7})\.[0-9]{2}$/.test(orderPaid)) return false;
+	const cents = Number(orderPaid.replace('.', ''));
+	return Number.isSafeInteger(cents) && cents >= attempt.amountInCents && cents <= 2_147_483_647;
+}
 
 // Política pura, chamada somente depois de obter a Order via API autenticada e travar o atendimento.
 export function planReconciliation(
@@ -117,7 +135,21 @@ export function planReconciliation(
 	)
 		return review('remote_method_mismatch');
 	const status = normalizeMercadoPagoOrderStatus(order.status, order.status_detail);
-	const paymentStatus = normalizeMercadoPagoOrderStatus(payment.status, payment.status_detail);
+	// A transação de cartão possui detalhes de recusa distintos dos da Order.
+	// Não ampliar a classificação da Order nem liberar falhas desconhecidas.
+	const paymentStatus =
+		attempt.method === 'credit_card' &&
+		payment.status === 'failed' &&
+		[
+			'rejected_by_issuer',
+			'insufficient_amount',
+			'bad_filled_card_data',
+			'card_disabled',
+			'invalid_installments',
+			'required_call_for_authorize',
+		].includes(payment.status_detail)
+			? 'rejected'
+			: normalizeMercadoPagoOrderStatus(payment.status, payment.status_detail);
 	if (order.transactions.refunds?.length || status === 'review' || paymentStatus === 'review')
 		return review('remote_status_review');
 	const existing = payments.find((p) => p.onlinePaymentAttemptId === attempt.id);
@@ -133,9 +165,16 @@ export function planReconciliation(
 		if (terminal.includes(status) || terminal.includes(paymentStatus)) return review('post_approval_conflict');
 		if (
 			status === 'approved' &&
-			(paymentStatus !== 'approved' || order.total_paid_amount !== amount || payment.paid_amount !== amount)
+			(paymentStatus !== 'approved' ||
+				!hasConfirmedPaidAmount(attempt, amount, order.total_paid_amount, payment.paid_amount))
 		)
 			return review('post_approval_amount_mismatch');
+		if (status === 'approved' && paymentStatus === 'approved') {
+			const paid = Number(order.total_paid_amount!.replace('.', ''));
+			if (attempt.providerPaidAmountInCents === null) return { kind: 'enrich', providerPaidAmountInCents: paid };
+			if (attempt.providerPaidAmountInCents !== undefined && attempt.providerPaidAmountInCents !== paid)
+				return review('post_approval_amount_mismatch');
+		}
 		return { kind: 'ignore' }; // duplicata ou observação antiga; não rebaixar nem estornar
 	}
 	if (attempt.status === 'approved') return review('approved_without_ledger');
@@ -153,8 +192,7 @@ export function planReconciliation(
 		if (
 			status !== 'approved' ||
 			paymentStatus !== 'approved' ||
-			order.total_paid_amount !== amount ||
-			payment.paid_amount !== amount
+			!hasConfirmedPaidAmount(attempt, amount, order.total_paid_amount, payment.paid_amount)
 		)
 			return review('remote_paid_amount_mismatch');
 		if (charge.status !== 'open' || charge.appointmentStatus !== 'completed' || charge.isPaid)
@@ -164,6 +202,7 @@ export function planReconciliation(
 			if (balance.balanceInCents < attempt.amountInCents) return review('payment_exceeds_balance');
 			return {
 				kind: 'credit',
+				providerPaidAmountInCents: Number(order.total_paid_amount!.replace('.', '')),
 				status,
 				...identifiers,
 				settlesCharge: balance.balanceInCents === attempt.amountInCents,

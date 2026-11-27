@@ -116,14 +116,16 @@ export const recordChargePayment = actionClient.schema(receivePaymentSchema).act
 			return { paymentId: existing.id, repeated: true };
 		}
 		const attempts = await tx
-			.select({ status: onlinePaymentAttemptsTable.status })
+			.select({
+				id: onlinePaymentAttemptsTable.id,
+				status: onlinePaymentAttemptsTable.status,
+				amountInCents: onlinePaymentAttemptsTable.amountInCents,
+				method: onlinePaymentAttemptsTable.method,
+			})
 			.from(onlinePaymentAttemptsTable)
 			.where(eq(onlinePaymentAttemptsTable.chargeId, charge.id));
-		assertNoBlockingOnlinePayment(attempts);
-		const payments = await tx
-			.select({ amountInCents: chargePaymentsTable.amountInCents })
-			.from(chargePaymentsTable)
-			.where(eq(chargePaymentsTable.chargeId, charge.id));
+		const payments = await tx.select().from(chargePaymentsTable).where(eq(chargePaymentsTable.chargeId, charge.id));
+		assertNoBlockingOnlinePayment(attempts, payments);
 		const balance = calculateChargeBalance(charge.totalInCents, payments);
 		assertPaymentAmount(balance.balanceInCents, parsedInput.amountInCents);
 		const [payment] = await tx

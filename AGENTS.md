@@ -306,3 +306,79 @@ Arquivos de código e testes alterados neste fix:
 - Arquivos: `src/app/(protected)/my-finance/page.tsx`, `src/app/(protected)/finance/_components/finance-summary-cards.tsx` e `src/app/(protected)/finance/_components/finance-summary-cards.test.tsx`. Dois testes de interface adicionados; execução local pendente (esperados 1.031 testes).
 - Versão 1.5.0, migration 0048, sem dependências novas. Sem commit do Fix 01/02 confirmado; validar e conferir interface antes do commit. Não fazer push.
 - Próximos passos: fechar conferência Admin, registrar limitação ou homologar expiração efetiva do Pix, commit e homologação de cartão.
+
+## Checkpoint 2026-11-26 — fechamento 5.1B e reconciliação documental
+
+- Este checkpoint atualiza as pendências históricas acima: Fixes 01 e 02 aprovados, 1.031 testes em 108 arquivos, Prettier, ESLint, TypeScript, Drizzle check e auditoria PROD aprovados. Última auditoria DEV completa: dois alertas moderados conhecidos (esbuild e minimatch).
+- Pix parcial seguido de online e Pix integral homologados; QR Code, Copia e Cola e tratamento da informação de expiração aprovados (10/10); conferência financeira Admin aprovada (8/8), com um recebimento de R$ 200 e saldo zero. Expiração efetiva sem pagamento permanece pendente em 5.1D.
+- Indicadores Customer: Total em atendimentos, Total pago no mês, Saldo total em aberto e Cobranças em aberto; visual Admin e Customer aprovados.
+- Commit `ea619e9` confirmado (18 arquivos). O instalador do checkpoint anterior rejeitou divergências documentais; esta revisão usa os seis arquivos locais exportados como base, preservando seu histórico.
+- Limpeza de homologação anterior confirmada pelos registros posteriores; tentativa de cartão recusado em revisão deve permanecer preservada. Webhook da recusa respondeu HTTP 200; isso não comprova conciliação correta. Avisos de montagem do Brick observados antes do Pix são uma investigação separada; causa ainda não confirmada.
+
+## Checkpoint 2026-11-26 — 5.1C Fix 01 (recusa de cartão)
+
+- Base validada: 1.031 testes em 108 arquivos; Pix funcional e indicadores Admin/Customer aprovados. Última auditoria PROD sem alertas; dois alertas DEV conhecidos na última auditoria completa.
+- Homologação cartão: Order de teste recusada pelo emissor (failed/failed na Order; failed/rejected_by_issuer na transação), valor solicitado R$ 200 e total pago zero segundo painel; tentativa local em review/remote_status_review, sem IDs remotos persistidos. Saldo exibido R$ 200.
+- Correção: `src/server/payments/reconciliation-policy.ts` diferencia detalhes conhecidos de recusa da transação de cartão, preservando validação da identidade, valor, método, ambiente, ausência de estornos e concordância terminal com total pago zero. Falhas desconhecidas, processing_error e high_risk continuam em revisão. Revisão anterior não é desfeita automaticamente.
+- `src/server/payments/reconciliation-policy.test.ts`: 13 cenários acrescentados; esperados 1.044 testes em 108 arquivos, execução local pendente. A interface já contém mensagem de recusa e ação de nova tentativa condicionada à elegibilidade do servidor. Sem alterações de interface neste pacote.
+- A tentativa já em revisão deve ser preservada até consulta autenticada remota e resolução controlada; não alterar status apenas pelo webhook ou painel. Não há comprovação da causa da ausência de IDs na resposta inicial.
+- Próximos passos: validar fix, consultar Order existente, resolver tentativa de teste com segurança, repetir recusa, homologar cartão aprovado e parcelado. Expiração Pix e concorrência real permanecem pendentes.
+- Versão 1.5.0, release 1.6.0, migration 0048; sem dependências, alterações de banco ou commit automáticos. Commit 5.1B confirmado: `ea619e9`. Não fazer push.
+
+## 5.1C — Fix 02: comunicação de recusa (2026-11-26)
+
+- Fix 01 validado localmente: 1.044 testes em 108 arquivos; duas tentativas de cartão recusadas, IDs remotos persistidos automaticamente na segunda, saldo de R$ 200,00 e nenhum recebimento no painel.
+- Checkout exibe alerta acessível para `rejected`, sem expor detalhes do provedor; orientação de nova tentativa depende da elegibilidade já existente.
+- Dois testes de interface adicionados; execução local e validação visual pendentes. Aprovação à vista ainda não homologada.
+- Sem alterações em conciliação, autorização, migrations, dependências ou dados. Investigação do ciclo de vida do Brick permanece pendente.
+
+## 5.1C — Fix 03: confirmação e acompanhamento automático (2026-11-26)
+
+- Fix 01: 1.044 testes em 108 arquivos comprovados. Recusa de cartão corrigida e homologada. Fix 02: alerta visual de recusa aprovado pelo desenvolvedor; execução dos 1.046 testes previstos ainda não confirmada.
+- Cartão à vista: cobrança de R$ 200,00 do pet Teste quitada na interface Customer, quatro tentativas recusadas e uma aprovada no PostgreSQL (processed/accredited), um único recebimento de R$ 200,00, origem mercado_pago, método credit_card, vinculado à aprovação. Preservar registros até a validação visual do Fix 03; não excluir automaticamente.
+- Fix 03: confirmação reutilizável Pix/cartão, com valor da tentativa, método, parcelas quando cartão, pet e saldo autoritativo. A aprovação exige recebimento vinculado. Checkout individual recupera aprovação própria mesmo com saldo zero, sem liberar criação nem expor aprovação de outro tutor. Listagem financeira mantém regra anterior.
+- Reutiliza o agendador existente, sem TanStack Query adicional ou WebSocket: consultas sequenciais 3/5/10/15 s, pausa em aba oculta, retoma no foco/visibilidade, encerra em estados terminais, cancela agendamento ao desmontar. Atualização manual apenas em falha; revalidação da rota na transição terminal (e criação) sem redirecionamento. Não há setState síncrono em effect. Cooldown remoto de 15 s e lock/escopo/autorização preservados.
+- Pix anterior somente é mantido durante cooldown quando a resposta autorizada confirma tentativa e IDs compatíveis, estado pending e saldo/cobrança compatíveis. Falha de consulta ou estado terminal oculta o código; não libera tentativa. O saldo é calculado no servidor com o ledger; confirmação de saldo parcial não altera a política de bloqueio de novas tentativas aprovadas.
+- Testes: +26 casos previstos em relação ao Fix 02 (1.072 testes/109 arquivos esperados se os 1.046 anteriores forem confirmados). Validação sintática TypeScript realizada; ESLint, typecheck, Prettier, Vitest e homologação local pendentes. Não houve alteração de dependências, migrations, package version (1.5.0) ou banco. Migration 0048 preservada. Sem commit/push/deploy.
+- Próxima ação: instalar pacote incremental sobre o ZIP atual, conferir Git, validar a própria aprovação existente pelo endereço do checkout, depois repetir Pix/cartão em homologação após limpeza específica autorizada. Manter gate de produção e escopo DEV restrito ao pet Teste. Não expor tokens, dados de cartão ou URLs temporárias.
+
+## 5.1C — Fix 04: parcelamento e alerta de análise (2026-11-26)
+
+- Fix 03: 1.072 testes/109 arquivos aprovados duas vezes, Prettier, ESLint, TypeScript, Drizzle e audit PROD aprovados; confirmação visual 11/11. Dois alertas DEV conhecidos.
+- Cartão parcelado em homologação: Order e pagamento processed/accredited, principal R$ 200,00, total pago R$ 219,28, duas parcelas; tentativa local em review. Webhook HTTP 200 observado. Preservar tentativa até consulta autenticada e recuperação controlada; não criar nova Order.
+- Conciliação exige principal exato, identidade, método, parcelas, status aprovado e ausência de estornos; somente cartão parcelado aceita total pago superior ao principal quando ambos os valores pagos coincidem e são válidos. Ledger registra apenas principal; duplicata usa a mesma validação. Revisão existente permanece bloqueada.
+- Checkout apresenta alerta âmbar de análise, sem prometer atualização automática em review nem liberar nova tentativa. Polling e regras de segurança inalterados.
+- Testes novos previstos: 19 (1.091/109 esperados); execução local pendente. Sem migrations, dependências, banco ou versão alterados. Manter túnel durante reinício isolado do Next.js; interromper acesso durante intervenção financeira e verificar preflight.
+
+## 5.1C — Fix 05: confirmação exclusiva (2026-11-26)
+
+- Fix 04: 1.091 testes/109 arquivos aprovados, alerta de análise 8/8; tentativa parcelada recuperada manualmente após GET autenticado (principal R$ 200,00, total pago R$ 219,28), um recebimento de R$ 200,00 e quatro recusas preservadas. Reteste automático ainda pendente.
+- Confirmação aprovada passa a ocupar card único centralizado; resumo, cabeçalho do formulário e retorno duplicado são removidos apenas nesse estado. Mesma fonte autorizada do snapshot e mesmo polling, sem mudança de backend. Rótulo Valor pago da cobrança distingue principal de juros; quitação somente com saldo zero. Aviso de homologação preservado.
+- Quatro testes adicionais previstos (1.095/109); execução local e homologação visual pendentes. Sem alteração de banco, migrations, dependências ou versão. Preservar recebimento atual para validação visual.
+
+## 5.1C — Fix 05: revisão visual e planejamento de pagamentos parciais (2026-11-26)
+
+- Layout centralizado do Fix 05 aplicado visualmente, mas reprovado pelo desenvolvedor por não combinar com a área de conteúdo. Revisão substitui o limite de 520px por card horizontal de largura disponível, cabeçalho compacto, indicadores em grid responsivo e detalhes em duas colunas; retorno único e aviso de teste preservados.
+- Nenhuma alteração financeira: confirmação continua dependente do recebimento autorizado, com quitação apenas quando saldo zero. Um teste adicional previsto (1.096/109 esperados; última execução comprovada 1.091/109).
+- Próximas entregas aprovadas em escopo: Fix 06 backend de pagamentos parciais (valor em centavos, saldo sob lock, expectedBalanceInCents, tentativa ativa única, validação de valor principal e idempotência); Fix 07 frontend (valor integral por padrão, escolha parcial e combinação sequencial Pix/cartão, confirmação parcial e retorno ao fluxo quando autorizado). Ainda não implementados. Não criar pagamentos simultâneos; preservar bloqueios de review.
+- Reteste automático parcelado, concorrência, Pix com polling e checkpoint seguem pendentes. Sem alterações de banco, migrations, dependências ou versão. Não realizar commit/push.
+
+## 5.1C — Fix 06A: backend de pagamentos parciais
+
+- Base: Fix 05 revisão homologado, 1.096 testes em 109 arquivos. Novo contrato aceita amountInCents opcional para compatibilidade temporária; valor explícito exige expectedBalanceInCents, comparado sob lock do atendimento. Pix legado e cartão legado continuam integrais. Valor em centavos positivo e limitado ao saldo e ao tipo integer do banco.
+- Aprovação somente deixa de bloquear novos recebimentos quando possui exatamente um recebimento compatível (identidade, principal, método, origem e chave de operação). Revisão, tentativa ativa e aprovação sem ledger continuam bloqueando. Recebimento manual segue a mesma regra; cancelamento de cobrança permanece conservador.
+- Opções consideram bloqueios de todos os ambientes/coletores sem expor identificadores fora do escopo. QR parcial exige saldo suficiente, preservando autorização e cooldown. Conciliação existente credita principal e quita somente quando saldo zero.
+- Sem migration ou dependência nova. Fix 06B (total efetivamente pago pelo comprador) e Fix 07 (seleção de valor, retomada da confirmação parcial, serviços, histórico e progresso) pendentes. Reteste funcional integral/parcelado/parcial e concorrência pendentes; manter criação desabilitada até homologação. Testes locais do Fix 06A pendentes. Não fazer commit/push.
+
+## 5.1C — Fix 06B: total pago pelo comprador
+
+- Fix 06A validado localmente: 1.117 testes em 109 arquivos; correção pontual removeu appointment.isPaid da validação de criação (saldo autoritativo sob lock).
+- Migration 0049 aditiva: total remoto nullable na tentativa, constraint de principal e acréscimo somente para cartão parcelado. Não executar migration automaticamente nem preencher históricos por presunção.
+- Conciliação autenticada grava total confirmado no mesmo fluxo transacional, mantendo principal no ledger. Aprovação histórica com ledger compatível pode receber o total em nova conciliação autenticada; divergência posterior entra em revisão sem sobrescrever total ou recebimento.
+- Aplicação da migration exige autorização separada, validação de compatibilidade e backup do banco compartilhado. Não iniciar DEV com código novo antes de aplicar schema. Fix 07 ainda pendente, inclusive exposição autorizada do total e histórico ao tutor. Testes locais 06B e homologação financeira pendentes. Não fazer commit/push.
+
+## 5.1C — Fix 07A: seleção do valor no checkout
+
+- Fix 06B validado: 1.122 testes em 109 arquivos, migration 0049 aplicada com hash conferido, sem novo backup por decisão do responsável. Sincronização autenticada e repetida da tentativa histórica de teste confirmou principal 20000, total remoto 21928 e um único recebimento.
+- Checkout reutiliza MoneyInputForm, React Hook Form e utilitários monetários; valor integral por padrão, parcial opcional. Pix e cartão enviam principal solicitado e saldo esperado distintos; Brick recebe o principal e valida o valor tokenizado. Backend mantém lock e reserva exclusiva.
+- Alteração do valor remonta Brick; estabilidade no navegador e homologação real continuam pendentes. Continuidade direta após aprovação parcial, histórico autorizado e demonstrativo ficam no Fix 07B. Sem migration ou dependência nova. Não fazer commit/push.

@@ -1,0 +1,3 @@
+ALTER TABLE "online_payment_attempts" ADD COLUMN "provider_paid_amount_in_cents" integer;
+--> statement-breakpoint
+ALTER TABLE "online_payment_attempts" ADD CONSTRAINT "online_attempt_provider_paid_valid" CHECK ("online_payment_attempts"."provider_paid_amount_in_cents" IS NULL OR ("online_payment_attempts"."provider_paid_amount_in_cents" >= "online_payment_attempts"."amount_in_cents" AND (("online_payment_attempts"."method" = 'credit_card' AND "online_payment_attempts"."installments" > 1) OR "online_payment_attempts"."provider_paid_amount_in_cents" = "online_payment_attempts"."amount_in_cents")));

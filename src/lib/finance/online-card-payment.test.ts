@@ -17,6 +17,7 @@ describe('card payment payload', () => {
 			chargeId,
 			method: 'credit_card',
 			expectedBalanceInCents: 20000,
+			amountInCents: 20000,
 			token: 'token_teste',
 			paymentMethodId: 'visa',
 			installments: 2,
@@ -50,9 +51,20 @@ describe('card payment payload', () => {
 			chargeId,
 			method: 'credit_card',
 			expectedBalanceInCents: 20000,
+			amountInCents: 20000,
 			token: 'token_teste',
 			paymentMethodId: 'visa',
 			installments: 2,
 		});
 	});
+});
+
+it('separa saldo esperado do valor parcial tokenizado', () => {
+	expect(
+		buildCardPaymentPayload(chargeId, 20000, { ...form, transaction_amount: 100 }, 'credit_card', 10000),
+	).toMatchObject({ expectedBalanceInCents: 20000, amountInCents: 10000 });
+	expect(buildCardPaymentPayload(chargeId, 20000, form, 'credit_card', 10000)).toBeNull();
+	expect(
+		buildCardPaymentPayload(chargeId, 20000, { ...form, transaction_amount: 201 }, 'credit_card', 20100),
+	).toBeNull();
 });

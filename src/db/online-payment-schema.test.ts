@@ -66,3 +66,13 @@ describe('modelagem financeira online', () => {
 		}
 	});
 });
+
+it('permite total remoto desconhecido e protege principal e acréscimos', () => {
+	expect(onlinePaymentAttemptsTable.providerPaidAmountInCents.notNull).toBe(false);
+	const constraint = attempts.checks.find((item) => item.name === 'online_attempt_provider_paid_valid');
+	if (!constraint) throw new Error('Constraint ausente');
+	const { sql } = dialect.sqlToQuery(constraint.value);
+	expect(sql).toContain('"provider_paid_amount_in_cents" IS NULL');
+	expect(sql).toContain('>=');
+	expect(sql).toContain("'credit_card'");
+});

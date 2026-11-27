@@ -53,3 +53,43 @@ describe('saldo esperado do cartão', () => {
 		).not.toThrow();
 	});
 });
+
+describe('pagamento parcial sequencial', () => {
+	const charge = { status: 'open', totalInCents: 20000 };
+	const input = { chargeId: 'charge', method: 'pix' as const, amountInCents: 10000, expectedBalanceInCents: 20000 };
+	const attempt = { id: 'attempt', status: 'approved', amountInCents: 10000, method: 'pix' };
+	const receipt = {
+		onlinePaymentAttemptId: attempt.id,
+		operationKey: attempt.id,
+		amountInCents: 10000,
+		method: 'pix',
+		source: 'mercado_pago',
+	};
+	it('reserva somente o principal solicitado', () => expect(getOnlinePaymentAmount(charge, [], input)).toBe(10000));
+	it('rejeita Pix parcial com saldo desatualizado', () =>
+		expect(() => getOnlinePaymentAmount(charge, [receipt], input)).toThrow('saldo da cobrança mudou'));
+	it.each([0, -1, 20001, 1.5])('rejeita valor inválido %s sob lock', (amountInCents) =>
+		expect(() => getOnlinePaymentAmount(charge, [], { ...input, amountInCents })).toThrow('não pode exceder'),
+	);
+	it('libera próximo recebimento apenas após aprovação conciliada', () => {
+		expect(() => assertNoBlockingOnlinePayment([attempt], [receipt])).not.toThrow();
+		expect(getOnlinePaymentAmount(charge, [receipt], { ...input, expectedBalanceInCents: 10000 })).toBe(10000);
+	});
+	it.each([
+		{ source: 'manual' },
+		{ amountInCents: 9999 },
+		{ method: 'credit_card' },
+		{ operationKey: 'other' },
+		{ onlinePaymentAttemptId: 'other' },
+	])('bloqueia recebimento incompatível %j', (patch) =>
+		expect(() => assertNoBlockingOnlinePayment([attempt], [{ ...receipt, ...patch }])).toThrow(
+			'aguardando resolução',
+		),
+	);
+	it('bloqueia mesmo com aprovação anterior conciliada se existir review', () =>
+		expect(() => assertNoBlockingOnlinePayment([attempt, { status: 'review' }], [receipt])).toThrow(
+			'aguardando resolução',
+		));
+	it('bloqueia recebimentos duplicados', () =>
+		expect(() => assertNoBlockingOnlinePayment([attempt], [receipt, receipt])).toThrow('aguardando resolução'));
+});

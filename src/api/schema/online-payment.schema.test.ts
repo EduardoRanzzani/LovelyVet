@@ -12,12 +12,15 @@ const card = {
 };
 
 describe('entrada de pagamento online', () => {
-	it.each([pix, card, { ...card, identification: { type: 'CPF', number: '12345678901' } }])(
-		'aceita $method',
-		(input) => {
-			expect(onlinePaymentSchema.safeParse(input).success).toBe(true);
-		},
-	);
+	it.each([
+		pix,
+		card,
+		{ ...pix, amountInCents: 10000, expectedBalanceInCents: 20000 },
+		{ ...card, amountInCents: 10000 },
+		{ ...card, identification: { type: 'CPF', number: '12345678901' } },
+	])('aceita $method', (input) => {
+		expect(onlinePaymentSchema.safeParse(input).success).toBe(true);
+	});
 	it.each([
 		{ ...pix, amountInCents: 1 },
 		{ ...pix, environment: 'test' },
@@ -29,8 +32,10 @@ describe('entrada de pagamento online', () => {
 		{ ...card, expectedBalanceInCents: 1.5 },
 		{ ...card, expectedBalanceInCents: '20000' },
 		{ ...card, expectedBalanceInCents: Number.MAX_SAFE_INTEGER + 1 },
-		{ ...pix, expectedBalanceInCents: 20000 },
-		{ ...card, amountInCents: 20000 },
+		{ ...pix, amountInCents: 20001, expectedBalanceInCents: 20000 },
+		{ ...card, amountInCents: 20001 },
+		{ ...card, amountInCents: 0 },
+		{ ...pix, amountInCents: 1.5, expectedBalanceInCents: 20000 },
 		{ ...card, installments: 25 },
 		{ ...card, installments: 0 },
 		{ ...card, token: '' },

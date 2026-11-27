@@ -27,9 +27,16 @@ vi.mock('@/components/shared/page-container', () => {
 		PageTitle: Wrapper,
 	};
 });
-vi.mock('../../_components/online-payment-checkout', () => ({
-	OnlinePaymentCheckout: () => <div>Checkout disponível</div>,
-}));
+vi.mock('../../_components/online-payment-checkout', async () => {
+	const { OnlinePaymentLayout } = await import('../../_components/online-payment-layout');
+	return {
+		OnlinePaymentCheckout: ({ summary, returnHref }: { summary: ReactNode; returnHref: string }) => (
+			<OnlinePaymentLayout summary={summary} returnHref={returnHref}>
+				<div>Checkout disponível</div>
+			</OnlinePaymentLayout>
+		),
+	};
+});
 
 const id = 'c943e3cd-d2bb-4c19-a386-5a8e56899128';
 const context = { role: 'customer', customerId: 'customer-a', userId: 'user-a' };
@@ -60,7 +67,7 @@ describe('PaymentPage', () => {
 		expect(mocks.access).toHaveBeenCalledWith('/my-finance');
 		expect(mocks.charge).toHaveBeenCalledWith('2026-11', id);
 		expect(mocks.items).toHaveBeenCalledWith([id]);
-		expect(mocks.options).toHaveBeenCalledWith(context, [charge]);
+		expect(mocks.options).toHaveBeenCalledWith(context, [charge], true);
 		expect(screen.getByText('Checkout disponível')).toBeInTheDocument();
 		expect(screen.getByText('Teste')).toBeInTheDocument();
 		expect(screen.getByRole('link', { name: 'Voltar ao meu financeiro' })).toHaveAttribute(
@@ -108,5 +115,14 @@ describe('PaymentPage', () => {
 		render(await load());
 		expect(screen.getByText('Cobrança quitada.')).toBeInTheDocument();
 		expect(screen.queryByText('Checkout disponível')).not.toBeInTheDocument();
+	});
+	it('mantém o checkout montado para consultar a própria aprovação após a quitação', async () => {
+		mocks.charge.mockResolvedValue({ ...charge, financialStatus: 'paid', paidInCents: 20000, balanceInCents: 0 });
+		mocks.options.mockResolvedValue(
+			new Map([[id, { canStart: false, attemptId: 'approved-attempt', testMode: true }]]),
+		);
+		render(await load());
+		expect(screen.getByText('Checkout disponível')).toBeInTheDocument();
+		expect(screen.queryByText('Cobrança quitada.')).not.toBeInTheDocument();
 	});
 });

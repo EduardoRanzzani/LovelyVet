@@ -71,6 +71,13 @@ export async function reconcileMercadoPagoOrder(orderId: string, expectedAttempt
 				.where(scoped);
 			return;
 		}
+		if (plan.kind === 'enrich') {
+			await tx
+				.update(onlinePaymentAttemptsTable)
+				.set({ providerPaidAmountInCents: plan.providerPaidAmountInCents, updatedAt: now })
+				.where(scoped);
+			return;
+		}
 		const { providerOrderId, providerPaymentId, providerStatus, providerStatusDetail, status } = plan;
 		const expiresAt = row.attempt.method === 'pix' && status === 'pending' ? readPixExpiration(order) : null;
 		await tx
@@ -84,7 +91,9 @@ export async function reconcileMercadoPagoOrder(orderId: string, expectedAttempt
 				reconciliationReason: null,
 				...(expiresAt ? { expiresAt } : {}),
 				updatedAt: now,
-				...(plan.kind === 'credit' ? { approvedAt: now } : {}),
+				...(plan.kind === 'credit'
+					? { approvedAt: now, providerPaidAmountInCents: plan.providerPaidAmountInCents }
+					: {}),
 			})
 			.where(scoped);
 		if (plan.kind === 'credit') {
@@ -112,7 +121,8 @@ export async function reconcileMercadoPagoOrder(orderId: string, expectedAttempt
 			row.charge.status === 'open' &&
 			row.appointment.status === 'completed' &&
 			!row.appointment.isPaid &&
-			calculateChargeBalance(row.charge.totalInCents, payments).balanceInCents === row.attempt.amountInCents
+			calculateChargeBalance(row.charge.totalInCents, payments).balanceInCents >= row.attempt.amountInCents &&
+			row.attempt.amountInCents > 0
 		) {
 			const pix = readPendingPix(order);
 			if (pix) return { orderId: providerOrderId, paymentId: providerPaymentId, pix };

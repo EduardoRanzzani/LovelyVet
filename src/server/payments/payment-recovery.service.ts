@@ -1,14 +1,21 @@
 import 'server-only';
 import QRCode from 'qrcode';
 import { db } from '@/db';
-import { appointmentChargesTable, appointmentsTable, onlinePaymentAttemptsTable } from '@/db/schema';
+import {
+	appointmentChargesTable,
+	appointmentsTable,
+	chargePaymentsTable,
+	onlinePaymentAttemptsTable,
+} from '@/db/schema';
 import { buildFinancialAccessCondition, requireFinancialTutorId } from '@/lib/finance/financial-access';
 import { assertOnlinePaymentScope } from '@/lib/finance/online-payment-scope';
 import { getMercadoPagoConfig } from '@/lib/integrations/mercado-pago-config';
 import { getMercadoPagoOrderClient } from '@/lib/integrations/mercado-pago';
 import { lockAccessibleAppointment } from '@/lib/security/appointment-access';
 import type { AuthContext } from '@/lib/security/auth-context';
-import { and, eq, lte } from 'drizzle-orm';
+import { and, eq, lte, sql } from 'drizzle-orm';
+import { calculateChargeBalance } from '@/lib/finance/ledger';
+import type { OnlinePaymentSnapshot } from '@/lib/finance/online-payment-view';
 import { findUniqueRecoveryOrder, getRecoverySearchOptions } from './recovery-policy';
 import { reconcileMercadoPagoOrder } from './reconciliation.service';
 
@@ -32,6 +39,15 @@ export async function refreshOnlinePayment(context: AuthContext, attemptId: stri
 				attempt: onlinePaymentAttemptsTable,
 				appointmentId: appointmentsTable.id,
 				petId: appointmentsTable.petId,
+				chargeStatus: appointmentChargesTable.status,
+				appointmentStatus: appointmentsTable.status,
+				isPaid: appointmentsTable.isPaid,
+				totalInCents: appointmentChargesTable.totalInCents,
+				paidInCents:
+					sql<number>`coalesce((select sum(${chargePaymentsTable.amountInCents}) from ${chargePaymentsTable} where ${chargePaymentsTable.chargeId} = ${appointmentChargesTable.id}), 0)`.mapWith(
+						Number,
+					),
+				hasReceipt: sql<boolean>`exists (select 1 from ${chargePaymentsTable} where ${chargePaymentsTable.onlinePaymentAttemptId} = ${onlinePaymentAttemptsTable.id} and ${chargePaymentsTable.source} = 'mercado_pago')`,
 			})
 			.from(onlinePaymentAttemptsTable)
 			.innerJoin(appointmentChargesTable, eq(appointmentChargesTable.id, onlinePaymentAttemptsTable.chargeId))
@@ -103,10 +119,26 @@ export async function refreshOnlinePayment(context: AuthContext, attemptId: stri
 	if (!current) throw new Error('Tentativa não encontrada.');
 	assertOnlinePaymentScope({ environment: config.environment, petId: current.petId });
 	const attempt = current.attempt;
-	const pix =
-		result &&
+	const balance = calculateChargeBalance(
+		current.totalInCents,
+		current.paidInCents === 0 ? [] : [{ amountInCents: current.paidInCents }],
+		current.chargeStatus === 'void',
+	);
+	// A confirmação visual exige o recebimento vinculado, não apenas um status remoto.
+	if (attempt.status === 'approved' && !current.hasReceipt) throw new Error('Recebimento não confirmado.');
+	const canShowPix =
 		attempt.status === 'pending' &&
 		attempt.method === 'pix' &&
+		current.chargeStatus === 'open' &&
+		current.appointmentStatus === 'completed' &&
+		!current.isPaid &&
+		balance.balanceInCents >= attempt.amountInCents &&
+		attempt.amountInCents > 0 &&
+		!!attempt.providerOrderId &&
+		!!attempt.providerPaymentId;
+	const pix =
+		result &&
+		canShowPix &&
 		attempt.providerOrderId === result.orderId &&
 		attempt.providerPaymentId === result.paymentId
 			? {
@@ -119,8 +151,16 @@ export async function refreshOnlinePayment(context: AuthContext, attemptId: stri
 		attemptId,
 		status: attempt.status,
 		amountInCents: attempt.amountInCents,
+		method: attempt.method,
+		installments: attempt.installments,
+		balanceInCents: balance.status === 'void' ? 0 : balance.balanceInCents,
 		pix,
+		retainPix:
+			!claimed.refresh &&
+			canShowPix &&
+			claimed.attempt.providerOrderId === attempt.providerOrderId &&
+			claimed.attempt.providerPaymentId === attempt.providerPaymentId,
 		remoteUnavailable,
 		retryAfterSeconds: REFRESH_INTERVAL_MS / 1000,
-	};
+	} satisfies OnlinePaymentSnapshot;
 }

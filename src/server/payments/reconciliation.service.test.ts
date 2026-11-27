@@ -162,7 +162,12 @@ describe('persistência da conciliação', () => {
 		expect(mocks.get.mock.invocationCallOrder[0]).toBeLessThan(mocks.transaction.mock.invocationCallOrder[0]!);
 		expect(mocks.execute).toHaveBeenCalledTimes(2);
 		expect(mocks.set).toHaveBeenCalledWith(
-			expect.objectContaining({ status: 'approved', providerOrderId: 'ORD123', approvedAt: expect.any(Date) }),
+			expect.objectContaining({
+				status: 'approved',
+				providerOrderId: 'ORD123',
+				approvedAt: expect.any(Date),
+				providerPaidAmountInCents: 15000,
+			}),
 		);
 		expect(mocks.values).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -203,4 +208,42 @@ describe('persistência da conciliação', () => {
 		await expect(reconcileMercadoPagoOrder('ORD123')).rejects.toThrow('constraint');
 		expect(mocks.set).not.toHaveBeenCalledWith(expect.objectContaining({ isPaid: true }));
 	});
+});
+
+it('registra somente o principal de cartão parcelado aprovado', async () => {
+	mocks.where
+		.mockReset()
+		.mockResolvedValueOnce([{ appointmentId: 'appointment' }])
+		.mockResolvedValueOnce([
+			{
+				...row,
+				attempt: { ...attempt, method: 'credit_card', installments: 2, amountInCents: 20000 },
+				charge: { ...row.charge, totalInCents: 20000 },
+			},
+		])
+		.mockResolvedValueOnce([]);
+	mocks.get.mockResolvedValue({
+		...order,
+		total_amount: '200.00',
+		total_paid_amount: '219.28',
+		transactions: {
+			payments: [
+				{
+					...order.transactions.payments[0],
+					amount: '200.00',
+					paid_amount: '219.28',
+					payment_method: { id: 'master', type: 'credit_card', installments: 2 },
+				},
+			],
+		},
+	});
+	await reconcileMercadoPagoOrder('ORD123');
+	expect(mocks.values).toHaveBeenCalledTimes(1);
+	expect(mocks.values).toHaveBeenCalledWith(
+		expect.objectContaining({ amountInCents: 20000, method: 'credit_card', onlinePaymentAttemptId: id }),
+	);
+	expect(mocks.set).toHaveBeenCalledWith(
+		expect.objectContaining({ status: 'approved', providerPaidAmountInCents: 21928 }),
+	);
+	expect(mocks.set).toHaveBeenCalledWith(expect.objectContaining({ isPaid: true }));
 });

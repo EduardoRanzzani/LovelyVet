@@ -152,3 +152,190 @@ describe('política de conciliação', () => {
 			]),
 		).toMatchObject({ kind: 'credit', settlesCharge: true }));
 });
+
+describe('recusas definitivas de cartão na API Orders', () => {
+	const cardAttempt = { ...attempt, method: 'credit_card' };
+	const cardPayment = {
+		...payment,
+		status: 'failed',
+		status_detail: 'rejected_by_issuer',
+		paid_amount: '0.00',
+		payment_method: { id: 'master', type: 'credit_card', installments: 1 },
+	};
+	const cardOrder = { ...rejected, transactions: { payments: [cardPayment] } };
+	it.each([
+		'rejected_by_issuer',
+		'insufficient_amount',
+		'bad_filled_card_data',
+		'card_disabled',
+		'invalid_installments',
+		'required_call_for_authorize',
+	])('libera recusa confirmada %s sem crédito', (detail) => {
+		const raw = { ...cardOrder, transactions: { payments: [{ ...cardPayment, status_detail: detail }] } };
+		expect(planReconciliation(raw, raw.id, cardAttempt, charge, [])).toMatchObject({
+			kind: 'update',
+			status: 'rejected',
+			settlesCharge: false,
+			providerOrderId: 'ORD123',
+			providerPaymentId: 'PAY123',
+		});
+	});
+	it.each(['processing_error', 'unknown_failure', 'high_risk'])('mantém revisão para %s', (detail) => {
+		const raw = { ...cardOrder, transactions: { payments: [{ ...cardPayment, status_detail: detail }] } };
+		expect(planReconciliation(raw, raw.id, cardAttempt, charge, [])).toMatchObject({ kind: 'review' });
+	});
+	it('não libera quando a Order não é terminal', () => {
+		const raw = { ...cardOrder, status: 'processing', status_detail: 'in_process' };
+		expect(planReconciliation(raw, raw.id, cardAttempt, charge, [])).toMatchObject({ kind: 'review' });
+	});
+	it('não libera quando houve valor pago', () => {
+		const raw = { ...cardOrder, total_paid_amount: '150.00' };
+		expect(planReconciliation(raw, raw.id, cardAttempt, charge, [])).toMatchObject({ kind: 'review' });
+	});
+	it('não desfaz revisão anterior automaticamente', () => {
+		expect(planReconciliation(cardOrder, cardOrder.id, { ...cardAttempt, status: 'review' }, charge, [])).toEqual({
+			kind: 'ignore',
+		});
+	});
+	it('aceita ausência de paid_amount se o total pago da Order for zero', () => {
+		const raw = { ...cardOrder, transactions: { payments: [{ ...cardPayment, paid_amount: undefined }] } };
+		expect(planReconciliation(raw, raw.id, cardAttempt, charge, [])).toMatchObject({
+			kind: 'update',
+			status: 'rejected',
+		});
+	});
+});
+
+describe('aprovação de cartão parcelado com acréscimo', () => {
+	const card = { ...attempt, method: 'credit_card', installments: 2, amountInCents: 20000 };
+	const bill = { ...charge, totalInCents: 20000 };
+	const receipt = { ...ledger, method: 'credit_card', amountInCents: 20000 };
+	const cardPayment = {
+		...payment,
+		amount: '200.00',
+		paid_amount: '219.28',
+		payment_method: { id: 'master', type: 'credit_card', installments: 2 },
+	};
+	const raw = {
+		...order,
+		total_amount: '200.00',
+		total_paid_amount: '219.28',
+		transactions: { payments: [cardPayment] },
+	};
+	it('credita o principal com acréscimo confirmado', () => {
+		expect(planReconciliation(raw, raw.id, card, bill, [])).toMatchObject({ kind: 'credit', settlesCharge: true });
+	});
+	it('ignora webhook repetido após crédito do principal', () => {
+		expect(planReconciliation(raw, raw.id, { ...card, status: 'approved' }, bill, [receipt])).toEqual({
+			kind: 'ignore',
+		});
+	});
+	it.each(['200.00', '199.99', '0.00', '219.2', '2e2', '-219.28', '999999999.00', undefined])(
+		'valida total pago %s',
+		(paid) => {
+			const changed = {
+				...raw,
+				total_paid_amount: paid,
+				transactions: { payments: [{ ...cardPayment, paid_amount: paid }] },
+			};
+			expect(planReconciliation(changed, raw.id, card, bill, [])).toMatchObject({
+				kind: paid === '200.00' ? 'credit' : 'review',
+			});
+		},
+	);
+	it('não aceita divergência entre os totais efetivamente pagos', () => {
+		expect(planReconciliation({ ...raw, total_paid_amount: '219.29' }, raw.id, card, bill, [])).toMatchObject({
+			kind: 'review',
+		});
+	});
+	it('não flexibiliza cartão à vista', () => {
+		const single = {
+			...raw,
+			transactions: {
+				payments: [{ ...cardPayment, payment_method: { ...cardPayment.payment_method, installments: 1 } }],
+			},
+		};
+		expect(planReconciliation(single, raw.id, { ...card, installments: 1 }, bill, [])).toMatchObject({
+			kind: 'review',
+		});
+	});
+	it('não flexibiliza Pix', () => {
+		const pix = {
+			...raw,
+			transactions: { payments: [{ ...cardPayment, payment_method: payment.payment_method }] },
+		};
+		expect(planReconciliation(pix, raw.id, { ...card, method: 'pix', installments: 1 }, bill, [])).toMatchObject({
+			kind: 'review',
+		});
+	});
+	it('mantém revisão quando o principal diverge', () => {
+		expect(planReconciliation({ ...raw, total_amount: '219.28' }, raw.id, card, bill, [])).toMatchObject({
+			kind: 'review',
+			reason: 'remote_amount_mismatch',
+		});
+	});
+	it('mantém revisão quando as parcelas divergem', () => {
+		expect(planReconciliation(raw, raw.id, { ...card, installments: 3 }, bill, [])).toMatchObject({
+			kind: 'review',
+			reason: 'remote_method_mismatch',
+		});
+	});
+	it('não credita acima do saldo', () => {
+		expect(planReconciliation(raw, raw.id, card, { ...bill, totalInCents: 19900 }, [])).toMatchObject({
+			kind: 'review',
+			reason: 'payment_exceeds_balance',
+		});
+	});
+	it('não resolve revisão existente automaticamente', () => {
+		expect(planReconciliation(raw, raw.id, { ...card, status: 'review' }, bill, [])).toEqual({ kind: 'ignore' });
+	});
+	it('não ignora divergência após crédito', () => {
+		expect(
+			planReconciliation({ ...raw, total_paid_amount: '219.29' }, raw.id, { ...card, status: 'approved' }, bill, [
+				receipt,
+			]),
+		).toMatchObject({ kind: 'review', reason: 'post_approval_amount_mismatch' });
+	});
+});
+
+describe('total confirmado pelo comprador', () => {
+	it('persiste o total confirmado sem alterar o principal', () => {
+		expect(planReconciliation(order, order.id, attempt, charge, [])).toMatchObject({
+			kind: 'credit',
+			providerPaidAmountInCents: attempt.amountInCents,
+		});
+	});
+	it('complementa tentativa histórica somente com aprovação e ledger compatíveis', () => {
+		expect(
+			planReconciliation(
+				order,
+				order.id,
+				{ ...attempt, status: 'approved', providerPaidAmountInCents: null },
+				charge,
+				[ledger],
+			),
+		).toEqual({ kind: 'enrich', providerPaidAmountInCents: attempt.amountInCents });
+	});
+	it('não sobrescreve valor confirmado divergente', () => {
+		expect(
+			planReconciliation(
+				order,
+				order.id,
+				{ ...attempt, status: 'approved', providerPaidAmountInCents: attempt.amountInCents + 1 },
+				charge,
+				[ledger],
+			),
+		).toEqual({ kind: 'review', reason: 'post_approval_amount_mismatch' });
+	});
+	it('ignora duplicata com total já confirmado', () => {
+		expect(
+			planReconciliation(
+				order,
+				order.id,
+				{ ...attempt, status: 'approved', providerPaidAmountInCents: attempt.amountInCents },
+				charge,
+				[ledger],
+			),
+		).toEqual({ kind: 'ignore' });
+	});
+});

@@ -6,7 +6,7 @@ import type { CardPayment } from '@mercadopago/sdk-react';
 const mocks = vi.hoisted(() => ({ init: vi.fn(), submitResult: vi.fn(), customization: vi.fn() }));
 vi.mock('@mercadopago/sdk-react', () => ({
 	initMercadoPago: mocks.init,
-	CardPayment: ({ onSubmit, customization }: ComponentProps<typeof CardPayment>) => {
+	CardPayment: ({ onSubmit, customization, initialization }: ComponentProps<typeof CardPayment>) => {
 		mocks.customization(customization);
 		return (
 			<button
@@ -17,7 +17,7 @@ vi.mock('@mercadopago/sdk-react', () => ({
 							token: 'fake_token',
 							payment_method_id: 'visa',
 							issuer_id: 'test',
-							transaction_amount: 200,
+							transaction_amount: initialization.amount,
 							installments: 1,
 							payer: {},
 						},
@@ -67,6 +67,7 @@ describe('OnlineCardPaymentBrick', () => {
 				chargeId,
 				method: 'credit_card',
 				expectedBalanceInCents: 20000,
+				amountInCents: 20000,
 				token: 'fake_token',
 				paymentMethodId: 'visa',
 				installments: 1,
@@ -74,4 +75,15 @@ describe('OnlineCardPaymentBrick', () => {
 		);
 		await waitFor(() => expect(mocks.submitResult).toHaveBeenCalledWith(true));
 	});
+});
+
+it('tokeniza o principal parcial e preserva o saldo esperado', async () => {
+	const onPayment = vi.fn().mockResolvedValue(true);
+	render(<Brick chargeId={chargeId} balanceInCents={20000} amountInCents={10000} canSubmit onPayment={onPayment} />);
+	fireEvent.click(screen.getByRole('button', { name: 'Simular envio do Brick' }));
+	await waitFor(() =>
+		expect(onPayment).toHaveBeenCalledWith(
+			expect.objectContaining({ expectedBalanceInCents: 20000, amountInCents: 10000 }),
+		),
+	);
 });

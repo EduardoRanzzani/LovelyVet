@@ -380,6 +380,7 @@ export const onlinePaymentAttemptsTable = pgTable(
 		environment: text('environment').notNull(),
 		collectorId: text('collector_id').notNull(),
 		amountInCents: integer('amount_in_cents').notNull(),
+		providerPaidAmountInCents: integer('provider_paid_amount_in_cents'),
 		method: text('method').notNull(),
 		installments: integer('installments').notNull().default(1),
 		status: text('status').notNull().default('created'),
@@ -396,6 +397,10 @@ export const onlinePaymentAttemptsTable = pgTable(
 	(table) => [
 		check('online_attempt_environment_valid', sql`${table.environment} IN ('test','production')`),
 		check('online_attempt_amount_positive', sql`${table.amountInCents} > 0`),
+		check(
+			'online_attempt_provider_paid_valid',
+			sql`${table.providerPaidAmountInCents} IS NULL OR (${table.providerPaidAmountInCents} >= ${table.amountInCents} AND ((${table.method} = 'credit_card' AND ${table.installments} > 1) OR ${table.providerPaidAmountInCents} = ${table.amountInCents}))`,
+		),
 		check('online_attempt_method_valid', sql`${table.method} IN ('pix','credit_card','debit_card')`),
 		check(
 			'online_attempt_installments_valid',

@@ -35,11 +35,22 @@ const attempt = {
 	status: 'processing',
 	method: 'pix',
 	amountInCents: 15000,
+	installments: 1,
 	providerOrderId: 'ORD123',
 	providerPaymentId: 'PAY123',
 	createdAt: new Date('2026-11-25T12:00:00Z'),
 };
-const row = { attempt, appointmentId: 'appointment', petId: PAYMENT_TEST_PET_ID };
+const row = {
+	attempt,
+	appointmentId: 'appointment',
+	petId: PAYMENT_TEST_PET_ID,
+	chargeStatus: 'open',
+	appointmentStatus: 'completed',
+	isPaid: false,
+	totalInCents: 15000,
+	paidInCents: 0,
+	hasReceipt: false,
+};
 const pending = { ...row, attempt: { ...attempt, status: 'pending' } };
 const pix = { code: '000201TESTE', pngBase64: 'png' };
 
@@ -78,6 +89,10 @@ describe('sincronização ativa', () => {
 			attemptId: id,
 			status: 'pending',
 			amountInCents: 15000,
+			method: 'pix',
+			installments: 1,
+			balanceInCents: 15000,
+			retainPix: false,
 			pix,
 			remoteUnavailable: false,
 			retryAfterSeconds: 15,
@@ -115,7 +130,11 @@ describe('sincronização ativa', () => {
 	});
 	it('respeita reserva de consulta concorrente', async () => {
 		mocks.claim.mockResolvedValue([]);
-		await expect(refreshOnlinePayment(context, id)).resolves.toMatchObject({ pix: null, remoteUnavailable: false });
+		await expect(refreshOnlinePayment(context, id)).resolves.toMatchObject({
+			pix: null,
+			remoteUnavailable: false,
+			retainPix: true,
+		});
 		expect(mocks.reconcile).not.toHaveBeenCalled();
 	});
 	it('não expõe Pix se o vínculo foi removido durante a consulta', async () => {
@@ -127,7 +146,15 @@ describe('sincronização ativa', () => {
 			.mockReset()
 			.mockResolvedValueOnce([row])
 			.mockResolvedValueOnce([row])
-			.mockResolvedValueOnce([{ ...row, attempt: { ...attempt, status: 'approved' } }]);
+			.mockResolvedValueOnce([
+				{
+					...row,
+					attempt: { ...attempt, status: 'approved' },
+					hasReceipt: true,
+					isPaid: true,
+					paidInCents: 15000,
+				},
+			]);
 		await expect(refreshOnlinePayment(context, id)).resolves.toMatchObject({ status: 'approved', pix: null });
 	});
 	it('não propaga falha remota nem libera tentativa', async () => {
@@ -137,6 +164,57 @@ describe('sincronização ativa', () => {
 			status: 'processing',
 			pix: null,
 			remoteUnavailable: true,
+		});
+	});
+	it('não mantém Pix anterior se a cobrança ou o saldo mudou durante o cooldown', async () => {
+		mocks.claim.mockResolvedValue([]);
+		mocks.where
+			.mockReset()
+			.mockResolvedValueOnce([pending])
+			.mockResolvedValueOnce([pending])
+			.mockResolvedValueOnce([{ ...pending, paidInCents: 1000 }]);
+		expect(await refreshOnlinePayment(context, id)).toMatchObject({
+			pix: null,
+			retainPix: false,
+			balanceInCents: 14000,
+		});
+		expect(mocks.reconcile).not.toHaveBeenCalled();
+	});
+	it('não confirma tentativa aprovada sem recebimento efetivamente vinculado', async () => {
+		const approved = { ...row, attempt: { ...attempt, status: 'approved' } };
+		mocks.where.mockReset().mockResolvedValue([approved]);
+		await expect(refreshOnlinePayment(context, id)).rejects.toThrow('Recebimento não confirmado.');
+		expect(mocks.reconcile).not.toHaveBeenCalled();
+	});
+	it('retorna confirmação de cartão parcelado com saldo real sem consultar o provedor', async () => {
+		const approved = {
+			...row,
+			attempt: { ...attempt, status: 'approved', method: 'credit_card', installments: 3 },
+			totalInCents: 20000,
+			paidInCents: 15000,
+			hasReceipt: true,
+		};
+		mocks.where.mockReset().mockResolvedValue([approved]);
+		expect(await refreshOnlinePayment(context, id)).toMatchObject({
+			status: 'approved',
+			method: 'credit_card',
+			installments: 3,
+			amountInCents: 15000,
+			balanceInCents: 5000,
+			pix: null,
+			retainPix: false,
+		});
+		expect(mocks.claim).not.toHaveBeenCalled();
+		expect(mocks.reconcile).not.toHaveBeenCalled();
+	});
+	it('mantém QR de Pix parcial durante cooldown se o saldo cobre o principal', async () => {
+		mocks.claim.mockResolvedValue([]);
+		const partial = { ...pending, totalInCents: 20000 };
+		mocks.where.mockReset().mockResolvedValue([partial]);
+		expect(await refreshOnlinePayment(context, id)).toMatchObject({
+			status: 'pending',
+			retainPix: true,
+			balanceInCents: 20000,
 		});
 	});
 });

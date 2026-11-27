@@ -10,11 +10,7 @@ import {
 import type { OnlinePaymentInput } from '@/api/schema/online-payment.schema';
 import { requireFinancialTutorId, buildFinancialAccessCondition } from '@/lib/finance/financial-access';
 import { assertOnlinePaymentScope } from '@/lib/finance/online-payment-scope';
-import {
-	assertExpectedOnlinePaymentBalance,
-	assertNoBlockingOnlinePayment,
-	getOnlinePaymentAmount,
-} from '@/lib/finance/online-payment-reservation';
+import { assertNoBlockingOnlinePayment, getOnlinePaymentAmount } from '@/lib/finance/online-payment-reservation';
 import {
 	assertMercadoPagoEnabled,
 	assertMercadoPagoTestCollector,
@@ -65,18 +61,24 @@ export async function createOnlinePayment(context: AuthContext, input: OnlinePay
 							eq(appointmentChargesTable.appointmentId, appointment.id),
 						),
 					);
-				if (!charge || appointment.status !== 'completed') throw new Error('Cobrança não disponível.');
+				if (!charge || appointment.status !== 'completed') {
+					throw new Error('Cobrança não disponível.');
+				}
 				const attempts = await tx
-					.select({ status: onlinePaymentAttemptsTable.status })
+					.select({
+						id: onlinePaymentAttemptsTable.id,
+						status: onlinePaymentAttemptsTable.status,
+						amountInCents: onlinePaymentAttemptsTable.amountInCents,
+						method: onlinePaymentAttemptsTable.method,
+					})
 					.from(onlinePaymentAttemptsTable)
 					.where(eq(onlinePaymentAttemptsTable.chargeId, charge.id));
-				assertNoBlockingOnlinePayment(attempts);
 				const payments = await tx
-					.select({ amountInCents: chargePaymentsTable.amountInCents })
+					.select()
 					.from(chargePaymentsTable)
 					.where(eq(chargePaymentsTable.chargeId, charge.id));
-				const amountInCents = getOnlinePaymentAmount(charge, payments);
-				assertExpectedOnlinePaymentBalance(input, amountInCents);
+				assertNoBlockingOnlinePayment(attempts, payments);
+				const amountInCents = getOnlinePaymentAmount(charge, payments, input);
 				const [user] = await tx
 					.select({ email: usersTable.email })
 					.from(usersTable)

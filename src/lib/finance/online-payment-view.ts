@@ -4,6 +4,20 @@ export type OnlinePaymentOption = {
 	testMode: boolean;
 };
 
+export type OnlinePaymentSnapshot = {
+	attemptId: string;
+	status: string;
+	amountInCents: number;
+	method: string;
+	installments: number;
+	balanceInCents: number;
+	pix: { code: string; pngBase64: string | null; expiresAt?: string } | null;
+	// O servidor confirma que o Pix anterior ainda pode ser exibido durante o cooldown remoto.
+	retainPix: boolean;
+	remoteUnavailable: boolean;
+	retryAfterSeconds: number;
+};
+
 export function canOfferOnlinePayment(charge: { status: string; balanceInCents: number }, appointmentStatus: string) {
 	return (
 		charge.status === 'open' &&
