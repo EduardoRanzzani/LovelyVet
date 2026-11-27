@@ -8,6 +8,8 @@ import { NumericFormat, NumericFormatProps } from 'react-number-format';
 // Estendemos as props do NumericFormat para manter o comportamento de moeda
 interface MoneyInputFormProps<T extends FieldValues> extends Omit<NumericFormatProps, 'name'> {
 	label: string;
+	/** Mantém a entrada decimal como texto durante a edição. */
+	preserveNumericString?: boolean;
 	error?: string;
 	name: Path<T>;
 	control: Control<T>; // Usamos Control em vez de Register para componentes controlados
@@ -23,6 +25,7 @@ const MoneyInputForm = <T extends FieldValues>({
 	className,
 	required,
 	disabled,
+	preserveNumericString = false,
 	...props
 }: MoneyInputFormProps<T>) => {
 	const inputId = props.id || name;
@@ -37,20 +40,23 @@ const MoneyInputForm = <T extends FieldValues>({
 				name={name}
 				control={control}
 				rules={rules}
-				render={({ field: { onChange, value, ref } }) => (
+				render={({ field: { onChange, onBlur, value, ref } }) => (
 					<NumericFormat
 						{...props}
 						getInputRef={ref} // Importante para o foco do RHF
 						id={inputId}
-						value={value}
-						onValueChange={(values) => {
+						value={preserveNumericString ? (value ?? '') : value}
+						valueIsNumericString={preserveNumericString ? true : props.valueIsNumericString}
+						onBlur={onBlur}
+						onValueChange={(values, sourceInfo) => {
+							if (preserveNumericString && sourceInfo.source !== 'event') return;
 							// Enviamos o floatValue (ex: 10.50) para o estado do formulário
-							onChange(values.floatValue);
+							onChange(preserveNumericString ? values.value : values.floatValue);
 						}}
 						disabled={disabled}
 						// Configurações padrão de moeda brasileira
 						decimalScale={2}
-						fixedDecimalScale
+						fixedDecimalScale={!preserveNumericString}
 						decimalSeparator=','
 						thousandSeparator='.'
 						prefix='R$ '

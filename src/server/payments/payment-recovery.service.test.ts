@@ -218,3 +218,39 @@ describe('sincronização ativa', () => {
 		});
 	});
 });
+
+it('retorna principal e total remoto distintos apenas na confirmação autorizada', async () => {
+	const approved = {
+		...row,
+		attempt: {
+			...attempt,
+			status: 'approved',
+			method: 'credit_card',
+			installments: 2,
+			providerPaidAmountInCents: 16446,
+		},
+		totalInCents: 20000,
+		paidInCents: 15000,
+		hasReceipt: true,
+		receipts: [
+			{
+				amountInCents: 15000,
+				method: 'credit_card',
+				current: true,
+				ownOnline: true,
+				providerPaidAmountInCents: 16446,
+				installments: 2,
+			},
+		],
+	};
+	mocks.where.mockReset().mockResolvedValue([approved]);
+	expect(await refreshOnlinePayment(context, id)).toMatchObject({
+		confirmation: {
+			totalInCents: 20000,
+			paidInCents: 15000,
+			providerPaidAmountInCents: 16446,
+			receipts: approved.receipts,
+		},
+		balanceInCents: 5000,
+	});
+});

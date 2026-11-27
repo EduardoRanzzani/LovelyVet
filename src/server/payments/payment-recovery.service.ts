@@ -15,7 +15,7 @@ import { lockAccessibleAppointment } from '@/lib/security/appointment-access';
 import type { AuthContext } from '@/lib/security/auth-context';
 import { and, eq, lte, sql } from 'drizzle-orm';
 import { calculateChargeBalance } from '@/lib/finance/ledger';
-import type { OnlinePaymentSnapshot } from '@/lib/finance/online-payment-view';
+import type { OnlinePaymentSnapshot, PaymentReceiptView } from '@/lib/finance/online-payment-view';
 import { findUniqueRecoveryOrder, getRecoverySearchOptions } from './recovery-policy';
 import { reconcileMercadoPagoOrder } from './reconciliation.service';
 
@@ -47,7 +47,21 @@ export async function refreshOnlinePayment(context: AuthContext, attemptId: stri
 					sql<number>`coalesce((select sum(${chargePaymentsTable.amountInCents}) from ${chargePaymentsTable} where ${chargePaymentsTable.chargeId} = ${appointmentChargesTable.id}), 0)`.mapWith(
 						Number,
 					),
-				hasReceipt: sql<boolean>`exists (select 1 from ${chargePaymentsTable} where ${chargePaymentsTable.onlinePaymentAttemptId} = ${onlinePaymentAttemptsTable.id} and ${chargePaymentsTable.source} = 'mercado_pago')`,
+				receipts: sql<PaymentReceiptView[]>`coalesce((select jsonb_agg(jsonb_build_object(
+                    'amountInCents', p.amount_in_cents, 'method', p.method,
+                    'current', coalesce(p.online_payment_attempt_id = ${onlinePaymentAttemptsTable.id}, false),
+                    'ownOnline', a.id is not null,
+                    'providerPaidAmountInCents', a.provider_paid_amount_in_cents,
+                    'installments', a.installments
+                ) order by p.received_at, p.id)
+                from charge_payments p
+                left join online_payment_attempts a on a.id = p.online_payment_attempt_id
+                    and a.charge_id = p.charge_id and a.amount_in_cents = p.amount_in_cents
+                    and a.method = p.method and p.source = 'mercado_pago' and p.operation_key = a.id
+                    and a.status = 'approved' and a.initiated_by = ${context.userId}
+                    and a.environment = ${config.environment} and a.collector_id = ${config.collectorId}
+                where p.charge_id = ${appointmentChargesTable.id}), '[]'::jsonb)`,
+				hasReceipt: sql<boolean>`exists (select 1 from ${chargePaymentsTable} where ${chargePaymentsTable.onlinePaymentAttemptId} = ${onlinePaymentAttemptsTable.id} and ${chargePaymentsTable.source} = 'mercado_pago' and ${chargePaymentsTable.chargeId} = ${appointmentChargesTable.id} and ${chargePaymentsTable.operationKey} = ${onlinePaymentAttemptsTable.id} and ${chargePaymentsTable.amountInCents} = ${onlinePaymentAttemptsTable.amountInCents} and ${chargePaymentsTable.method} = ${onlinePaymentAttemptsTable.method})`,
 			})
 			.from(onlinePaymentAttemptsTable)
 			.innerJoin(appointmentChargesTable, eq(appointmentChargesTable.id, onlinePaymentAttemptsTable.chargeId))
@@ -148,6 +162,16 @@ export async function refreshOnlinePayment(context: AuthContext, attemptId: stri
 				}
 			: null;
 	return {
+		...(attempt.status === 'approved'
+			? {
+					confirmation: {
+						totalInCents: balance.totalInCents,
+						paidInCents: balance.paidInCents,
+						providerPaidAmountInCents: attempt.providerPaidAmountInCents ?? null,
+						receipts: current.receipts ?? [],
+					},
+				}
+			: {}),
 		attemptId,
 		status: attempt.status,
 		amountInCents: attempt.amountInCents,

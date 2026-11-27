@@ -542,7 +542,9 @@ describe('layout exclusivo de confirmação', () => {
 		await tick(3000);
 		expect(screen.getByLabelText('Valores do pagamento')).toHaveTextContent('Saldo restante');
 		expect(screen.getByRole('region', { name: 'Detalhes do pagamento' })).toHaveTextContent('2x');
-		expect(screen.getByRole('region', { name: 'Detalhes do pagamento' })).toHaveTextContent('Mercado Pago');
+		expect(screen.getByRole('region', { name: 'Detalhes do pagamento' })).toHaveTextContent(
+			'Total pago nesta operação',
+		);
 		expect(screen.getByRole('link', { name: 'Voltar ao meu financeiro' })).toHaveAttribute(
 			'href',
 			props.returnHref,
@@ -580,4 +582,75 @@ describe('seleção de valor', () => {
 		expect(screen.getByRole('button', { name: 'Gerar Pix' })).toBeDisabled();
 		expect(mocks.start).not.toHaveBeenCalled();
 	});
+});
+
+it('exibe demonstrativo autorizado e permite continuar apenas após atualização do saldo', async () => {
+	vi.useFakeTimers();
+	mocks.sync.mockResolvedValue({
+		data: snapshot({
+			status: 'approved',
+			amountInCents: 10000,
+			balanceInCents: 10000,
+			confirmation: {
+				totalInCents: 20000,
+				paidInCents: 10000,
+				providerPaidAmountInCents: 10000,
+				receipts: [
+					{
+						amountInCents: 10000,
+						method: 'pix',
+						current: true,
+						ownOnline: true,
+						providerPaidAmountInCents: 10000,
+						installments: 1,
+					},
+				],
+			},
+		}),
+	});
+	const { rerender } = render(
+		<OnlinePaymentCheckout
+			{...existing}
+			items={[
+				{
+					chargeId: 'charge',
+					id: 'service',
+					kind: 'service',
+					name: 'Perfil Básico',
+					quantity: 1,
+					unitPriceInCents: 20000,
+					discountInCents: 0,
+				},
+			]}
+		/>,
+	);
+	await tick(3000);
+	expect(screen.getByText('Perfil Básico')).toBeInTheDocument();
+	expect(screen.getByText('50% pago')).toBeInTheDocument();
+	expect(screen.queryByRole('button', { name: 'Pagar saldo restante' })).not.toBeInTheDocument();
+	rerender(<OnlinePaymentCheckout {...props} balanceInCents={10000} option={{ ...props.option, canStart: true }} />);
+	fireEvent.click(screen.getByRole('button', { name: 'Pagar saldo restante' }));
+	expect(screen.getByRole('button', { name: 'Gerar Pix' })).toBeEnabled();
+	vi.useRealTimers();
+});
+
+it('permite editar o valor parcial a partir de um campo vazio, inclusive centavos e exclusão', () => {
+	render(<OnlinePaymentCheckout {...props} option={{ ...props.option, canStart: true }} />);
+	fireEvent.click(screen.getByRole('radio', { name: 'Pagar outro valor' }));
+	const input = screen.getByLabelText('Valor desejado');
+	const pix = screen.getByRole('button', { name: 'Gerar Pix' });
+	expect(input).toHaveValue('');
+	expect(pix).toBeDisabled();
+	for (const value of ['R$ 5', 'R$ 50', 'R$ 50,', 'R$ 50,5', 'R$ 50,50']) {
+		fireEvent.change(input, { target: { value } });
+		expect(input).toHaveValue(value);
+		expect(pix).toBeEnabled();
+	}
+	fireEvent.change(input, { target: { value: '' } });
+	expect(input).toHaveValue('');
+	expect(pix).toBeDisabled();
+	fireEvent.change(input, { target: { value: 'R$ 0,01' } });
+	expect(input).toHaveValue('R$ 0,01');
+	expect(pix).toBeEnabled();
+	expect(mocks.start).not.toHaveBeenCalled();
 });

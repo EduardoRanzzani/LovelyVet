@@ -99,6 +99,7 @@ export default async function PaymentPage({
 			petName={charge.petName}
 			returnHref={returnHref}
 			summary={summary}
+			items={items}
 		/>
 	) : (
 		<OnlinePaymentLayout summary={summary} returnHref={returnHref}>

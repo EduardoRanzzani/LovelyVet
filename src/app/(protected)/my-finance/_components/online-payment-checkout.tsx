@@ -1,5 +1,6 @@
 'use client';
 
+import type { StatementItem } from '@/lib/finance/customer-statement';
 import type { ReactNode } from 'react';
 import { OnlinePaymentLayout } from './online-payment-layout';
 import Image from 'next/image';
@@ -30,13 +31,23 @@ type Props = {
 	petName: string;
 	returnHref: string;
 	summary?: ReactNode;
+	items?: readonly StatementItem[];
 };
 
-export function OnlinePaymentCheckout({ chargeId, balanceInCents, option, petName, returnHref, summary }: Props) {
+export function OnlinePaymentCheckout({
+	chargeId,
+	balanceInCents,
+	option,
+	petName,
+	returnHref,
+	summary,
+	items,
+}: Props) {
 	const { refresh } = useRouter();
 	const [amountMode, setAmountMode] = useState<'full' | 'partial'>('full');
-	const { control, reset } = useForm<{ amount: number }>({ defaultValues: { amount: fromCents(balanceInCents) } });
-	const partialAmount = useWatch({ control, name: 'amount' });
+	const { control, reset } = useForm<{ amount: string }>({ defaultValues: { amount: '' } });
+	const partialInput = useWatch({ control, name: 'amount' });
+	const partialAmount = Number(partialInput);
 	const [method, setMethod] = useState<'pix' | 'credit_card'>('pix');
 	const [localAttemptId, setAttemptId] = useState(option.attemptId);
 	const attemptId = localAttemptId ?? option.attemptId;
@@ -233,7 +244,7 @@ export function OnlinePaymentCheckout({ chargeId, balanceInCents, option, petNam
 		setMessage('');
 		setMethod('pix');
 		setAmountMode('full');
-		reset({ amount: fromCents(balanceInCents) });
+		reset({ amount: '' });
 	}
 	const testNotice = option.testMode && (
 		<p className='rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900'>
@@ -241,12 +252,33 @@ export function OnlinePaymentCheckout({ chargeId, balanceInCents, option, petNam
 		</p>
 	);
 	if (snapshot?.status === 'approved') {
+		// A atualização do servidor deve confirmar saldo e elegibilidade antes de liberar nova operação.
+		const canContinue =
+			!busy &&
+			option.canStart &&
+			!option.attemptId &&
+			snapshot.balanceInCents > 0 &&
+			snapshot.balanceInCents === balanceInCents;
+		const continuePayment = () => {
+			if (!canContinue || running.current) return;
+			startAttempted.current = false;
+			setAttemptId(null);
+			setSnapshot(null);
+			setUncertainStart(false);
+			setSyncFailed(false);
+			setMessage('');
+			setMethod('pix');
+			setAmountMode('full');
+			reset({ amount: '' });
+		};
 		const success = (
 			<OnlinePaymentSuccess
 				payment={snapshot}
 				petName={petName}
 				returnHref={returnHref}
 				testMode={option.testMode}
+				items={items}
+				onContinue={canContinue ? continuePayment : undefined}
 			/>
 		);
 		return summary ? (
@@ -403,9 +435,12 @@ export function OnlinePaymentCheckout({ chargeId, balanceInCents, option, petNam
 								control={control}
 								name='amount'
 								label='Valor desejado'
+								preserveNumericString
+								placeholder='R$ 0,00'
+								inputMode='decimal'
 								disabled={busy || uncertainStart}
 								error={
-									!validAmount
+									partialInput !== '' && !validAmount
 										? `Informe um valor positivo de até ${formatCurrencyFromCents(balanceInCents)}.`
 										: undefined
 								}

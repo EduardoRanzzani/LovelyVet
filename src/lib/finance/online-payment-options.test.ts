@@ -102,3 +102,19 @@ describe('opções do checkout individual', () => {
 		).toEqual({ canStart: false, attemptId: null, testMode: true });
 	});
 });
+
+it('recupera a aprovação própria mais recente em cobrança quitada por múltiplas operações', async () => {
+	mocks.where
+		.mockReset()
+		.mockResolvedValueOnce([scopedRow])
+		.mockResolvedValueOnce([
+			{ ...approved, approvedAt: new Date('2026-11-25') },
+			{ ...approved, id: 'latest', approvedAt: new Date('2026-11-26') },
+			{ ...approved, id: 'other', initiatedBy: 'other', approvedAt: new Date('2026-11-27') },
+		]);
+	expect((await getOwnOnlinePaymentOptions(context, [charge], true)).get(charge.id)).toEqual({
+		canStart: false,
+		attemptId: 'latest',
+		testMode: true,
+	});
+});

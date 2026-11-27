@@ -4,7 +4,24 @@ export type OnlinePaymentOption = {
 	testMode: boolean;
 };
 
+export type PaymentReceiptView = {
+	amountInCents: number;
+	method: string;
+	current: boolean;
+	ownOnline: boolean;
+	providerPaidAmountInCents: number | null;
+	installments: number | null;
+};
+
+export type PaymentConfirmation = {
+	totalInCents: number;
+	paidInCents: number;
+	providerPaidAmountInCents: number | null;
+	receipts: PaymentReceiptView[];
+};
+
 export type OnlinePaymentSnapshot = {
+	confirmation?: PaymentConfirmation;
 	attemptId: string;
 	status: string;
 	amountInCents: number;

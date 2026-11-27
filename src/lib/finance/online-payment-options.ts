@@ -66,6 +66,7 @@ export async function getOwnOnlinePaymentOptions(
 			chargeId: onlinePaymentAttemptsTable.chargeId,
 			initiatedBy: onlinePaymentAttemptsTable.initiatedBy,
 			status: onlinePaymentAttemptsTable.status,
+			approvedAt: onlinePaymentAttemptsTable.approvedAt,
 			inScope: sql<boolean>`(${onlinePaymentAttemptsTable.environment} = ${config.environment} and ${onlinePaymentAttemptsTable.collectorId} = ${config.collectorId})`,
 			hasReceipt: sql<boolean>`exists (select 1 from ${chargePaymentsTable} where ${chargePaymentsTable.onlinePaymentAttemptId} = ${onlinePaymentAttemptsTable.id} and ${chargePaymentsTable.chargeId} = ${onlinePaymentAttemptsTable.chargeId} and ${chargePaymentsTable.operationKey} = ${onlinePaymentAttemptsTable.id} and ${chargePaymentsTable.amountInCents} = ${onlinePaymentAttemptsTable.amountInCents} and ${chargePaymentsTable.method} = ${onlinePaymentAttemptsTable.method} and ${chargePaymentsTable.source} = 'mercado_pago')`,
 		})
@@ -98,13 +99,15 @@ export async function getOwnOnlinePaymentOptions(
 			(isActivePaymentStatus(blocking[0].status) || blocking[0].status === 'review')
 				? blocking[0]
 				: undefined;
-		// Sem ID explícito, só recuperar aprovação inequívoca de cobrança quitada.
-		const ownApproved = related.filter(
-			(a) => a.inScope && a.initiatedBy === context.userId && a.status === 'approved' && a.hasReceipt,
-		);
+		// Recupera a aprovação própria mais recente apenas na cobrança quitada; nunca sobrepõe bloqueios.
+		const ownApproved = related
+			.filter((a) => a.inScope && a.initiatedBy === context.userId && a.status === 'approved' && a.hasReceipt)
+			.sort(
+				(a, b) => (b.approvedAt?.getTime() ?? 0) - (a.approvedAt?.getTime() ?? 0) || b.id.localeCompare(a.id),
+			);
 		const own =
 			ownBlocking ??
-			(includeApproved && !eligible && blocking.length === 0 && ownApproved.length === 1
+			(includeApproved && !eligible && blocking.length === 0 && ownApproved.length > 0
 				? ownApproved[0]
 				: undefined);
 		if (!own && (!eligible || (!ready && config.environment !== 'test'))) continue;

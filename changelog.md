@@ -335,3 +335,17 @@ Arquivos de código e testes alterados neste fix:
 - Fix 06B validado: 1.122 testes em 109 arquivos, migration 0049 aplicada com hash conferido, sem novo backup por decisão do responsável. Sincronização autenticada e repetida da tentativa histórica de teste confirmou principal 20000, total remoto 21928 e um único recebimento.
 - Checkout reutiliza MoneyInputForm, React Hook Form e utilitários monetários; valor integral por padrão, parcial opcional. Pix e cartão enviam principal solicitado e saldo esperado distintos; Brick recebe o principal e valida o valor tokenizado. Backend mantém lock e reserva exclusiva.
 - Alteração do valor remonta Brick; estabilidade no navegador e homologação real continuam pendentes. Continuidade direta após aprovação parcial, histórico autorizado e demonstrativo ficam no Fix 07B. Sem migration ou dependência nova. Não fazer commit/push.
+
+## 5.1C — Fix 07B: demonstrativo financeiro
+
+- Fix 07A validado com 1.127 testes em 109 arquivos; checkpoint local informado pelo responsável, sem push.
+- Confirmação horizontal apresenta itens históricos do atendimento, principal, saldo, progresso, recebimentos da cobrança e total remoto da operação. Dados complementares de outros tutores não são expostos; totais próprios online ficam indisponíveis se houver valores desconhecidos. Parcelamento exibe quantidade, sem presumir valor individual das parcelas.
+- Continuidade explícita após aprovação parcial depende de opção autorizada atualizada e saldo igual ao snapshot; backend mantém reserva exclusiva e lock. Reabertura de cobrança quitada recupera aprovação própria mais recente, sem sobrepor bloqueios.
+- Sem migration, dependência ou alteração de dados. Testes locais e homologação real pendentes (Pix, cartão, combinação, concorrência, Brick). Não fazer push antes da homologação.
+
+## 5.1C — Fix 07C: edição do valor monetário
+
+- Fix 07B: validações automatizadas e homologação visual (17/17) informadas pelo responsável.
+- Checkout parcial inicia vazio; MoneyInputForm preserva texto decimal durante a edição somente quando explicitamente solicitado. Outros formulários mantêm o contrato numérico e a escala fixa padrão.
+- Conversão para centavos e limites de saldo continuam no checkout e no servidor; campo vazio não permite iniciar pagamento.
+- Teste de edição incremental e exclusão adicionado; execução local e validação do cursor no navegador pendentes. Sem migration, dependência ou alteração no banco.
