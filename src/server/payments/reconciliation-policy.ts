@@ -94,7 +94,7 @@ function readPaidAmount(
 	amount: string,
 	orderPaid: string | undefined,
 	paymentPaid: string | undefined,
-): { valid: true; cents: number | null } | { valid: false } {
+): { valid: true; cents: number } | { valid: false } {
 	if (attempt.method !== 'credit_card' || attempt.installments <= 1)
 		return orderPaid === amount && paymentPaid === amount
 			? { valid: true, cents: attempt.amountInCents }
@@ -108,8 +108,8 @@ function readPaidAmount(
 	const paymentCents = parse(paymentPaid);
 	if (orderCents === null || paymentCents === null || Math.abs(orderCents - paymentCents) > 1)
 		return { valid: false };
-	// Diferença de um centavo não altera o principal; não presumir desembolso.
-	return { valid: true, cents: orderCents === paymentCents ? orderCents : null };
+	// Decisão LovelyVet: a transação informa o desembolso; a Order limita a tolerância.
+	return { valid: true, cents: paymentCents };
 }
 
 // Política pura, chamada somente depois de obter a Order via API autenticada e travar o atendimento.
@@ -204,10 +204,6 @@ export function planReconciliation(
 			return review('post_approval_amount_mismatch');
 		if (status === 'approved' && paymentStatus === 'approved' && paidAmount.valid) {
 			const paid = paidAmount.cents;
-			if (paid === null)
-				return attempt.providerPaidAmountInCents === null
-					? { kind: 'ignore' }
-					: review('post_approval_amount_mismatch');
 			if (attempt.providerPaidAmountInCents === null) return { kind: 'enrich', providerPaidAmountInCents: paid };
 			if (attempt.providerPaidAmountInCents !== undefined && attempt.providerPaidAmountInCents !== paid)
 				return review('post_approval_amount_mismatch');

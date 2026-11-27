@@ -248,7 +248,7 @@ it('registra somente o principal de cartão parcelado aprovado', async () => {
 	expect(mocks.set).toHaveBeenCalledWith(expect.objectContaining({ isPaid: true }));
 });
 
-it('recupera revisão explícita de cartão parcial sem presumir total nem quitar saldo', async () => {
+it('recupera revisão explícita de cartão parcial usando total da transação sem quitar saldo', async () => {
 	mocks.where
 		.mockReset()
 		.mockResolvedValueOnce([{ appointmentId: 'appointment' }])
@@ -289,7 +289,65 @@ it('recupera revisão explícita de cartão parcial sem presumir total nem quita
 	expect(mocks.values).toHaveBeenCalledTimes(1);
 	expect(mocks.values).toHaveBeenCalledWith(expect.objectContaining({ amountInCents: 8000, operationKey: id }));
 	expect(mocks.set).toHaveBeenCalledWith(
-		expect.objectContaining({ status: 'approved', reconciliationReason: null, providerPaidAmountInCents: null }),
+		expect.objectContaining({ status: 'approved', reconciliationReason: null, providerPaidAmountInCents: 8772 }),
 	);
 	expect(mocks.set).not.toHaveBeenCalledWith(expect.objectContaining({ isPaid: true }));
+});
+
+it('complementa cartão aprovado em cobrança quitada sem novo recebimento', async () => {
+	mocks.where
+		.mockReset()
+		.mockResolvedValueOnce([{ appointmentId: 'appointment' }])
+		.mockResolvedValueOnce([
+			{
+				...row,
+				attempt: {
+					...attempt,
+					method: 'credit_card',
+					installments: 2,
+					amountInCents: 8000,
+					status: 'approved',
+					providerOrderId: 'ORD123',
+					providerPaymentId: 'PAY123',
+					providerPaidAmountInCents: null,
+				},
+				charge: { ...row.charge, totalInCents: 20000 },
+				appointment: { ...row.appointment, isPaid: true },
+			},
+		])
+		.mockResolvedValueOnce([
+			{
+				amountInCents: 8000,
+				method: 'credit_card',
+				source: 'mercado_pago',
+				operationKey: id,
+				onlinePaymentAttemptId: id,
+			},
+			{
+				amountInCents: 12000,
+				method: 'pix',
+				source: 'mercado_pago',
+				operationKey: 'other',
+				onlinePaymentAttemptId: 'other',
+			},
+		]);
+	mocks.get.mockResolvedValue({
+		...order,
+		total_amount: '80.00',
+		total_paid_amount: '87.71',
+		transactions: {
+			payments: [
+				{
+					...order.transactions.payments[0],
+					amount: '80.00',
+					paid_amount: '87.72',
+					payment_method: { id: 'master', type: 'credit_card', installments: 2 },
+				},
+			],
+		},
+	});
+	await reconcileMercadoPagoOrder('ORD123', id, true);
+	expect(mocks.values).not.toHaveBeenCalled();
+	expect(mocks.set).toHaveBeenCalledTimes(1);
+	expect(mocks.set).toHaveBeenCalledWith({ providerPaidAmountInCents: 8772, updatedAt: expect.any(Date) });
 });

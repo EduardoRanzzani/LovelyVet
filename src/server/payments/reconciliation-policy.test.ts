@@ -291,7 +291,7 @@ describe('aprovação de cartão parcelado com acréscimo', () => {
 	});
 	it('não ignora divergência após crédito', () => {
 		expect(
-			planReconciliation({ ...raw, total_paid_amount: '219.29' }, raw.id, { ...card, status: 'approved' }, bill, [
+			planReconciliation({ ...raw, total_paid_amount: '219.30' }, raw.id, { ...card, status: 'approved' }, bill, [
 				receipt,
 			]),
 		).toMatchObject({ kind: 'review', reason: 'post_approval_amount_mismatch' });
@@ -371,12 +371,12 @@ describe('arredondamento de cartão parcial e recuperação explícita', () => {
 	it.each([
 		['87.71', '87.72'],
 		['87.72', '87.71'],
-	])('credita principal parcial sem presumir total %s/%s', (a, b) => {
+	])('credita principal e prioriza total da transação %s/%s', (a, b) => {
 		expect(planReconciliation(remote(a, b), order.id, card, bill, [])).toMatchObject({
 			kind: 'credit',
 			status: 'approved',
 			settlesCharge: false,
-			providerPaidAmountInCents: null,
+			providerPaidAmountInCents: Math.round(Number(b) * 100),
 		});
 	});
 	it.each([
@@ -421,12 +421,20 @@ describe('arredondamento de cartão parcial e recuperação explícita', () => {
 			kind: 'review',
 		});
 	});
-	it('ignora duplicata sem total confirmado e complementa somente após concordância', () => {
-		expect(planReconciliation(remote(), order.id, approved, bill, [receipt])).toEqual({ kind: 'ignore' });
+	it('complementa total desconhecido mesmo com diferença de um centavo', () => {
+		expect(planReconciliation(remote(), order.id, approved, bill, [receipt])).toEqual({
+			kind: 'enrich',
+			providerPaidAmountInCents: 8772,
+		});
 		expect(planReconciliation(remote('87.72', '87.72'), order.id, approved, bill, [receipt])).toEqual({
 			kind: 'enrich',
 			providerPaidAmountInCents: 8772,
 		});
+	});
+	it('ignora duplicata com total da transação já confirmado', () => {
+		expect(
+			planReconciliation(remote(), order.id, { ...approved, providerPaidAmountInCents: 8772 }, bill, [receipt]),
+		).toEqual({ kind: 'ignore' });
 	});
 	it('não sobrescreve total já confirmado quando os totais divergem posteriormente', () => {
 		expect(
@@ -440,7 +448,7 @@ describe('arredondamento de cartão parcial e recuperação explícita', () => {
 		expect(planReconciliation(remote(), order.id, reviewed, bill, [])).toEqual({ kind: 'ignore' });
 		expect(planReconciliation(remote(), order.id, reviewed, bill, [], true)).toMatchObject({
 			kind: 'credit',
-			providerPaidAmountInCents: null,
+			providerPaidAmountInCents: 8772,
 			settlesCharge: false,
 		});
 	});

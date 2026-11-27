@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowLeft, CircleCheck } from 'lucide-react';
+import { ArrowLeft, CircleCheck, ClipboardList, CreditCard, History, QrCode, ReceiptText, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatCurrencyFromCents } from '@/helpers/currency';
 import type { StatementItem } from '@/lib/finance/customer-statement';
@@ -46,52 +46,68 @@ export function OnlinePaymentSuccess({ payment, petName, returnHref, testMode, i
 		transfer: 'Transferência',
 	};
 	return (
-		<div className='space-y-6'>
-			<div role='status' className='flex items-start gap-3'>
-				<div className='flex size-12 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200'>
-					<CircleCheck aria-hidden='true' className='size-8' />
+		<div className='space-y-4'>
+			<div className='w-full space-y-4 rounded-xl border border-emerald-300 bg-emerald-50 p-4 sm:p-6'>
+				<div role='status' className='flex items-start gap-3'>
+					<div className='flex size-14 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800'>
+						<CircleCheck aria-hidden='true' className='size-8' />
+					</div>
+					<div className='min-w-0 space-y-1'>
+						<h2 className='text-xl font-semibold text-emerald-800'>Pagamento aprovado!</h2>
+						<p className='text-sm text-emerald-900'>
+							{payment.balanceInCents > 0
+								? 'Seu pagamento parcial foi confirmado com sucesso.'
+								: 'Seu pagamento foi confirmado com sucesso.'}
+						</p>
+					</div>
 				</div>
-				<div className='min-w-0 space-y-1'>
-					<h2 className='text-xl font-semibold text-emerald-800 dark:text-emerald-200'>
-						Pagamento aprovado!
-					</h2>
-					<p className='text-sm text-muted-foreground'>
-						{payment.balanceInCents > 0
-							? 'Seu pagamento parcial foi confirmado com sucesso.'
-							: 'Seu pagamento foi confirmado com sucesso.'}
-					</p>
-				</div>
-			</div>
-			<dl aria-label='Valores do pagamento' className='grid gap-3 sm:grid-cols-2'>
-				<div className='min-w-0 rounded-lg bg-emerald-50 p-4 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200'>
-					<dt className='text-sm'>
-						{confirmation ? 'Valor pago nesta operação (principal)' : 'Valor pago da cobrança'}
-					</dt>
-					<dd className='text-2xl font-semibold tabular-nums wrap-anywhere'>
-						{formatCurrencyFromCents(payment.amountInCents)}
-					</dd>
-				</div>
-				<div
-					className={
-						payment.balanceInCents > 0
-							? 'min-w-0 rounded-lg bg-amber-50 p-4 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200'
-							: 'min-w-0 rounded-lg bg-muted p-4'
-					}
+				<dl
+					aria-label='Valores do pagamento'
+					className='grid gap-3 border-t border-emerald-200 pt-4 sm:grid-cols-2'
 				>
-					<dt className='text-sm text-muted-foreground'>Saldo restante</dt>
-					<dd className='text-2xl font-semibold tabular-nums wrap-anywhere'>
-						{formatCurrencyFromCents(payment.balanceInCents)}
-					</dd>
-				</div>
-			</dl>
+					<div className='min-w-0 text-emerald-900'>
+						<dt className='text-sm'>
+							{confirmation ? 'Valor pago nesta operação (principal)' : 'Valor pago da cobrança'}
+						</dt>
+						<dd className='text-2xl font-semibold tabular-nums wrap-anywhere'>
+							{formatCurrencyFromCents(payment.amountInCents)}
+						</dd>
+					</div>
+					<div
+						className={
+							payment.balanceInCents > 0
+								? 'min-w-0 rounded-lg bg-amber-50 p-3 text-amber-900'
+								: 'min-w-0 text-emerald-900'
+						}
+					>
+						<dt className='text-sm'>Saldo restante</dt>
+						<dd className='text-2xl font-semibold tabular-nums wrap-anywhere'>
+							{formatCurrencyFromCents(payment.balanceInCents)}
+						</dd>
+					</div>
+				</dl>
+			</div>
 			{confirmation && (
-				<section aria-label='Progresso do pagamento' className='space-y-2'>
+				<section aria-label='Progresso do pagamento' className='space-y-3 rounded-xl border bg-card p-4'>
+					<h3 className='text-sm font-semibold'>Resumo financeiro</h3>
+					<dl className='grid gap-2 sm:grid-cols-3'>
+						{[
+							{ label: 'Total original', value: confirmation.totalInCents },
+							{ label: 'Principal acumulado', value: confirmation.paidInCents },
+							{ label: 'Saldo da cobrança', value: payment.balanceInCents },
+						].map(({ label, value }) => (
+							<div key={label} className='min-w-0 rounded-lg bg-muted p-3'>
+								<dt className='text-xs text-muted-foreground'>{label}</dt>
+								<dd className='text-lg font-semibold tabular-nums wrap-anywhere'>{money(value)}</dd>
+							</div>
+						))}
+					</dl>
 					<div className='flex justify-between gap-2 text-sm font-medium'>
 						<span>Progresso do pagamento</span>
 						<span>{progress}% pago</span>
 					</div>
 					<progress
-						className='h-2 w-full accent-emerald-600'
+						className='h-3 w-full overflow-hidden rounded-full bg-muted accent-emerald-600 [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-emerald-600 [&::-moz-progress-bar]:rounded-full [&::-moz-progress-bar]:bg-emerald-600'
 						value={progress}
 						max={100}
 						aria-label='Percentual pago da cobrança'
@@ -102,78 +118,93 @@ export function OnlinePaymentSuccess({ payment, petName, returnHref, testMode, i
 					</div>
 				</section>
 			)}
-			{items !== undefined && (
-				<section aria-labelledby='payment-items-heading' className='space-y-2 border-t pt-4'>
-					<h3 id='payment-items-heading' className='text-sm font-semibold'>
-						Serviços e produtos do atendimento
+			<div
+				className={items !== undefined ? 'grid min-w-0 items-start gap-4 lg:grid-cols-2' : 'grid min-w-0 gap-4'}
+			>
+				{items !== undefined && (
+					<section
+						aria-labelledby='payment-items-heading'
+						className='min-w-0 space-y-3 rounded-xl border bg-card p-4'
+					>
+						<h3 id='payment-items-heading' className='flex items-center gap-2 text-sm font-semibold'>
+							<ClipboardList aria-hidden='true' className='size-4 shrink-0 text-muted-foreground' />
+							Serviços e produtos do atendimento
+						</h3>
+						{items.length === 0 ? (
+							<p className='text-sm text-muted-foreground'>Não há itens disponíveis para exibição.</p>
+						) : (
+							<ul className='divide-y'>
+								{items.map((item) => (
+									<li
+										key={`${item.kind}-${item.id}`}
+										className='flex flex-wrap justify-between gap-2 py-2 text-sm'
+									>
+										<div className='min-w-0 flex-1'>
+											<p className='font-medium wrap-anywhere'>{item.name}</p>
+											<p className='text-xs text-muted-foreground'>
+												{item.kind === 'service' ? 'Serviço' : 'Produto'} · {item.quantity} ×{' '}
+												{money(item.unitPriceInCents)}
+												{item.discountInCents > 0 &&
+													` · Desconto: ${money(item.discountInCents)}`}
+											</p>
+										</div>
+										<span className='font-medium tabular-nums'>
+											{money(item.quantity * item.unitPriceInCents - item.discountInCents)}
+										</span>
+									</li>
+								))}
+							</ul>
+						)}
+						{payment.balanceInCents > 0 && (
+							<p className='text-xs text-muted-foreground'>
+								Os itens compõem a cobrança original; o pagamento parcial não quita itens
+								individualmente.
+							</p>
+						)}
+					</section>
+				)}
+				<section
+					aria-labelledby='payment-details-heading'
+					className='min-w-0 space-y-3 rounded-xl border bg-card p-4'
+				>
+					<h3 id='payment-details-heading' className='flex items-center gap-2 text-sm font-semibold'>
+						<ReceiptText aria-hidden='true' className='size-4 shrink-0 text-muted-foreground' />
+						Detalhes do pagamento
 					</h3>
-					{items.length === 0 ? (
-						<p className='text-sm text-muted-foreground'>Não há itens disponíveis para exibição.</p>
-					) : (
-						<ul className='divide-y'>
-							{items.map((item) => (
-								<li
-									key={`${item.kind}-${item.id}`}
-									className='flex flex-wrap justify-between gap-2 py-2 text-sm'
-								>
-									<div className='min-w-0 flex-1'>
-										<p className='font-medium wrap-anywhere'>{item.name}</p>
-										<p className='text-xs text-muted-foreground'>
-											{item.kind === 'service' ? 'Serviço' : 'Produto'} · {item.quantity} ×{' '}
-											{money(item.unitPriceInCents)}
-											{item.discountInCents > 0 && ` · Desconto: ${money(item.discountInCents)}`}
-										</p>
-									</div>
-									<span className='font-medium tabular-nums'>
-										{money(item.quantity * item.unitPriceInCents - item.discountInCents)}
-									</span>
-								</li>
-							))}
-						</ul>
-					)}
-					{payment.balanceInCents > 0 && (
-						<p className='text-xs text-muted-foreground'>
-							Os itens compõem a cobrança original; o pagamento parcial não quita itens individualmente.
+					<dl className='grid gap-4 text-sm sm:grid-cols-2'>
+						<div className='min-w-0 space-y-1'>
+							<dt className='text-muted-foreground'>Pet</dt>
+							<dd className='font-medium wrap-anywhere'>{petName}</dd>
+						</div>
+						<div className='space-y-1'>
+							<dt className='text-muted-foreground'>Forma de pagamento</dt>
+							<dd className='font-medium'>{method}</dd>
+						</div>
+						{payment.method === 'credit_card' && (
+							<div className='space-y-1'>
+								<dt className='text-muted-foreground'>Parcelamento</dt>
+								<dd className='font-medium'>
+									{payment.installments === 1 ? 'À vista' : `${payment.installments}x`}
+								</dd>
+							</div>
+						)}
+						<div className='space-y-1'>
+							<dt className='text-muted-foreground'>Total pago nesta operação</dt>
+							<dd className='font-medium'>{totalPaid === null ? 'Não informado' : money(totalPaid)}</dd>
+						</div>
+					</dl>
+					{surcharge !== null && surcharge > 0 && (
+						<p className='flex justify-between gap-2 rounded-lg bg-muted p-3 text-sm'>
+							<span>Acréscimo do parcelamento</span>
+							<strong>{money(surcharge)}</strong>
 						</p>
 					)}
 				</section>
-			)}
-			<section aria-labelledby='payment-details-heading' className='space-y-3'>
-				<h3 id='payment-details-heading' className='text-sm font-semibold'>
-					Detalhes do pagamento
-				</h3>
-				<dl className='grid gap-4 text-sm sm:grid-cols-2'>
-					<div className='min-w-0 space-y-1'>
-						<dt className='text-muted-foreground'>Pet</dt>
-						<dd className='font-medium wrap-anywhere'>{petName}</dd>
-					</div>
-					<div className='space-y-1'>
-						<dt className='text-muted-foreground'>Forma de pagamento</dt>
-						<dd className='font-medium'>{method}</dd>
-					</div>
-					{payment.method === 'credit_card' && (
-						<div className='space-y-1'>
-							<dt className='text-muted-foreground'>Parcelamento</dt>
-							<dd className='font-medium'>
-								{payment.installments === 1 ? 'À vista' : `${payment.installments}x`}
-							</dd>
-						</div>
-					)}
-					<div className='space-y-1'>
-						<dt className='text-muted-foreground'>Total pago nesta operação</dt>
-						<dd className='font-medium'>{totalPaid === null ? 'Não informado' : money(totalPaid)}</dd>
-					</div>
-				</dl>
-				{surcharge !== null && surcharge > 0 && (
-					<p className='flex justify-between gap-2 rounded-lg bg-muted p-3 text-sm'>
-						<span>Acréscimo do parcelamento</span>
-						<strong>{money(surcharge)}</strong>
-					</p>
-				)}
-			</section>
+			</div>
 			{confirmation && (
-				<section aria-labelledby='payment-history-heading' className='space-y-3 border-t pt-4'>
-					<h3 id='payment-history-heading' className='text-sm font-semibold'>
+				<section aria-labelledby='payment-history-heading' className='space-y-3 rounded-xl border bg-card p-4'>
+					<h3 id='payment-history-heading' className='flex items-center gap-2 text-sm font-semibold'>
+						<History aria-hidden='true' className='size-4 shrink-0 text-muted-foreground' />
 						Histórico de pagamentos da cobrança
 					</h3>
 					<p className='text-xs text-muted-foreground'>
@@ -181,19 +212,46 @@ export function OnlinePaymentSuccess({ payment, petName, returnHref, testMode, i
 					</p>
 					<ul className='divide-y'>
 						{confirmation.receipts.map((receipt, index) => (
-							<li key={index} className='flex justify-between gap-2 py-2 text-sm'>
-								<div>
-									<p className='font-medium'>
-										{labels[receipt.method] ?? 'Pagamento'}
-										{receipt.installments && receipt.installments > 1
-											? ` · ${receipt.installments}x`
-											: ''}
-									</p>
-									<p className='text-xs text-muted-foreground'>
-										{receipt.current ? 'Pagamento atual' : 'Recebimento confirmado'}
-									</p>
+							<li key={index} className='flex items-center justify-between gap-3 py-2 text-sm'>
+								<div className='flex min-w-0 flex-1 items-center gap-3'>
+									<div className='flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground'>
+										{receipt.method === 'pix' ? (
+											<QrCode aria-hidden='true' className='size-5' />
+										) : receipt.method === 'credit_card' || receipt.method === 'debit_card' ? (
+											<CreditCard aria-hidden='true' className='size-5' />
+										) : (
+											<Wallet aria-hidden='true' className='size-5' />
+										)}
+									</div>
+									<div className='min-w-0'>
+										<p className='font-medium'>
+											{labels[receipt.method] ?? 'Pagamento'}
+											{receipt.installments && receipt.installments > 1
+												? ` · ${receipt.installments}x`
+												: ''}
+										</p>
+										<p className='text-xs text-muted-foreground'>
+											{receipt.current ? 'Pagamento atual' : 'Recebimento confirmado'}
+										</p>
+									</div>
 								</div>
-								<span className='font-medium tabular-nums'>{money(receipt.amountInCents)}</span>
+								<div className='shrink-0 text-right'>
+									<p className='font-medium tabular-nums'>{money(receipt.amountInCents)}</p>
+									<p className='text-xs text-muted-foreground'>Principal</p>
+									{receipt.ownOnline &&
+										receipt.providerPaidAmountInCents !== null &&
+										receipt.providerPaidAmountInCents > receipt.amountInCents && (
+											<>
+												<p className='text-xs text-muted-foreground'>
+													Acréscimos:{' '}
+													{money(receipt.providerPaidAmountInCents - receipt.amountInCents)}
+												</p>
+												<p className='text-xs font-medium'>
+													Total pago: {money(receipt.providerPaidAmountInCents)}
+												</p>
+											</>
+										)}
+								</div>
 							</li>
 						))}
 					</ul>
@@ -213,9 +271,15 @@ export function OnlinePaymentSuccess({ payment, petName, returnHref, testMode, i
 							</div>
 						)}
 						<div className='flex justify-between gap-2'>
-							<dt>Total dos seus pagamentos online</dt>
-							<dd>{ownTotal === null ? 'Não informado integralmente' : money(ownTotal)}</dd>
+							<dt>Total desembolsado online (com acréscimos)</dt>
+							<dd>{ownTotal === null ? 'Indisponível' : money(ownTotal)}</dd>
 						</div>
+						{ownTotal === null && (
+							<p className='text-xs text-muted-foreground'>
+								O total desembolsado não está disponível para todos os seus pagamentos online. Isso não
+								altera o saldo da cobrança.
+							</p>
+						)}
 						<div className='flex justify-between gap-2 font-semibold'>
 							<dt>Saldo em aberto</dt>
 							<dd>{money(payment.balanceInCents)}</dd>
@@ -225,7 +289,7 @@ export function OnlinePaymentSuccess({ payment, petName, returnHref, testMode, i
 			)}
 			<div className='flex flex-col gap-4 border-t pt-4 sm:flex-row sm:items-center sm:justify-between'>
 				{payment.balanceInCents === 0 ? (
-					<p className='flex items-center gap-2 text-sm font-medium text-emerald-800 dark:text-emerald-200'>
+					<p className='flex items-center gap-2 text-sm font-medium text-emerald-800'>
 						<CircleCheck aria-hidden='true' className='size-4 shrink-0' />
 						Sua cobrança está quitada.
 					</p>
@@ -247,7 +311,7 @@ export function OnlinePaymentSuccess({ payment, petName, returnHref, testMode, i
 				</div>
 			</div>
 			{testMode && (
-				<p className='rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200'>
+				<p className='rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900'>
 					Ambiente de homologação. Não utilize pagamentos reais.
 				</p>
 			)}

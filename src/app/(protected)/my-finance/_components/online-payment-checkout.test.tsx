@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OnlinePaymentCheckout } from './online-payment-checkout';
+import { OnlinePaymentSuccess } from './online-payment-success';
 import type { OnlinePaymentSnapshot } from '@/lib/finance/online-payment-view';
 const mocks = vi.hoisted(() => ({ start: vi.fn(), sync: vi.fn(), refresh: vi.fn() }));
 vi.mock('@/api/actions/online-payment.actions', () => ({
@@ -653,4 +654,146 @@ it('permite editar o valor parcial a partir de um campo vazio, inclusive centavo
 	expect(input).toHaveValue('R$ 0,01');
 	expect(pix).toBeEnabled();
 	expect(mocks.start).not.toHaveBeenCalled();
+});
+
+it('preserva o demonstrativo quitado com desembolso acumulado desconhecido no novo layout', () => {
+	const payment = snapshot({
+		status: 'approved',
+		amountInCents: 12000,
+		balanceInCents: 0,
+		confirmation: {
+			totalInCents: 20000,
+			paidInCents: 20000,
+			providerPaidAmountInCents: 12000,
+			receipts: [
+				{
+					amountInCents: 8000,
+					method: 'credit_card',
+					current: false,
+					ownOnline: true,
+					providerPaidAmountInCents: null,
+					installments: 2,
+				},
+				{
+					amountInCents: 12000,
+					method: 'pix',
+					current: true,
+					ownOnline: true,
+					providerPaidAmountInCents: 12000,
+					installments: 1,
+				},
+			],
+		},
+	});
+	render(
+		<OnlinePaymentSuccess
+			payment={payment}
+			petName='Teste'
+			returnHref={props.returnHref}
+			testMode
+			onContinue={vi.fn()}
+		/>,
+	);
+	expect(screen.getByRole('status')).toHaveTextContent('Pagamento aprovado!');
+	expect(screen.getByRole('progressbar')).toHaveAttribute('value', '100');
+	expect(screen.getByText('Indisponível')).toBeInTheDocument();
+	expect(screen.getByRole('region', { name: 'Histórico de pagamentos da cobrança' })).toHaveTextContent(
+		'Cartão de crédito · 2x',
+	);
+	expect(screen.queryByText('Acréscimos dos seus pagamentos online')).not.toBeInTheDocument();
+	expect(screen.queryByRole('button', { name: 'Pagar saldo restante' })).not.toBeInTheDocument();
+});
+
+it('mantém ação de continuidade autorizada e progresso parcial no novo layout', () => {
+	const onContinue = vi.fn();
+	const payment = snapshot({
+		status: 'approved',
+		amountInCents: 8000,
+		method: 'credit_card',
+		installments: 2,
+		balanceInCents: 12000,
+		confirmation: {
+			totalInCents: 20000,
+			paidInCents: 8000,
+			providerPaidAmountInCents: null,
+			receipts: [
+				{
+					amountInCents: 8000,
+					method: 'credit_card',
+					current: true,
+					ownOnline: true,
+					providerPaidAmountInCents: null,
+					installments: 2,
+				},
+			],
+		},
+	});
+	render(
+		<OnlinePaymentSuccess
+			payment={payment}
+			petName='Teste'
+			returnHref={props.returnHref}
+			onContinue={onContinue}
+		/>,
+	);
+	expect(screen.getByRole('progressbar')).toHaveAttribute('value', '40');
+	expect(screen.getByText('Não informado')).toBeInTheDocument();
+	expect(screen.queryByText('Sua cobrança está quitada.')).not.toBeInTheDocument();
+	fireEvent.click(screen.getByRole('button', { name: 'Pagar saldo restante' }));
+	expect(onContinue).toHaveBeenCalledTimes(1);
+});
+
+it('exibe desembolso próprio confirmado sem expor acréscimos de outro tutor', () => {
+	const payment = snapshot({
+		status: 'approved',
+		amountInCents: 12000,
+		balanceInCents: 0,
+		confirmation: {
+			totalInCents: 20000,
+			paidInCents: 20000,
+			providerPaidAmountInCents: 12000,
+			receipts: [
+				{
+					amountInCents: 8000,
+					method: 'credit_card',
+					current: false,
+					ownOnline: true,
+					providerPaidAmountInCents: 8772,
+					installments: 2,
+				},
+				{
+					amountInCents: 12000,
+					method: 'pix',
+					current: true,
+					ownOnline: true,
+					providerPaidAmountInCents: 12000,
+					installments: 1,
+				},
+			],
+		},
+	});
+	const { rerender } = render(
+		<OnlinePaymentSuccess payment={payment} petName='Teste' returnHref={props.returnHref} />,
+	);
+	const history = screen.getByRole('region', { name: 'Histórico de pagamentos da cobrança' });
+	expect(history).toHaveTextContent(/207,72/);
+	expect(history).toHaveTextContent(/Total pago:.*87,72/);
+	expect(history).toHaveTextContent(/Acréscimos:.*7,72/);
+	const confirmation = payment.confirmation!;
+	rerender(
+		<OnlinePaymentSuccess
+			payment={{
+				...payment,
+				confirmation: {
+					...confirmation,
+					receipts: confirmation.receipts.map((receipt) =>
+						receipt.method === 'credit_card' ? { ...receipt, ownOnline: false } : receipt,
+					),
+				},
+			}}
+			petName='Teste'
+			returnHref={props.returnHref}
+		/>,
+	);
+	expect(history).not.toHaveTextContent(/87,72|207,72|7,72/);
 });
