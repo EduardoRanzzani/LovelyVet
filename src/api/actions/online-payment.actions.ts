@@ -10,7 +10,16 @@ import { createOnlinePayment } from '@/server/payments/payment.service';
 
 export const startOnlinePayment = actionClient.schema(onlinePaymentSchema).action(async ({ parsedInput }) => {
 	const context = await requireAuthContext();
-	return createOnlinePayment(context, parsedInput);
+	const result = await createOnlinePayment(context, parsedInput);
+	if (parsedInput.method !== 'pix') return { ...result, snapshot: null };
+	// Consulta inicial exclusiva da criação; o sync público mantém o cooldown.
+	try {
+		const snapshot = await refreshOnlinePayment(context, result.attemptId, true);
+		return { ...result, snapshot };
+	} catch {
+		// Não repetir a criação se a consulta inicial falhar.
+		return { ...result, snapshot: null };
+	}
 });
 
 export const syncOnlinePayment = actionClient

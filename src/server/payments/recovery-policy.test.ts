@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { findUniqueRecoveryOrder, getRecoverySearchOptions, readPendingPix } from './recovery-policy';
+import {
+	findUniqueRecoveryOrder,
+	getRecoverySearchOptions,
+	readPendingPix,
+	readPixExpiration,
+} from './recovery-policy';
 
 const ref = 'c943e3cd-d2bb-4c19-a386-5a8e56899128';
 const order = { id: 'ORD123', external_reference: ref };
@@ -68,14 +73,40 @@ describe('dados Pix minimizados', () => {
 				},
 			}),
 		).toEqual({ code: method.qr_code, pngBase64: png }));
+	it.each(['', undefined, null, 'PHN2Zz4=', 'a'.repeat(400_001)])(
+		'preserva código sem PNG válido %#',
+		(qr_code_base64) => {
+			expect(
+				readPendingPix({
+					...raw,
+					transactions: { payments: [{ ...payment, payment_method: { ...method, qr_code_base64 } }] },
+				}),
+			).toEqual({ code: method.qr_code, pngBase64: null });
+		},
+	);
+	it('lê somente data absoluta de expiração do pagamento', () => {
+		expect(
+			readPixExpiration({ transactions: { payments: [{ date_of_expiration: '2026-11-27T12:00:00-04:00' }] } }),
+		).toEqual(new Date('2026-11-27T16:00:00Z'));
+	});
+	it.each([undefined, 'PT15M', '2026-11-27T12:00:00', 'inválida'])(
+		'não inventa expiração %#',
+		(date_of_expiration) => {
+			expect(readPixExpiration({ transactions: { payments: [{ date_of_expiration }] } })).toBeNull();
+		},
+	);
+	it('aceita resposta pendente sem total pago, conforme exemplo oficial', () => {
+		expect(readPendingPix({ ...raw, total_paid_amount: undefined })).toEqual({
+			code: method.qr_code,
+			pngBase64: png,
+		});
+	});
 	it.each([
 		{ ...raw, status: 'processed' },
+		{ ...raw, status: 'expired' },
+		{ ...raw, status: 'cancelled' },
 		{ ...raw, total_paid_amount: '150.00' },
 		{ ...raw, transactions: { payments: [{ ...payment, paid_amount: '150.00' }] } },
-		{
-			...raw,
-			transactions: { payments: [{ ...payment, payment_method: { ...method, qr_code_base64: 'PHN2Zz4=' } }] },
-		},
 		{ ...raw, transactions: { payments: [{ ...payment, payment_method: { ...method, qr_code: '<script>\n' } }] } },
 		{ ...raw, transactions: { payments: [payment, payment] } },
 	])('não retorna Pix inválido (%j)', (response) => expect(readPendingPix(response)).toBeNull());

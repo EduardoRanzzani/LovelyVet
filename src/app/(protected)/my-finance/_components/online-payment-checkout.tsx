@@ -20,7 +20,7 @@ type Props = { chargeId: string; balanceInCents: number; option: OnlinePaymentOp
 type Snapshot = {
 	status: string;
 	amountInCents: number;
-	pix: { code: string; pngBase64: string } | null;
+	pix: { code: string; pngBase64: string | null; expiresAt?: string } | null;
 	remoteUnavailable: boolean;
 	retryAfterSeconds: number;
 };
@@ -97,6 +97,7 @@ export function OnlinePaymentCheckout({ chargeId, balanceInCents, option }: Prop
 					return false;
 				}
 				setAttemptId(result.data.attemptId);
+				setSnapshot(result.data.snapshot ?? null);
 				router.refresh();
 				return true;
 			} catch {
@@ -160,14 +161,21 @@ export function OnlinePaymentCheckout({ chargeId, balanceInCents, option }: Prop
 					)}
 					{pix && (
 						<div className='space-y-3'>
-							<Image
-								src={`data:image/png;base64,${pix.pngBase64}`}
-								width={200}
-								height={200}
-								unoptimized
-								alt='QR Code Pix'
-								className='mx-auto rounded-md bg-white'
-							/>
+							{pix.pngBase64 && (
+								<Image
+									src={`data:image/png;base64,${pix.pngBase64}`}
+									width={200}
+									height={200}
+									unoptimized
+									alt='QR Code Pix'
+									className='mx-auto rounded-md bg-white'
+								/>
+							)}
+							<p className='text-sm text-muted-foreground'>
+								{pix.expiresAt
+									? `Validade informada: ${new Date(pix.expiresAt).toLocaleString('pt-BR')}`
+									: 'Prazo de expiração não informado pelo provedor.'}
+							</p>
 							<p className='text-sm font-medium'>Pix Copia e Cola</p>
 							<textarea
 								aria-label='Código Pix'

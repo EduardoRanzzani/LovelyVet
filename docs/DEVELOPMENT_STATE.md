@@ -417,3 +417,38 @@ Este checkpoint prevalece sobre as pendências de validação automatizada e pre
 - Manter `MERCADO_PAGO_ENABLED=false` até confirmar credenciais de Teste e impedir operações financeiras sobre o pet Teste na versão 1.5.0 de produção durante homologação. Depois habilitar somente DEV (`pnpm dev`, Clerk development, modo teste), exclusivamente para o UUID `c943e3cd-d2bb-4c19-a386-5a8e56899128`. Não pagar QR com conta real. Não fazer push para master.
 - Pendências: Pix/cartão ponta a ponta, webhook renovado, concorrência real PostgreSQL, compatibilidade com a versão 1.5.0 no banco compartilhado, limpeza transacional previamente aprovada, auditoria complementar e release. Mocks não comprovam concorrência real.
 - Este pacote modifica somente os seis Markdown obrigatórios. Sem alterações de código, testes, dependências, migration 0048, versão 1.5.0, banco ou ambiente. Não executa commit, push ou migration. Validações anteriores referem-se ao pacote 5.1A-02 executado localmente; nova execução do instalador de checkpoint permanece pendente.
+
+## Checkpoint 5.1B — Fix 01 — 2026-11-26
+
+Este checkpoint prevalece sobre as pendências anteriores de commit e homologação Pix.
+
+- 5.1A concluída; commit confirmado pelo desenvolvedor (hash não informado). Última suíte confirmada: 1011/1011 testes, 108 arquivos, 11,15 s; Drizzle check aprovado; auditoria PROD sem vulnerabilidades conhecidas; dois alertas DEV moderados anteriormente aceitos (esbuild e minimatch).
+- Homologação Pix: pagamento manual fictício de R$ 100 seguido de Pix de R$ 100, aprovado e conciliado; limpeza transacional local posteriormente conferida. Novo Pix integral de R$ 200 no pet Teste (UUID autorizado): tentativa `test`, `approved`, provedor `processed/accredited`, sem motivo de revisão, um recebimento `mercado_pago` vinculado de 20000 centavos, saldo zerado na interface; 18,002 s entre criação e aprovação registradas. Webhook autenticado e idempotência reportados pelo desenvolvedor. `expires_at` nulo. Não há QR persistido. Não confundir observação do ledger com prova de concorrência real.
+- Diagnóstico: `APRO` simula aprovação automática; consulta anterior aguardava polling de 15 s; leitura do Pix descartava todo o código quando o PNG não era válido. A resposta inicial real não foi capturada, portanto não se comprova qual dessas condições causou a ausência nesta Order. O exemplo oficial omite `total_paid_amount` e traz Base64 vazio.
+- Fix: consulta GET autenticada imediata após criação Pix pela ação interna, somente quando a Order é conhecida, com reautorização e reserva de consulta existentes; exceção ao cooldown limitada ao fluxo interno de criação, não disponível na ação pública de sincronização. Consultas seguintes mantêm 15 s. Nenhuma criação adicional por falha da consulta. Código Pix textual validado por formato/tamanho (não é validação completa EMV); PNG válido do provedor ou geração local `qrcode` já instalada, fora da transação, margem de quatro módulos; falha de geração preserva Copia e Cola. Não expor dados Pix da equipe/outros tutores, payload bruto, URL ou tokens. Exibir somente pendente reautorizado. Não atrasar aprovação.
+- Validade: persistir `transactions.payments[].date_of_expiration` absoluta ISO com fuso, quando presente e válida em Pix pendente após política de conciliação; não inferir prazo por `expiration_time` da Order automática nem transicionar status pelo relógio local. Mostrar ausência de prazo se não informado.
+- Referências oficiais: https://www.mercadopago.com.br/developers/pt/docs/checkout-api-orders/integration-test/pix ; https://www.mercadopago.com.br/developers/pt/docs/checkout-api-orders/payment-integration/websites/pix ; https://www.mercadopago.com.br/developers/en/reference/online-payments/checkout-api/create-order/post .
+- Fix entregue, validações Node locais pendentes; não considerar QR, Copia e Cola, validade ou expiração homologados. Testes novos de leitura sem Base64, PNG inválido/ausente, ausência de total pago no pending, validade, estados finais, geração local/falha, consulta inicial e apresentação/remoção do código na UI.
+- Manter versão 1.5.0, migration 0048 e dependências. Não alterar banco, não executar migration, não realizar commit/push automaticamente. Manter integração desabilitada até aprovação. Preservar o Pix integral aprovado até backup e confirmação remota; nova limpeza precisa de SQL ajustado para um recebimento de 20000, não reutilizar script anterior de dois recebimentos.
+- Próximos passos: validar fix; conferir histórico Admin; limpar somente o pet Teste após autorização e backup; novo Pix em DEV; validar QR/Copia e Cola antes da aprovação automática, expiração se suportada no sandbox (caso contrário documentar limitação e testar por fixtures), cartão 5.1C, concorrência real e recuperação 5.1D, limpeza 5.1E, segurança 5.2, documentação e release 6.1/6.2. Não operar o pet Teste em PROD durante homologação.
+
+Arquivos de código e testes alterados neste fix:
+
+- `src/api/actions/online-payment.actions.ts`
+- `src/app/(protected)/my-finance/_components/online-payment-checkout.test.tsx`
+- `src/app/(protected)/my-finance/_components/online-payment-checkout.tsx`
+- `src/server/payments/payment-recovery.service.test.ts`
+- `src/server/payments/payment-recovery.service.ts`
+- `src/server/payments/reconciliation.service.test.ts`
+- `src/server/payments/reconciliation.service.ts`
+- `src/server/payments/recovery-policy.test.ts`
+- `src/server/payments/recovery-policy.ts`
+
+## Checkpoint 2026-11-26 — 5.1B Fix 02 (resumo do tutor)
+
+- Fix 01: 1.029 testes em 108 arquivos aprovados localmente; Prettier, ESLint, TypeScript, Drizzle check e auditoria PROD aprovados. Permanecem os dois alertas DEV conhecidos.
+- Homologação funcional do Pix após Fix 01: 10/10 cenários aprovados pelo usuário, incluindo QR Code, Copia e Cola, quitação e saldo. Expiração efetiva sem pagamento ainda pendente.
+- Fix 02: Meu financeiro apresenta Total em atendimentos, Total pago no mês e Cobranças em aberto (histórico completo). Reutiliza outstandingCount do relatório autorizado; sem mudanças de autorização, cálculo, persistência ou indicadores da equipe.
+- Arquivos: `src/app/(protected)/my-finance/page.tsx`, `src/app/(protected)/finance/_components/finance-summary-cards.tsx` e `src/app/(protected)/finance/_components/finance-summary-cards.test.tsx`. Dois testes de interface adicionados; execução local pendente (esperados 1.031 testes).
+- Versão 1.5.0, migration 0048, sem dependências novas. Sem commit do Fix 01/02 confirmado; validar e conferir interface antes do commit. Não fazer push.
+- Próximos passos: fechar conferência Admin, registrar limitação ou homologar expiração efetiva do Pix, commit e homologação de cartão.

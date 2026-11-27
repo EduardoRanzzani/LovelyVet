@@ -5,25 +5,20 @@ type FinanceSummaryCardsProps = {
 	billedInCents: number;
 	receivedInCents: number;
 	outstandingInCents: number;
-	invoicedCount: number;
-};
+} & ({ audience?: 'staff'; invoicedCount: number } | { audience: 'customer'; outstandingCount: number });
 
-export function FinanceSummaryCards({
-	billedInCents,
-	receivedInCents,
-	outstandingInCents,
-	invoicedCount,
-}: FinanceSummaryCardsProps) {
+export function FinanceSummaryCards(props: FinanceSummaryCardsProps) {
+	const { billedInCents, receivedInCents, outstandingInCents } = props;
 	const cards = [
 		{
-			label: 'Faturado no mês',
+			label: props.audience === 'customer' ? 'Total em atendimentos' : 'Faturado no mês',
 			value: formatCurrencyFromCents(billedInCents),
 			Icon: Receipt,
 			iconClass: 'bg-muted text-muted-foreground',
 			valueClass: 'text-foreground',
 		},
 		{
-			label: 'Recebido no mês',
+			label: props.audience === 'customer' ? 'Total pago no mês' : 'Recebido no mês',
 			value: formatCurrencyFromCents(receivedInCents),
 			Icon: Wallet,
 			iconClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
@@ -37,8 +32,8 @@ export function FinanceSummaryCards({
 			valueClass: outstandingInCents > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-foreground',
 		},
 		{
-			label: 'Cobranças válidas no mês',
-			value: String(invoicedCount),
+			label: props.audience === 'customer' ? 'Cobranças em aberto' : 'Cobranças válidas no mês',
+			value: String(props.audience === 'customer' ? props.outstandingCount : props.invoicedCount),
 			Icon: FileText,
 			iconClass: 'bg-muted text-muted-foreground',
 			valueClass: 'text-foreground',

@@ -29,10 +29,24 @@ export function getRecoverySearchOptions(attemptId: string, createdAt: Date, now
 	};
 }
 
+const expirationSchema = z.object({
+	transactions: z.object({
+		payments: z.array(z.object({ date_of_expiration: z.iso.datetime({ offset: true }) })).length(1),
+	}),
+});
+
+// Somente data absoluta explícita do pagamento; não inferir prazo da Order automática.
+export function readPixExpiration(raw: unknown): Date | null {
+	const parsed = expirationSchema.safeParse(raw);
+	if (!parsed.success) return null;
+	const date = new Date(parsed.data.transactions.payments[0]!.date_of_expiration);
+	return Number.isFinite(date.getTime()) ? date : null;
+}
+
 const pixOrder = z.object({
 	status: z.literal('action_required'),
 	status_detail: z.literal('waiting_transfer'),
-	total_paid_amount: z.literal('0.00'),
+	total_paid_amount: z.literal('0.00').optional(),
 	transactions: z.object({
 		payments: z
 			.array(
@@ -47,11 +61,8 @@ const pixOrder = z.object({
 							.string()
 							.min(1)
 							.max(4096)
-							.regex(/^[ -~]+$/),
-						qr_code_base64: z
-							.string()
-							.max(400_000)
-							.regex(/^[A-Za-z0-9+/]+={0,2}$/),
+							.regex(/^000201[ -~]+$/),
+						qr_code_base64: z.unknown().optional(),
 					}),
 				}),
 			)
@@ -65,12 +76,17 @@ export function readPendingPix(raw: unknown) {
 	const parsed = pixOrder.safeParse(raw);
 	if (!parsed.success) return null;
 	const method = parsed.data.transactions.payments[0]!.payment_method;
-	const image = Buffer.from(method.qr_code_base64, 'base64');
-	if (
-		image.toString('base64') !== method.qr_code_base64 ||
-		image.length < 24 ||
-		image.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a'
-	)
-		return null;
-	return { code: method.qr_code, pngBase64: method.qr_code_base64 };
+	const base64 = method.qr_code_base64;
+	const image =
+		typeof base64 === 'string' && base64.length <= 400_000 && /^[A-Za-z0-9+/]+={0,2}$/.test(base64)
+			? Buffer.from(base64, 'base64')
+			: null;
+	const pngBase64 =
+		image &&
+		image.toString('base64') === base64 &&
+		image.length >= 24 &&
+		image.subarray(0, 8).toString('hex') === '89504e470d0a1a0a'
+			? image.toString('base64')
+			: null;
+	return { code: method.qr_code, pngBase64 };
 }

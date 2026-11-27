@@ -86,6 +86,33 @@ describe('sincronização ativa', () => {
 		expect(mocks.reconcile).toHaveBeenCalledWith('ORD123', id);
 		expect(mocks.search).not.toHaveBeenCalled();
 	});
+	it('gera PNG local quando o provedor retorna apenas o código', async () => {
+		mocks.reconcile.mockResolvedValue({ orderId: 'ORD123', paymentId: 'PAY123', pix: { ...pix, pngBase64: null } });
+		const result = await refreshOnlinePayment(context, id, true);
+		expect(result.pix?.code).toBe(pix.code);
+		expect(
+			Buffer.from(result.pix?.pngBase64 ?? '', 'base64')
+				.subarray(0, 8)
+				.toString('hex'),
+		).toBe('89504e470d0a1a0a');
+	});
+	it('preserva o código se a geração local falhar', async () => {
+		const code = 'a'.repeat(4096);
+		mocks.reconcile.mockResolvedValue({ orderId: 'ORD123', paymentId: 'PAY123', pix: { code, pngBase64: null } });
+		expect(await refreshOnlinePayment(context, id)).toMatchObject({ pix: { code, pngBase64: null } });
+	});
+	it('não busca Order desconhecida na consulta inicial', async () => {
+		const unknown = { ...row, attempt: { ...attempt, providerOrderId: null } };
+		mocks.where
+			.mockReset()
+			.mockResolvedValueOnce([unknown])
+			.mockResolvedValueOnce([unknown])
+			.mockResolvedValueOnce([unknown]);
+		expect(await refreshOnlinePayment(context, id, true)).toMatchObject({ pix: null });
+		expect(mocks.claim).not.toHaveBeenCalled();
+		expect(mocks.reconcile).not.toHaveBeenCalled();
+		expect(mocks.search).not.toHaveBeenCalled();
+	});
 	it('respeita reserva de consulta concorrente', async () => {
 		mocks.claim.mockResolvedValue([]);
 		await expect(refreshOnlinePayment(context, id)).resolves.toMatchObject({ pix: null, remoteUnavailable: false });

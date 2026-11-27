@@ -1,4 +1,5 @@
 import 'server-only';
+import QRCode from 'qrcode';
 import { db } from '@/db';
 import { appointmentChargesTable, appointmentsTable, onlinePaymentAttemptsTable } from '@/db/schema';
 import { buildFinancialAccessCondition, requireFinancialTutorId } from '@/lib/finance/financial-access';
@@ -15,7 +16,7 @@ const REFRESH_INTERVAL_MS = 15_000;
 
 // Apenas o iniciador da tentativa, com vínculo atual, pode receber seus dados Pix.
 // A consulta não depende da flag de criação; tentativas existentes ainda precisam conciliar.
-export async function refreshOnlinePayment(context: AuthContext, attemptId: string) {
+export async function refreshOnlinePayment(context: AuthContext, attemptId: string, initial = false) {
 	requireFinancialTutorId(context);
 	const config = getMercadoPagoConfig();
 	const scoped = and(
@@ -45,6 +46,7 @@ export async function refreshOnlinePayment(context: AuthContext, attemptId: stri
 		assertOnlinePaymentScope({ environment: config.environment, petId: row.petId });
 		const attempt = row.attempt;
 		const now = new Date();
+		if (initial && !attempt.providerOrderId) return { attempt, refresh: false };
 		if (!['created', 'processing', 'pending'].includes(attempt.status)) return { attempt, refresh: false };
 		// Reserva também as consultas concorrentes. Nunca mantém locks durante a rede.
 		const updated = await tx
@@ -54,7 +56,9 @@ export async function refreshOnlinePayment(context: AuthContext, attemptId: stri
 				and(
 					scoped,
 					eq(onlinePaymentAttemptsTable.status, attempt.status),
-					lte(onlinePaymentAttemptsTable.updatedAt, new Date(now.getTime() - REFRESH_INTERVAL_MS)),
+					initial && attempt.providerOrderId
+						? undefined
+						: lte(onlinePaymentAttemptsTable.updatedAt, new Date(now.getTime() - REFRESH_INTERVAL_MS)),
 				),
 			)
 			.returning({ id: onlinePaymentAttemptsTable.id });
@@ -78,6 +82,22 @@ export async function refreshOnlinePayment(context: AuthContext, attemptId: stri
 			remoteUnavailable = true;
 		}
 	}
+	// Gerar imagem localmente fora da transação; falha não descarta o código.
+	let pngBase64 = result?.pix.pngBase64 ?? null;
+	if (result && !pngBase64) {
+		try {
+			pngBase64 = (
+				await QRCode.toBuffer(result.pix.code, {
+					type: 'png',
+					errorCorrectionLevel: 'M',
+					margin: 4,
+					width: 320,
+				})
+			).toString('base64');
+		} catch {
+			// O Copia e Cola continua disponível.
+		}
+	}
 	// Reautoriza após a rede; nenhuma informação sensível de outro tutor ou ambiente.
 	const [current] = await selectAttempt(db);
 	if (!current) throw new Error('Tentativa não encontrada.');
@@ -89,7 +109,11 @@ export async function refreshOnlinePayment(context: AuthContext, attemptId: stri
 		attempt.method === 'pix' &&
 		attempt.providerOrderId === result.orderId &&
 		attempt.providerPaymentId === result.paymentId
-			? result.pix
+			? {
+					code: result.pix.code,
+					pngBase64,
+					...(attempt.expiresAt ? { expiresAt: attempt.expiresAt.toISOString() } : {}),
+				}
 			: null;
 	return {
 		attemptId,

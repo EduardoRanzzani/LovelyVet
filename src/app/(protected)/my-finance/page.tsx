@@ -63,14 +63,15 @@ export default async function MyFinancePage({
 				</PageDescription>
 				<FinanceMonthFilter selected={selected} />
 				<FinanceSummaryCards
+					audience='customer'
 					billedInCents={report.billedInCents}
 					receivedInCents={report.receivedInCents}
 					outstandingInCents={report.outstandingInCents}
-					invoicedCount={report.invoicedCount}
+					outstandingCount={report.outstandingCount}
 				/>
 				<p className='text-xs text-muted-foreground'>
-					Os valores faturados e recebidos consideram o mês selecionado. O saldo em aberto considera todo o
-					histórico dos pets vinculados.
+					Os valores dos atendimentos e dos pagamentos consideram o mês selecionado. O saldo total e a
+					quantidade de cobranças em aberto consideram todo o histórico dos pets vinculados.
 				</p>
 				<section className='min-w-0 space-y-3'>
 					<h2 className='text-lg font-semibold'>Cobranças e pagamentos dos meus pets</h2>

@@ -11,7 +11,7 @@ import { getMercadoPagoConfig } from '@/lib/integrations/mercado-pago-config';
 import { getMercadoPagoOrderClient } from '@/lib/integrations/mercado-pago';
 import { and, eq, sql } from 'drizzle-orm';
 import { planReconciliation, readReconciliationReference } from './reconciliation-policy';
-import { readPendingPix } from './recovery-policy';
+import { readPendingPix, readPixExpiration } from './recovery-policy';
 import { calculateChargeBalance } from '@/lib/finance/ledger';
 
 export async function reconcileMercadoPagoOrder(orderId: string, expectedAttemptId?: string) {
@@ -72,6 +72,7 @@ export async function reconcileMercadoPagoOrder(orderId: string, expectedAttempt
 			return;
 		}
 		const { providerOrderId, providerPaymentId, providerStatus, providerStatusDetail, status } = plan;
+		const expiresAt = row.attempt.method === 'pix' && status === 'pending' ? readPixExpiration(order) : null;
 		await tx
 			.update(onlinePaymentAttemptsTable)
 			.set({
@@ -81,6 +82,7 @@ export async function reconcileMercadoPagoOrder(orderId: string, expectedAttempt
 				providerStatusDetail,
 				status,
 				reconciliationReason: null,
+				...(expiresAt ? { expiresAt } : {}),
 				updatedAt: now,
 				...(plan.kind === 'credit' ? { approvedAt: now } : {}),
 			})

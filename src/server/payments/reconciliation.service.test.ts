@@ -122,6 +122,41 @@ describe('persistência da conciliação', () => {
 		await expect(reconcileMercadoPagoOrder('ORD123', id)).resolves.toBeUndefined();
 		expect(mocks.values).not.toHaveBeenCalled();
 	});
+	it('persiste validade explícita e retorna código mesmo sem PNG em Pix pendente', async () => {
+		const expiration = '2026-11-27T16:00:00Z';
+		mocks.get.mockResolvedValue({
+			...order,
+			status: 'action_required',
+			status_detail: 'waiting_transfer',
+			total_paid_amount: undefined,
+			transactions: {
+				payments: [
+					{
+						...order.transactions.payments[0],
+						status: 'action_required',
+						status_detail: 'waiting_transfer',
+						paid_amount: undefined,
+						date_of_expiration: expiration,
+						payment_method: {
+							id: 'pix',
+							type: 'bank_transfer',
+							qr_code: '000201TESTE',
+							qr_code_base64: '',
+						},
+					},
+				],
+			},
+		});
+		await expect(reconcileMercadoPagoOrder('ORD123', id)).resolves.toEqual({
+			orderId: 'ORD123',
+			paymentId: 'PAY123',
+			pix: { code: '000201TESTE', pngBase64: null },
+		});
+		expect(mocks.set).toHaveBeenCalledWith(
+			expect.objectContaining({ status: 'pending', expiresAt: new Date(expiration) }),
+		);
+		expect(mocks.values).not.toHaveBeenCalled();
+	});
 	it('consulta API antes da transação, bloqueia atendimento e tentativa, insere ledger e quita', async () => {
 		await reconcileMercadoPagoOrder('ORD123');
 		expect(mocks.get.mock.invocationCallOrder[0]).toBeLessThan(mocks.transaction.mock.invocationCallOrder[0]!);

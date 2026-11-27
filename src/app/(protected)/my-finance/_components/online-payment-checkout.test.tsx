@@ -65,6 +65,58 @@ describe('OnlinePaymentCheckout', () => {
 		await waitFor(() => expect(mocks.start).toHaveBeenCalledWith({ chargeId: 'charge', method: 'pix' }));
 		expect(await screen.findByRole('button', { name: 'Atualizar situação' })).toBeInTheDocument();
 	});
+	it('shows the initial Pix code without waiting for polling or requiring a PNG', async () => {
+		mocks.start.mockResolvedValue({
+			data: {
+				attemptId: 'attempt',
+				snapshot: {
+					status: 'pending',
+					amountInCents: 20000,
+					pix: { code: '000201TESTE', pngBase64: null },
+					remoteUnavailable: false,
+					retryAfterSeconds: 15,
+				},
+			},
+		});
+		render(<OnlinePaymentCheckout {...props} option={{ ...props.option, canStart: true }} />);
+		fireEvent.click(screen.getByRole('button', { name: 'Gerar Pix' }));
+		expect(await screen.findByRole('textbox', { name: 'Código Pix' })).toHaveValue('000201TESTE');
+		expect(screen.queryByRole('img', { name: 'QR Code Pix' })).not.toBeInTheDocument();
+		expect(mocks.sync).not.toHaveBeenCalled();
+		mocks.sync.mockResolvedValue({
+			data: {
+				status: 'approved',
+				amountInCents: 20000,
+				pix: null,
+				remoteUnavailable: false,
+				retryAfterSeconds: 15,
+			},
+		});
+		fireEvent.click(screen.getByRole('button', { name: 'Atualizar situação' }));
+		await screen.findByText('Pagamento confirmado. Consulte o saldo atualizado.');
+		expect(screen.queryByRole('textbox', { name: 'Código Pix' })).not.toBeInTheDocument();
+	});
+	it('shows a PNG and the explicit validity when the initial Pix is pending', async () => {
+		mocks.start.mockResolvedValue({
+			data: {
+				attemptId: 'attempt',
+				snapshot: {
+					status: 'pending',
+					amountInCents: 20000,
+					pix: { code: '000201TESTE', pngBase64: 'aW1hZ2U=', expiresAt: '2026-11-27T16:00:00Z' },
+					remoteUnavailable: false,
+					retryAfterSeconds: 15,
+				},
+			},
+		});
+		render(<OnlinePaymentCheckout {...props} option={{ ...props.option, canStart: true }} />);
+		fireEvent.click(screen.getByRole('button', { name: 'Gerar Pix' }));
+		expect(await screen.findByRole('img', { name: 'QR Code Pix' })).toHaveAttribute(
+			'src',
+			'data:image/png;base64,aW1hZ2U=',
+		);
+		expect(screen.getByText(/Validade informada:/)).toBeInTheDocument();
+	});
 	it('recovers existing attempts without creating a new payment', async () => {
 		mocks.sync.mockResolvedValue({
 			data: {
