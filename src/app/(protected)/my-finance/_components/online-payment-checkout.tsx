@@ -21,6 +21,11 @@ import {
 	type OnlinePaymentSnapshot,
 } from '@/lib/finance/online-payment-view';
 import { OnlinePaymentSuccess } from './online-payment-success';
+import {
+	initializeCheckoutSdk,
+	initializeCheckoutSecurity,
+	waitForCheckoutDeviceId,
+} from './mercado-pago-checkout-sdk';
 
 const OnlineCardPaymentBrick = lazy(() => import('./online-card-payment-brick'));
 
@@ -60,6 +65,12 @@ export function OnlinePaymentCheckout({
 	const mounted = useRef(false);
 	const running = useRef(false);
 	const startAttempted = useRef(false);
+	useEffect(() => {
+		if (option.canStart && !attemptId) {
+			initializeCheckoutSdk();
+			initializeCheckoutSecurity();
+		}
+	}, [option.canStart, attemptId]);
 	useEffect(() => {
 		mounted.current = true;
 		return () => {
@@ -182,7 +193,9 @@ export function OnlinePaymentCheckout({
 			setBusy(true);
 			setMessage('');
 			try {
-				const result = await startOnlinePayment(input);
+				const deviceId = await waitForCheckoutDeviceId();
+				if (!mounted.current) return false;
+				const result = await startOnlinePayment(deviceId ? { ...input, deviceId } : input);
 				if (!mounted.current) return false;
 				if (!result?.data) {
 					setUncertainStart(true);

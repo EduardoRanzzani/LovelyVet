@@ -21,7 +21,7 @@ import { lockAccessibleAppointment } from '@/lib/security/appointment-access';
 import type { AuthContext } from '@/lib/security/auth-context';
 import { and, eq, isNull } from 'drizzle-orm';
 import { submitOnlinePayment } from './payment-orchestrator';
-import type { ReservedPayment } from './order-request';
+import { readStatementDescriptor, type ReservedPayment } from './order-request';
 
 // Gate temporário: somente next dev + configuração de teste. Produção continua bloqueada.
 export function assertOnlinePaymentReleaseReady(
@@ -46,6 +46,7 @@ export async function createOnlinePayment(context: AuthContext, input: OnlinePay
 	if (!candidate) throw new Error('Cobrança não encontrada.');
 	assertOnlinePaymentScope({ environment: config.environment, petId: candidate.petId });
 	await assertMercadoPagoTestCollector(config);
+	const statementDescriptor = readStatementDescriptor();
 	const client = getMercadoPagoOrderClient();
 	return submitOnlinePayment(input, {
 		reserve: () =>
@@ -80,7 +81,7 @@ export async function createOnlinePayment(context: AuthContext, input: OnlinePay
 				assertNoBlockingOnlinePayment(attempts, payments);
 				const amountInCents = getOnlinePaymentAmount(charge, payments, input);
 				const [user] = await tx
-					.select({ email: usersTable.email })
+					.select({ email: usersTable.email, name: usersTable.name })
 					.from(usersTable)
 					.where(eq(usersTable.id, context.userId));
 				if (!user?.email) throw new Error('E-mail do tutor não encontrado.');
@@ -103,6 +104,8 @@ export async function createOnlinePayment(context: AuthContext, input: OnlinePay
 					chargeId: charge.id,
 					amountInCents,
 					payerEmail: user.email,
+					payerName: user.name,
+					statementDescriptor,
 					environment: config.environment,
 					collectorId: config.collectorId,
 				};

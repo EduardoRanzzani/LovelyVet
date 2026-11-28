@@ -5,6 +5,13 @@ const identification = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('CNPJ'), number: z.string().regex(/^\d{14}$/) }).strict(),
 ]);
 
+// Identificador antifraude opcional, nunca utilizado para autorização.
+export const mercadoPagoDeviceIdSchema = z
+	.string()
+	.min(1)
+	.max(512)
+	.regex(/^[A-Za-z0-9._~+=/-]+$/);
+
 // Saldo esperado é precondição; valor solicitado será validado sob lock.
 // Não aceitar PAN, CVV, ambiente ou identidade do tutor.
 const cents = z.number().int().positive().max(2147483647);
@@ -13,6 +20,7 @@ export const onlinePaymentSchema = z
 		z
 			.object({
 				chargeId: z.uuid(),
+				deviceId: mercadoPagoDeviceIdSchema.optional(),
 				method: z.literal('pix'),
 				amountInCents: cents.optional(),
 				expectedBalanceInCents: cents.optional(),
@@ -21,6 +29,7 @@ export const onlinePaymentSchema = z
 		z
 			.object({
 				chargeId: z.uuid(),
+				deviceId: mercadoPagoDeviceIdSchema.optional(),
 				method: z.literal('credit_card'),
 				expectedBalanceInCents: cents,
 				amountInCents: cents.optional(),

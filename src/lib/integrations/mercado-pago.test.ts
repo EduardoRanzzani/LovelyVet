@@ -25,22 +25,23 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe('cliente Orders', () => {
-	it('reutiliza o cliente e inicializa com timeout', () => {
+	it('isola o cliente de cada operação e inicializa com timeout', () => {
 		vi.stubEnv('MERCADO_PAGO_ACCESS_TOKEN', 'token-cache-exclusivo');
 		const first = getMercadoPagoOrderClient();
-		expect(getMercadoPagoOrderClient()).toBe(first);
-		expect(sdk.config).toHaveBeenCalledExactlyOnceWith({
+		expect(getMercadoPagoOrderClient()).not.toBe(first);
+		expect(sdk.config).toHaveBeenCalledWith({
 			accessToken: 'token-cache-exclusivo',
 			options: { timeout: 10_000 },
 		});
-		expect(sdk.order).toHaveBeenCalledTimes(1);
+		expect(sdk.config).toHaveBeenCalledTimes(2);
+		expect(sdk.order).toHaveBeenCalledTimes(2);
 	});
 	it('recria o cliente quando a credencial muda', () => {
 		const first = getMercadoPagoOrderClient();
 		vi.stubEnv('MERCADO_PAGO_ACCESS_TOKEN', 'token-ficticio-2');
 		expect(getMercadoPagoOrderClient()).not.toBe(first);
 	});
-	it('revalida ambiente mesmo se existe cliente em cache', () => {
+	it('revalida ambiente a cada criação de cliente', () => {
 		getMercadoPagoOrderClient();
 		vi.stubEnv('CLERK_ENVIRONMENT', 'production');
 		expect(() => getMercadoPagoOrderClient()).toThrow('incompatíveis');

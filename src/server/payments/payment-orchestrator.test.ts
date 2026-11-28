@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { assertExpectedOnlinePaymentBalance, getOnlinePaymentAmount } from '@/lib/finance/online-payment-reservation';
-import { buildOrderRequest, readOrderIdentifiers, type ReservedPayment } from './order-request';
+import {
+	buildOrderRequest,
+	readOrderIdentifiers,
+	readStatementDescriptor,
+	type ReservedPayment,
+} from './order-request';
 import { submitOnlinePayment } from './payment-orchestrator';
 import type { OnlinePaymentInput } from '@/api/schema/online-payment.schema';
 
@@ -60,6 +65,40 @@ describe('Orders', () => {
 			},
 		});
 		expect(request.requestOptions).toEqual({ idempotencyKey: attempt.id });
+	});
+	it.each([pix, card])('envia somente o principal reservado e Device ID para $method', (input) => {
+		const request = buildOrderRequest({ ...attempt, amountInCents: 8000 }, { ...input, deviceId: 'session-123' });
+		expect(request.body.items).toEqual([
+			{ title: 'Pagamento de serviços e produtos', quantity: 1, unit_price: '80.00' },
+		]);
+		expect(request.body.total_amount).toBe('80.00');
+		expect(request.requestOptions).toEqual({ idempotencyKey: attempt.id, meliSessionId: 'session-123' });
+	});
+	it('preserva identidade de simulação sem transmitir o nome real', () => {
+		const reserved = { ...attempt, payerName: 'Nome Particular' };
+		expect(buildOrderRequest(reserved, pix).body.payer).toEqual({
+			email: 'test_user_br@testuser.com',
+			first_name: 'APRO',
+		});
+		expect(buildOrderRequest(reserved, card).body.payer).toEqual({ email: 'test@testuser.com' });
+	});
+	it('envia nome do comprador cadastrado apenas em produção', () => {
+		const request = buildOrderRequest({ ...attempt, environment: 'production', payerName: 'Ana da Silva' }, card);
+		expect(request.body.payer).toEqual({ email: attempt.payerEmail, first_name: 'Ana', last_name: 'da Silva' });
+	});
+	it('envia descriptor somente no método cartão', () => {
+		const reserved = { ...attempt, statementDescriptor: 'CLINICA' };
+		expect(buildOrderRequest(reserved, card).body.transactions?.payments?.[0].payment_method).toMatchObject({
+			statement_descriptor: 'CLINICA',
+		});
+		expect(buildOrderRequest(reserved, pix).body.transactions?.payments?.[0].payment_method).not.toHaveProperty(
+			'statement_descriptor',
+		);
+	});
+	it('valida descriptor configurável sem inventar nome comercial', () => {
+		expect(readStatementDescriptor(' CLINICA ')).toBe('CLINICA');
+		expect(readStatementDescriptor('')).toBeUndefined();
+		expect(() => readStatementDescriptor('CLINICA MUITO LONGA')).toThrow('inválido');
 	});
 	it('rejeita cobrança diferente', () => {
 		expect(() => buildOrderRequest(attempt, { ...pix, chargeId: 'outro' })).toThrow('incompatível');

@@ -9,6 +9,12 @@ vi.mock('@/api/actions/online-payment.actions', () => ({
 	startOnlinePayment: mocks.start,
 	syncOnlinePayment: mocks.sync,
 }));
+const securityMocks = vi.hoisted(() => ({ device: vi.fn<() => Promise<string | undefined>>() }));
+vi.mock('./mercado-pago-checkout-sdk', () => ({
+	initializeCheckoutSdk: vi.fn(),
+	initializeCheckoutSecurity: vi.fn(),
+	waitForCheckoutDeviceId: securityMocks.device,
+}));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
 vi.mock('@/components/shared/page-container', () => {
 	const Wrapper = ({ children }: { children: ReactNode }) => <div>{children}</div>;
@@ -92,6 +98,7 @@ async function tick(ms: number) {
 describe('OnlinePaymentCheckout', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
+		securityMocks.device.mockResolvedValue(undefined);
 		vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
 	});
 	afterEach(() => {
@@ -117,6 +124,36 @@ describe('OnlinePaymentCheckout', () => {
 		);
 		expect(await screen.findByText(/Estamos acompanhando seu pagamento/)).toBeInTheDocument();
 		expect(screen.queryByRole('button', { name: 'Atualizar situação' })).not.toBeInTheDocument();
+	});
+	it.each(['pix', 'credit_card'] as const)('envia Device ID disponível por %s', async (method) => {
+		securityMocks.device.mockResolvedValue('session-test');
+		mocks.start.mockResolvedValue({ data: { attemptId: 'attempt', status: 'processing' } });
+		render(<OnlinePaymentCheckout {...props} option={{ ...props.option, canStart: true }} />);
+		if (method === 'credit_card') {
+			fireEvent.click(screen.getByRole('button', { name: /Cartão de crédito/ }));
+			fireEvent.click(await screen.findByRole('button', { name: 'Enviar cartão de teste' }));
+		} else fireEvent.click(screen.getByRole('button', { name: 'Gerar Pix' }));
+		await waitFor(() =>
+			expect(mocks.start).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ method, deviceId: 'session-test' }),
+			),
+		);
+	});
+	it('não cria Order após desmontagem durante espera do Device ID', async () => {
+		let resolve: (value: string) => void = () => {};
+		securityMocks.device.mockImplementation(
+			() =>
+				new Promise((done) => {
+					resolve = done;
+				}),
+		);
+		const { unmount } = render(<OnlinePaymentCheckout {...props} option={{ ...props.option, canStart: true }} />);
+		fireEvent.click(screen.getByRole('button', { name: 'Gerar Pix' }));
+		unmount();
+		await act(async () => {
+			resolve('session-test');
+		});
+		expect(mocks.start).not.toHaveBeenCalled();
 	});
 	it('shows the initial Pix code without waiting for polling or requiring a PNG', async () => {
 		mocks.start.mockResolvedValue({

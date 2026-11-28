@@ -15,6 +15,8 @@ describe('entrada de pagamento online', () => {
 	it.each([
 		pix,
 		card,
+		{ ...pix, deviceId: 'session_123-abc' },
+		{ ...card, deviceId: 'session_456-abc' },
 		{ ...pix, amountInCents: 10000, expectedBalanceInCents: 20000 },
 		{ ...card, amountInCents: 10000 },
 		{ ...card, identification: { type: 'CPF', number: '12345678901' } },
@@ -23,6 +25,10 @@ describe('entrada de pagamento online', () => {
 	});
 	it.each([
 		{ ...pix, amountInCents: 1 },
+		{ ...pix, deviceId: 'abc\r\nInjected: yes' },
+		{ ...card, deviceId: 'x'.repeat(513) },
+		{ ...pix, deviceId: '' },
+		{ ...card, payerName: 'não autorizado' },
 		{ ...pix, environment: 'test' },
 		{ ...pix, customerId: chargeId },
 		{ ...pix, chargeId: 'x' },

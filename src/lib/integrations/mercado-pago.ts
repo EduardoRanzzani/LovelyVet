@@ -3,21 +3,17 @@ import 'server-only';
 import { MercadoPagoConfig, Order } from 'mercadopago';
 import { getMercadoPagoConfig } from './mercado-pago-config';
 
-let cached: { accessToken: string; client: Order } | undefined;
-
-// Inicialização preguiçosa: importar o módulo não exige credenciais nem realiza chamadas.
+// Inicialização preguiçosa, cliente novo por operação: o SDK mescla requestOptions
+// na configuração mutável (incluindo idempotência e identificador de dispositivo).
 export function getMercadoPagoOrderClient(): Order {
 	const { accessToken } = getMercadoPagoConfig();
-	if (cached?.accessToken === accessToken) return cached.client;
 
-	const client = new Order(
+	return new Order(
 		new MercadoPagoConfig({
 			accessToken,
 			options: { timeout: 10_000 },
 		}),
 	);
-	cached = { accessToken, client };
-	return client;
 }
 
 // O valor é um inteiro positivo representável pelo integer do PostgreSQL.

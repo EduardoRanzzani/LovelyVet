@@ -1,12 +1,14 @@
 'use client';
 
-import { CardPayment, initMercadoPago } from '@mercadopago/sdk-react';
+import { CardPayment } from '@mercadopago/sdk-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 import { buildCardPaymentPayload, type CardPaymentPayload } from '@/lib/finance/online-card-payment';
 
+import { initializeCheckoutSdk } from './mercado-pago-checkout-sdk';
+
 const publicKey = process.env.NEXT_PUBLIC_MERCADO_PAGO_PUBLIC_KEY?.trim();
-// Loaded lazily only when the card option is selected.
-if (typeof window !== 'undefined' && publicKey) initMercadoPago(publicKey, { locale: 'pt-BR' });
+// Também garante inicialização ao abrir o Brick em prévia.
+initializeCheckoutSdk();
 
 type Props = {
 	chargeId: string;
