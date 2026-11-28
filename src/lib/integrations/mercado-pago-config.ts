@@ -88,7 +88,7 @@ export async function assertMercadoPagoProductionCollector(
 ): Promise<void> {
 	if (
 		config.environment !== 'production' ||
-		config.collectorId === '3648917376' ||
+		['3648917376', '3887167128'].includes(config.collectorId) ||
 		!config.accessToken.startsWith('APP_USR-')
 	) {
 		throw new Error('Conta Mercado Pago de produção incompatível.');

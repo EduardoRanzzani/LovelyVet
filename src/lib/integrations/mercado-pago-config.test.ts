@@ -153,11 +153,9 @@ describe('validação remota do recebedor de produção', () => {
 		reply(account);
 		await expect(assertMercadoPagoProductionCollector(config)).rejects.toThrow('incompatível');
 	});
-	it('nega coletor de homologação conhecido sem rede', async () => {
+	it.each(['3648917376', '3887167128'])('nega coletor de homologação %s sem rede', async (collectorId) => {
 		const request = reply({});
-		await expect(assertMercadoPagoProductionCollector({ ...config, collectorId: '3648917376' })).rejects.toThrow(
-			'incompatível',
-		);
+		await expect(assertMercadoPagoProductionCollector({ ...config, collectorId })).rejects.toThrow('incompatível');
 		expect(request).not.toHaveBeenCalled();
 	});
 	it('nega token explicitamente de teste sem rede', async () => {
