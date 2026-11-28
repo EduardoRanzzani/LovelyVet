@@ -81,3 +81,42 @@ export async function assertMercadoPagoTestCollector(config: ReturnType<typeof g
 		throw new Error('Conta Mercado Pago de homologação incompatível.');
 	}
 }
+
+// Produção exige conta real e identidade esperada; APP_USR também existe em teste.
+export async function assertMercadoPagoProductionCollector(
+	config: ReturnType<typeof getMercadoPagoConfig>,
+): Promise<void> {
+	if (
+		config.environment !== 'production' ||
+		config.collectorId === '3648917376' ||
+		!config.accessToken.startsWith('APP_USR-')
+	) {
+		throw new Error('Conta Mercado Pago de produção incompatível.');
+	}
+	let account: unknown;
+	try {
+		const response = await fetch('https://api.mercadolibre.com/users/me', {
+			method: 'GET',
+			headers: { Authorization: `Bearer ${config.accessToken}`, Accept: 'application/json' },
+			cache: 'no-store',
+			redirect: 'error',
+			signal: AbortSignal.timeout(10_000),
+		});
+		if (!response.ok) throw new Error('Consulta recusada.');
+		account = await response.json();
+	} catch {
+		throw new Error('Não foi possível validar a conta Mercado Pago de produção.');
+	}
+	if (!account || typeof account !== 'object') throw new Error('Conta Mercado Pago de produção incompatível.');
+	const { id, tags } = account as { id?: unknown; tags?: unknown };
+	const validId = typeof id === 'string' || (typeof id === 'number' && Number.isSafeInteger(id));
+	if (
+		!validId ||
+		String(id) !== config.collectorId ||
+		!Array.isArray(tags) ||
+		!tags.every((tag) => typeof tag === 'string' && tag.length > 0) ||
+		tags.includes('test_user')
+	) {
+		throw new Error('Conta Mercado Pago de produção incompatível.');
+	}
+}

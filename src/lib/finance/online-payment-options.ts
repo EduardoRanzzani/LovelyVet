@@ -31,7 +31,7 @@ export async function getOwnOnlinePaymentOptions(
 	} catch {
 		return result;
 	}
-	// Exibir prévia exclusivamente em teste; produção não recebe botão enquanto desabilitada.
+	// Exibir prévia exclusivamente em teste; produção exige os gates de criação.
 	let ready = false;
 	try {
 		assertOnlinePaymentReleaseReady(config.environment);

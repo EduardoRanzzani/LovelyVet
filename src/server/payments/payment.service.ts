@@ -14,8 +14,10 @@ import { assertNoBlockingOnlinePayment, getOnlinePaymentAmount } from '@/lib/fin
 import {
 	assertMercadoPagoEnabled,
 	assertMercadoPagoTestCollector,
+	assertMercadoPagoProductionCollector,
 	getMercadoPagoConfig,
 } from '@/lib/integrations/mercado-pago-config';
+import { getClerkEnvironment } from '@/lib/integrations/clerk-environment';
 import { getMercadoPagoOrderClient } from '@/lib/integrations/mercado-pago';
 import { lockAccessibleAppointment } from '@/lib/security/appointment-access';
 import type { AuthContext } from '@/lib/security/auth-context';
@@ -23,12 +25,34 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { submitOnlinePayment } from './payment-orchestrator';
 import { readStatementDescriptor, type ReservedPayment } from './order-request';
 
-// Gate temporário: somente next dev + configuração de teste. Produção continua bloqueada.
+// Gate de criação: não interfere na recuperação ou conciliação.
 export function assertOnlinePaymentReleaseReady(
 	environment: ReturnType<typeof getMercadoPagoConfig>['environment'],
 ): void {
-	if (environment !== 'test' || process.env.NODE_ENV !== 'development') {
-		throw new Error('Criação de pagamentos online liberada somente para homologação local.');
+	const clerk = getClerkEnvironment();
+	const production = environment === 'production';
+	if (
+		process.env.NODE_ENV !== (production ? 'production' : 'development') ||
+		clerk !== (production ? 'production' : 'development')
+	) {
+		throw new Error('Ambientes de execução incompatíveis com a criação de pagamentos.');
+	}
+	if (production && process.env.MERCADO_PAGO_PRODUCTION_RELEASE_READY !== 'true') {
+		throw new Error('Liberação de pagamentos reais não autorizada.');
+	}
+	const suffix = production ? 'live_' : 'test_';
+	const publicKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+	const secretKey = process.env.CLERK_SECRET_KEY;
+	if (
+		!publicKey?.startsWith(`pk_${suffix}`) ||
+		publicKey.length <= `pk_${suffix}`.length ||
+		!secretKey?.startsWith(`sk_${suffix}`) ||
+		secretKey.length <= `sk_${suffix}`.length
+	) {
+		throw new Error('Credenciais Clerk incompatíveis com o ambiente.');
+	}
+	if (production && !process.env.NEXT_PUBLIC_MERCADO_PAGO_PUBLIC_KEY?.startsWith('APP_USR-')) {
+		throw new Error('Public Key Mercado Pago de produção incompatível.');
 	}
 }
 
@@ -45,7 +69,8 @@ export async function createOnlinePayment(context: AuthContext, input: OnlinePay
 		.where(and(eq(appointmentChargesTable.id, input.chargeId), buildFinancialAccessCondition(context)));
 	if (!candidate) throw new Error('Cobrança não encontrada.');
 	assertOnlinePaymentScope({ environment: config.environment, petId: candidate.petId });
-	await assertMercadoPagoTestCollector(config);
+	if (config.environment === 'test') await assertMercadoPagoTestCollector(config);
+	else await assertMercadoPagoProductionCollector(config);
 	const statementDescriptor = readStatementDescriptor();
 	const client = getMercadoPagoOrderClient();
 	return submitOnlinePayment(input, {

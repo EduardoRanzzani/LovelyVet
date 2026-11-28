@@ -351,3 +351,26 @@ it('complementa cartão aprovado em cobrança quitada sem novo recebimento', asy
 	expect(mocks.set).toHaveBeenCalledTimes(1);
 	expect(mocks.set).toHaveBeenCalledWith({ providerPaidAmountInCents: 8772, updatedAt: expect.any(Date) });
 });
+
+it('persiste expiração Pix confirmada sem inserir recebimento nem quitar', async () => {
+	mocks.get.mockResolvedValue({
+		...order,
+		status: 'canceled',
+		status_detail: 'expired',
+		total_paid_amount: '0.00',
+		transactions: {
+			payments: [
+				{
+					...order.transactions.payments[0],
+					status: 'canceled',
+					status_detail: 'expired',
+					paid_amount: '0.00',
+				},
+			],
+		},
+	});
+	await expect(reconcileMercadoPagoOrder('ORD123', id)).resolves.toBeUndefined();
+	expect(mocks.set).toHaveBeenCalledWith(expect.objectContaining({ status: 'expired', reconciliationReason: null }));
+	expect(mocks.values).not.toHaveBeenCalled();
+	expect(mocks.set).not.toHaveBeenCalledWith(expect.objectContaining({ isPaid: true }));
+});

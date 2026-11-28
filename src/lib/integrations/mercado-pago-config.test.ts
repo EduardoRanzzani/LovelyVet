@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	assertMercadoPagoEnabled,
 	assertMercadoPagoTestCollector,
+	assertMercadoPagoProductionCollector,
 	getMercadoPagoConfig,
 	getMercadoPagoEnvironment,
 	isMercadoPagoEnabled,
@@ -119,5 +120,55 @@ describe('validação remota do recebedor de teste', () => {
 			assertMercadoPagoTestCollector({ ...getMercadoPagoConfig(), environment: 'production' }),
 		).rejects.toThrow('homologação obrigatória');
 		expect(request).not.toHaveBeenCalled();
+	});
+});
+
+describe('validação remota do recebedor de produção', () => {
+	const config = {
+		environment: 'production',
+		collectorId: '123456',
+		accessToken: 'APP_USR-fake',
+		webhookSecret: 'fake',
+	} as const;
+	function reply(account: unknown, ok = true) {
+		const request = vi.fn().mockResolvedValue({ ok, json: async () => account });
+		vi.stubGlobal('fetch', request);
+		return request;
+	}
+	it('aceita conta correspondente sem marca de teste', async () => {
+		const request = reply({ id: 123456, tags: ['normal'] });
+		await expect(assertMercadoPagoProductionCollector(config)).resolves.toBeUndefined();
+		expect(request).toHaveBeenCalledWith(
+			'https://api.mercadolibre.com/users/me',
+			expect.objectContaining({ cache: 'no-store', redirect: 'error' }),
+		);
+	});
+	it.each([
+		null,
+		{ id: 123456 },
+		{ id: 123456, tags: ['test_user'] },
+		{ id: 999, tags: [] },
+		{ id: 123456, tags: [null] },
+	])('nega conta incompatível: %j', async (account) => {
+		reply(account);
+		await expect(assertMercadoPagoProductionCollector(config)).rejects.toThrow('incompatível');
+	});
+	it('nega coletor de homologação conhecido sem rede', async () => {
+		const request = reply({});
+		await expect(assertMercadoPagoProductionCollector({ ...config, collectorId: '3648917376' })).rejects.toThrow(
+			'incompatível',
+		);
+		expect(request).not.toHaveBeenCalled();
+	});
+	it('nega token explicitamente de teste sem rede', async () => {
+		const request = reply({});
+		await expect(assertMercadoPagoProductionCollector({ ...config, accessToken: 'TEST-fake' })).rejects.toThrow(
+			'incompatível',
+		);
+		expect(request).not.toHaveBeenCalled();
+	});
+	it('oculta falha HTTP', async () => {
+		reply({ secret: 'segredo-remoto' }, false);
+		await expect(assertMercadoPagoProductionCollector(config)).rejects.toThrow('Não foi possível validar');
 	});
 });
