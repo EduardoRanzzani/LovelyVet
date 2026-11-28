@@ -1,4 +1,7 @@
 import type { ReactNode } from 'react';
+import Link from 'next/link';
+import { ReceiptText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { ChargeStatusBadge } from '@/components/shared/charge-status-badge';
 import { formatCurrencyFromCents } from '@/helpers/currency';
 import { getMonthBounds, type FinancialStatementRow } from '@/lib/finance/financial-report';
@@ -29,12 +32,16 @@ export function CustomerChargeCard({
 	month,
 	paymentAction,
 	onlineAttempts,
+	receiptLinks,
+	receiptScope = 'month',
 }: {
 	charge: FinancialStatementRow;
 	items: readonly StatementItem[];
 	month: string;
 	paymentAction?: ReactNode;
 	onlineAttempts?: readonly StaffOnlinePaymentAttempt[];
+	receiptLinks?: ReadonlyMap<string, string>;
+	receiptScope?: 'month' | 'all';
 }) {
 	const { start, end } = getMonthBounds(month);
 	const inMonth = (date: Date) => date >= start && date < end;
@@ -118,9 +125,20 @@ export function CustomerChargeCard({
 										{inMonth(payment.receivedAt) ? 'No mês selecionado' : 'Fora do mês selecionado'}
 									</p>
 								</div>
-								<p className='min-w-0 font-medium tabular-nums wrap-anywhere'>
-									{currency(payment.amountInCents)}
-								</p>
+								<div className='flex flex-col items-end gap-2'>
+									<p className='min-w-0 font-medium tabular-nums wrap-anywhere'>
+										{currency(payment.amountInCents)}
+									</p>
+									{payment.source === 'mercado_pago' && receiptLinks?.has(payment.id) && (
+										<Button asChild variant='outline' size='sm'>
+											<Link
+												href={`/my-finance/${charge.id}/payment/${receiptLinks.get(payment.id)}?month=${month}&scope=${receiptScope}`}
+											>
+												<ReceiptText aria-hidden='true' /> Ver comprovante
+											</Link>
+										</Button>
+									)}
+								</div>
 							</li>
 						))}
 					</ul>

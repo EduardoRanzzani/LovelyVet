@@ -96,3 +96,27 @@ describe('CustomerChargeCard', () => {
 		expect(within(card).getByText('Nenhum pagamento registrado.')).toBeInTheDocument();
 	});
 });
+
+it('exibe comprovante somente para recebimento online autorizado', () => {
+	render(
+		<CustomerChargeCard
+			charge={charge}
+			items={items}
+			month='2026-11'
+			receiptScope='all'
+			receiptLinks={
+				new Map([
+					['p1', 'manual'],
+					['p2', 'attempt'],
+				])
+			}
+		/>,
+	);
+	const links = screen.getAllByRole('link', { name: 'Ver comprovante' });
+	expect(links).toHaveLength(1);
+	expect(links[0]).toHaveAttribute('href', '/my-finance/a/payment/attempt?month=2026-11&scope=all');
+});
+it('não oferece comprovante de outro tutor ou em listagem administrativa', () => {
+	render(<CustomerChargeCard charge={charge} items={items} month='2026-11' />);
+	expect(screen.queryByRole('link', { name: 'Ver comprovante' })).not.toBeInTheDocument();
+});

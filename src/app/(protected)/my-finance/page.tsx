@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getOwnOnlineReceiptLinks } from '@/lib/finance/online-payment-receipts';
 import { getOwnFinancialReport } from '@/lib/finance/financial-report-queries';
 import { getOwnStatementItems } from '@/lib/finance/customer-statement-queries';
 import { resolveStatementMonth, selectStatementCharges } from '@/lib/finance/customer-statement';
@@ -48,6 +49,10 @@ export default async function MyFinancePage({
 	const statement = selectStatementCharges(report.statements, selected, selectedScope);
 	const items = await getOwnStatementItems(statement.map((charge) => charge.id));
 	const paymentOptions = await getOwnOnlinePaymentOptions(context, statement);
+	const receiptLinks = await getOwnOnlineReceiptLinks(
+		context,
+		statement.map((charge) => charge.id),
+	);
 	const href = `/my-finance?month=${selected}`;
 	return (
 		<PageContainer>
@@ -115,6 +120,8 @@ export default async function MyFinancePage({
 									charge={charge}
 									items={items.get(charge.id) ?? []}
 									month={selected}
+									receiptLinks={receiptLinks}
+									receiptScope={selectedScope}
 									paymentAction={
 										paymentOptions.has(charge.id) ? (
 											<Button asChild className='w-full sm:w-auto'>

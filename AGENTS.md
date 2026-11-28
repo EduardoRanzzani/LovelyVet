@@ -418,3 +418,21 @@ Arquivos de código e testes alterados neste fix:
 - Evidências: Cartão + Pix 20/20 verificações funcionais e persistência confirmada, principal 20000, dois recebimentos, saldo zero. Caso 8000: Order 8771, transação 8772; esperado total acumulado 20772 após sincronização, sem alterar o ledger.
 - Qualidade da integração: gravação do painel VenaImports em teste (medição 10/10/2026, 50/100) é referência, não pontuação atual LovelyVet. Avaliar separadamente `items.quantity`, `items.unit_price`, `statement_descriptor`, nome e data de cadastro do pagador, minimização de dados, recuperação, logs e relatórios; não enviar itens integrais como se quitados parcialmente. Medir a aplicação correta antes da release.
 - Sem migration, dependência, alteração automática de banco ou push. Testes locais, sincronização, idempotência, nova aprovação automática com divergência, concorrência e ciclo do Brick pendentes.
+
+## 5.1C — Fix 07G: clareza do parcelamento
+
+- Fix 07F: 1.157 testes aprovados conforme relato do responsável; complementação administrativa e idempotência confirmadas (principal 8000, desembolso 8772, recebimento único). Cartão + Pix quitado com desembolso 20772. Limpeza intermediária confirmada; novo cartão parcial aprovado automaticamente, homologação funcional 16/16. Consulta remota da nova ordem ainda pendente.
+- Detalhes e histórico exibem quantidade e valor médio da parcela usando exclusivamente o total pago confirmado, em centavos. Quando a divisão não é exata, indica aproximadamente; não representa cronograma de parcelas fornecido pelo emissor. Total desconhecido mantém somente a quantidade. Histórico não deriva valores complementares de pagamentos de outros tutores.
+- Sem alteração de conciliação, autorização, schema, dependências ou dados; tema claro preservado. Testes locais e homologação visual pendentes. Preservar pagamento atual e saldo de 12000 para concorrência entre tutores, saldo desatualizado e ciclo do Brick. Sem push antes da release.
+
+## 5.1C — Fix 07H: comprovante online histórico
+
+- Meu financeiro: link Ver comprovante por recebimento online próprio, com rota `/my-finance/[chargeId]/payment/[attemptId]`, filtros preservados e layout de confirmação reutilizado. A consulta é somente leitura, não chama o provedor nem depende da flag de criação; exige configuração de escopo válida, vínculo atual, iniciador, ambiente, coletor, aprovação e identidade do recebimento. Sem link para pagamento manual ou de cotutor; acesso direto inválido retorna not found.
+- O resumo reflete o saldo atual da cobrança e identifica a operação consultada; retorno ao Meu financeiro para iniciar novos pagamentos pelos gates existentes. Não é comprovante fiscal nem extrato imutável do provedor. Tema claro.
+- Sem migration, dependências, alterações financeiras ou push. Testes locais, homologação do Fix 07G/07H, consulta remota da aprovação automática e concorrência entre tutores continuam pendentes.
+
+## 5.1C — Fix 07I: refinamento visual do comprovante
+
+- Fixes 07G/07H: imagens confirmam parcelamento 2x de R$ 43,86, comprovante histórico parcial, botão no histórico e checkout separado. Testes locais e isolamento entre tutores ainda aguardam confirmação.
+- Cabeçalho branco compacto, ícone de sucesso verde, indicadores menores de desembolso e saldo, principal separado e progresso integrado. Data histórica incorporada ao cabeçalho; aviso de saldo atual preservado. Total remoto desconhecido não é substituído pelo principal. Tema exclusivamente claro.
+- Dois novos testes de apresentação e reforço do teste da rota histórica. Sem alteração de autorização, conciliação, consultas financeiras, dependências, migrations ou banco. Validação local e visual pendentes; preservar pagamento de teste e saldo de 12000. Sem commit ou push automático.

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowLeft, CircleCheck, ClipboardList, CreditCard, History, QrCode, ReceiptText, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatCurrencyFromCents } from '@/helpers/currency';
+import { formatPaymentInstallments } from '@/lib/finance/payment-installment-label';
 import type { StatementItem } from '@/lib/finance/customer-statement';
 import type { OnlinePaymentSnapshot } from '@/lib/finance/online-payment-view';
 
@@ -12,9 +13,20 @@ type Props = {
 	testMode?: boolean;
 	items?: readonly StatementItem[];
 	onContinue?: () => void;
+	historical?: boolean;
+	receivedAtLabel?: string;
 };
 
-export function OnlinePaymentSuccess({ payment, petName, returnHref, testMode, items, onContinue }: Props) {
+export function OnlinePaymentSuccess({
+	payment,
+	petName,
+	returnHref,
+	testMode,
+	items,
+	onContinue,
+	historical = false,
+	receivedAtLabel,
+}: Props) {
 	const method =
 		payment.method === 'pix'
 			? 'Pix'
@@ -47,77 +59,92 @@ export function OnlinePaymentSuccess({ payment, petName, returnHref, testMode, i
 	};
 	return (
 		<div className='space-y-4'>
-			<div className='w-full space-y-4 rounded-xl border border-emerald-300 bg-emerald-50 p-4 sm:p-6'>
+			<section aria-label='Confirmação do pagamento' className='space-y-4 rounded-xl border bg-card p-4 sm:p-6'>
 				<div role='status' className='flex items-start gap-3'>
-					<div className='flex size-14 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800'>
-						<CircleCheck aria-hidden='true' className='size-8' />
+					<div className='flex size-12 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800'>
+						<CircleCheck aria-hidden='true' className='size-7' />
 					</div>
 					<div className='min-w-0 space-y-1'>
 						<h2 className='text-xl font-semibold text-emerald-800'>Pagamento aprovado!</h2>
-						<p className='text-sm text-emerald-900'>
-							{payment.balanceInCents > 0
-								? 'Seu pagamento parcial foi confirmado com sucesso.'
-								: 'Seu pagamento foi confirmado com sucesso.'}
+						<p className='text-sm text-muted-foreground'>
+							{historical
+								? 'Este pagamento foi confirmado com sucesso.'
+								: payment.balanceInCents > 0
+									? 'Seu pagamento parcial foi confirmado com sucesso.'
+									: 'Seu pagamento foi confirmado com sucesso.'}
 						</p>
+						{receivedAtLabel && (
+							<p className='text-xs text-muted-foreground'>
+								Recebimento confirmado em {receivedAtLabel}.
+							</p>
+						)}
 					</div>
 				</div>
-				<dl
-					aria-label='Valores do pagamento'
-					className='grid gap-3 border-t border-emerald-200 pt-4 sm:grid-cols-2'
-				>
-					<div className='min-w-0 text-emerald-900'>
-						<dt className='text-sm'>
-							{confirmation ? 'Valor pago nesta operação (principal)' : 'Valor pago da cobrança'}
-						</dt>
+				{historical && (
+					<p className='text-xs text-muted-foreground'>
+						O resumo e o saldo da cobrança refletem a situação atual.
+					</p>
+				)}
+				<dl aria-label='Valores do pagamento' className='grid gap-3 border-t pt-4 sm:grid-cols-2'>
+					<div className='min-w-0 space-y-1 rounded-lg bg-emerald-50 p-3 text-emerald-900'>
+						<dt className='text-sm'>Valor total pago</dt>
 						<dd className='text-2xl font-semibold tabular-nums wrap-anywhere'>
-							{formatCurrencyFromCents(payment.amountInCents)}
+							{totalPaid === null ? 'Indisponível no momento' : money(totalPaid)}
+						</dd>
+						<dd className='text-xs'>
+							{method}
+							{payment.method === 'credit_card'
+								? ` · ${formatPaymentInstallments(payment.installments, totalPaid)}`
+								: ''}
 						</dd>
 					</div>
 					<div
 						className={
 							payment.balanceInCents > 0
-								? 'min-w-0 rounded-lg bg-amber-50 p-3 text-amber-900'
-								: 'min-w-0 text-emerald-900'
+								? 'min-w-0 space-y-1 rounded-lg bg-amber-50 p-3 text-amber-900'
+								: 'min-w-0 space-y-1 rounded-lg bg-muted p-3'
 						}
 					>
-						<dt className='text-sm'>Saldo restante</dt>
+						<dt className='text-sm'>Saldo restante da cobrança</dt>
 						<dd className='text-2xl font-semibold tabular-nums wrap-anywhere'>
-							{formatCurrencyFromCents(payment.balanceInCents)}
+							{money(payment.balanceInCents)}
+						</dd>
+						<dd className='text-xs'>
+							{payment.balanceInCents > 0 ? 'Pagamento parcial' : 'Cobrança quitada'}
 						</dd>
 					</div>
 				</dl>
-			</div>
-			{confirmation && (
-				<section aria-label='Progresso do pagamento' className='space-y-3 rounded-xl border bg-card p-4'>
-					<h3 className='text-sm font-semibold'>Resumo financeiro</h3>
-					<dl className='grid gap-2 sm:grid-cols-3'>
-						{[
-							{ label: 'Total original', value: confirmation.totalInCents },
-							{ label: 'Principal acumulado', value: confirmation.paidInCents },
-							{ label: 'Saldo da cobrança', value: payment.balanceInCents },
-						].map(({ label, value }) => (
-							<div key={label} className='min-w-0 rounded-lg bg-muted p-3'>
-								<dt className='text-xs text-muted-foreground'>{label}</dt>
-								<dd className='text-lg font-semibold tabular-nums wrap-anywhere'>{money(value)}</dd>
-							</div>
-						))}
-					</dl>
-					<div className='flex justify-between gap-2 text-sm font-medium'>
-						<span>Progresso do pagamento</span>
-						<span>{progress}% pago</span>
+				<dl className='space-y-2 text-sm'>
+					<div className='flex justify-between gap-2'>
+						<dt className='text-muted-foreground'>Principal creditado na cobrança</dt>
+						<dd className='font-medium tabular-nums'>{money(payment.amountInCents)}</dd>
 					</div>
-					<progress
-						className='h-3 w-full overflow-hidden rounded-full bg-muted accent-emerald-600 [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-emerald-600 [&::-moz-progress-bar]:rounded-full [&::-moz-progress-bar]:bg-emerald-600'
-						value={progress}
-						max={100}
-						aria-label='Percentual pago da cobrança'
-					/>
-					<div className='flex flex-wrap justify-between gap-2 text-xs text-muted-foreground'>
-						<span>{money(confirmation.paidInCents)} pagos</span>
-						<span>Total: {money(confirmation.totalInCents)}</span>
-					</div>
-				</section>
-			)}
+					{surcharge !== null && surcharge > 0 && (
+						<div className='flex justify-between gap-2'>
+							<dt className='text-muted-foreground'>Acréscimos do parcelamento</dt>
+							<dd className='font-medium tabular-nums'>{money(surcharge)}</dd>
+						</div>
+					)}
+				</dl>
+				{confirmation && (
+					<section aria-label='Progresso do pagamento' className='space-y-2 border-t pt-4'>
+						<div className='flex justify-between gap-2 text-sm font-medium'>
+							<span>Progresso do pagamento</span>
+							<span>{progress}% pago</span>
+						</div>
+						<progress
+							className='h-2 w-full overflow-hidden rounded-full bg-muted accent-emerald-600 [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-emerald-600 [&::-moz-progress-bar]:rounded-full [&::-moz-progress-bar]:bg-emerald-600'
+							value={progress}
+							max={100}
+							aria-label='Percentual pago da cobrança'
+						/>
+						<div className='flex flex-wrap justify-between gap-2 text-xs text-muted-foreground'>
+							<span>{money(confirmation.paidInCents)} pagos</span>
+							<span>Total: {money(confirmation.totalInCents)}</span>
+						</div>
+					</section>
+				)}
+			</section>
 			<div
 				className={items !== undefined ? 'grid min-w-0 items-start gap-4 lg:grid-cols-2' : 'grid min-w-0 gap-4'}
 			>
@@ -184,7 +211,7 @@ export function OnlinePaymentSuccess({ payment, petName, returnHref, testMode, i
 							<div className='space-y-1'>
 								<dt className='text-muted-foreground'>Parcelamento</dt>
 								<dd className='font-medium'>
-									{payment.installments === 1 ? 'À vista' : `${payment.installments}x`}
+									{formatPaymentInstallments(payment.installments, totalPaid)}
 								</dd>
 							</div>
 						)}
@@ -226,12 +253,18 @@ export function OnlinePaymentSuccess({ payment, petName, returnHref, testMode, i
 									<div className='min-w-0'>
 										<p className='font-medium'>
 											{labels[receipt.method] ?? 'Pagamento'}
-											{receipt.installments && receipt.installments > 1
-												? ` · ${receipt.installments}x`
+											{receipt.method === 'credit_card' &&
+											receipt.installments &&
+											receipt.installments > 1
+												? ` · ${formatPaymentInstallments(receipt.installments, receipt.ownOnline ? receipt.providerPaidAmountInCents : null)}`
 												: ''}
 										</p>
 										<p className='text-xs text-muted-foreground'>
-											{receipt.current ? 'Pagamento atual' : 'Recebimento confirmado'}
+											{receipt.current
+												? historical
+													? 'Pagamento deste comprovante'
+													: 'Pagamento atual'
+												: 'Recebimento confirmado'}
 										</p>
 									</div>
 								</div>

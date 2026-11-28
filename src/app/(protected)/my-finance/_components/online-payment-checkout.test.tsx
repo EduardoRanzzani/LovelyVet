@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OnlinePaymentCheckout } from './online-payment-checkout';
 import { OnlinePaymentSuccess } from './online-payment-success';
@@ -347,7 +347,9 @@ describe('OnlinePaymentCheckout', () => {
 		expect(screen.getByRole('textbox', { name: 'Código Pix' })).toHaveValue('000201TESTE');
 		await tick(3000);
 		expect(screen.getByText('Pagamento aprovado!')).toBeInTheDocument();
-		expect(screen.getByText('Pix', { exact: true })).toBeInTheDocument();
+		expect(
+			within(screen.getByRole('region', { name: 'Detalhes do pagamento' })).getByText('Pix', { exact: true }),
+		).toBeInTheDocument();
 		expect(screen.queryByRole('textbox', { name: 'Código Pix' })).not.toBeInTheDocument();
 		expect(screen.queryByRole('button', { name: 'Atualizar situação' })).not.toBeInTheDocument();
 		expect(screen.getByRole('link', { name: 'Voltar ao meu financeiro' })).toHaveAttribute(
@@ -503,7 +505,7 @@ describe('layout exclusivo de confirmação', () => {
 		expect(screen.queryByRole('region', { name: 'Resumo da cobrança' })).not.toBeInTheDocument();
 		expect(screen.queryByRole('region', { name: 'Pagamento online' })).not.toBeInTheDocument();
 		expect(screen.getByText('Confirmação de pagamento')).toBeInTheDocument();
-		expect(screen.getByText('Valor pago da cobrança')).toBeInTheDocument();
+		expect(screen.getByText('Principal creditado na cobrança')).toBeInTheDocument();
 		expect(screen.getByText('Sua cobrança está quitada.')).toBeInTheDocument();
 		expect(screen.getAllByRole('link', { name: 'Voltar ao meu financeiro' })).toHaveLength(1);
 		await tick(60000);
@@ -777,6 +779,7 @@ it('exibe desembolso próprio confirmado sem expor acréscimos de outro tutor', 
 	);
 	const history = screen.getByRole('region', { name: 'Histórico de pagamentos da cobrança' });
 	expect(history).toHaveTextContent(/207,72/);
+	expect(history).toHaveTextContent('Cartão de crédito · 2x de R$ 43,86');
 	expect(history).toHaveTextContent(/Total pago:.*87,72/);
 	expect(history).toHaveTextContent(/Acréscimos:.*7,72/);
 	const confirmation = payment.confirmation!;
@@ -795,5 +798,72 @@ it('exibe desembolso próprio confirmado sem expor acréscimos de outro tutor', 
 			returnHref={props.returnHref}
 		/>,
 	);
-	expect(history).not.toHaveTextContent(/87,72|207,72|7,72/);
+	expect(history).not.toHaveTextContent(/87,72|207,72|7,72|43,86/);
+});
+
+it.each([
+	[8772, '2x de R$ 43,86'],
+	[8771, '2x de aproximadamente R$ 43,86'],
+	[null, '2x'],
+] as const)('exibe parcelamento próprio com total %s nos detalhes e histórico', (total, expected) => {
+	const payment = snapshot({
+		status: 'approved',
+		amountInCents: 8000,
+		method: 'credit_card',
+		installments: 2,
+		balanceInCents: 12000,
+		confirmation: {
+			totalInCents: 20000,
+			paidInCents: 8000,
+			providerPaidAmountInCents: total,
+			receipts: [
+				{
+					amountInCents: 8000,
+					method: 'credit_card',
+					current: true,
+					ownOnline: true,
+					providerPaidAmountInCents: total,
+					installments: 2,
+				},
+			],
+		},
+	});
+	render(<OnlinePaymentSuccess payment={payment} petName='Teste' returnHref={props.returnHref} />);
+	expect(screen.getByRole('region', { name: 'Detalhes do pagamento' })).toHaveTextContent(`Parcelamento${expected}`);
+	expect(screen.getByRole('region', { name: 'Histórico de pagamentos da cobrança' })).toHaveTextContent(
+		`Cartão de crédito · ${expected}`,
+	);
+});
+
+it('destaca o desembolso sem confundir principal e saldo no cabeçalho compacto', () => {
+	const payment = snapshot({
+		status: 'approved',
+		amountInCents: 8000,
+		method: 'credit_card',
+		installments: 2,
+		balanceInCents: 12000,
+		confirmation: { totalInCents: 20000, paidInCents: 8000, providerPaidAmountInCents: 8772, receipts: [] },
+	});
+	render(<OnlinePaymentSuccess payment={payment} petName='Teste' returnHref={props.returnHref} />);
+	const header = screen.getByRole('region', { name: 'Confirmação do pagamento' });
+	expect(header).toHaveTextContent(/Valor total pago.*87,72/);
+	expect(header).toHaveTextContent(/Principal creditado na cobrança.*80,00/);
+	expect(header).toHaveTextContent(/Saldo restante da cobrança.*120,00/);
+	expect(header).toHaveTextContent('2x de R$ 43,86');
+	expect(screen.getByRole('progressbar')).toHaveAttribute('value', '40');
+});
+
+it('não apresenta o principal como desembolso quando o total remoto é desconhecido', () => {
+	const payment = snapshot({
+		status: 'approved',
+		amountInCents: 8000,
+		method: 'credit_card',
+		installments: 2,
+		balanceInCents: 12000,
+	});
+	render(<OnlinePaymentSuccess payment={payment} petName='Teste' returnHref={props.returnHref} />);
+	expect(screen.getByLabelText('Valores do pagamento')).toHaveTextContent('Indisponível no momento');
+	expect(screen.getByRole('region', { name: 'Confirmação do pagamento' })).toHaveTextContent(
+		/Principal creditado na cobrança.*80,00/,
+	);
 });
