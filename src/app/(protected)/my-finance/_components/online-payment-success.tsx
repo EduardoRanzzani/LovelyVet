@@ -5,6 +5,7 @@ import { formatCurrencyFromCents } from '@/helpers/currency';
 import { formatPaymentInstallments } from '@/lib/finance/payment-installment-label';
 import type { StatementItem } from '@/lib/finance/customer-statement';
 import type { OnlinePaymentSnapshot } from '@/lib/finance/online-payment-view';
+import { PaymentProgressBar } from './payment-progress-bar';
 
 type Props = {
 	payment: OnlinePaymentSnapshot;
@@ -38,10 +39,6 @@ export function OnlinePaymentSuccess({
 	const confirmation = payment.confirmation;
 	const totalPaid = confirmation?.providerPaidAmountInCents ?? null;
 	const surcharge = totalPaid === null ? null : totalPaid - payment.amountInCents;
-	const progress =
-		confirmation && confirmation.totalInCents > 0
-			? Math.min(100, Math.max(0, Math.floor((confirmation.paidInCents / confirmation.totalInCents) * 100)))
-			: 0;
 	const ownReceipts = confirmation?.receipts.filter((receipt) => receipt.ownOnline) ?? [];
 	const ownTotal =
 		ownReceipts.length > 0 && ownReceipts.every((receipt) => receipt.providerPaidAmountInCents !== null)
@@ -126,24 +123,7 @@ export function OnlinePaymentSuccess({
 						</div>
 					)}
 				</dl>
-				{confirmation && (
-					<section aria-label='Progresso do pagamento' className='space-y-2 border-t pt-4'>
-						<div className='flex justify-between gap-2 text-sm font-medium'>
-							<span>Progresso do pagamento</span>
-							<span>{progress}% pago</span>
-						</div>
-						<progress
-							className='h-2 w-full overflow-hidden rounded-full bg-muted accent-emerald-600 [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-emerald-600 [&::-moz-progress-bar]:rounded-full [&::-moz-progress-bar]:bg-emerald-600'
-							value={progress}
-							max={100}
-							aria-label='Percentual pago da cobrança'
-						/>
-						<div className='flex flex-wrap justify-between gap-2 text-xs text-muted-foreground'>
-							<span>{money(confirmation.paidInCents)} pagos</span>
-							<span>Total: {money(confirmation.totalInCents)}</span>
-						</div>
-					</section>
-				)}
+				{confirmation && <PaymentProgressBar confirmation={confirmation} />}
 			</section>
 			<div
 				className={items !== undefined ? 'grid min-w-0 items-start gap-4 lg:grid-cols-2' : 'grid min-w-0 gap-4'}
@@ -304,13 +284,13 @@ export function OnlinePaymentSuccess({
 							</div>
 						)}
 						<div className='flex justify-between gap-2'>
-							<dt>Total desembolsado online (com acréscimos)</dt>
+							<dt>Total pago online (com acréscimos)</dt>
 							<dd>{ownTotal === null ? 'Indisponível' : money(ownTotal)}</dd>
 						</div>
 						{ownTotal === null && (
 							<p className='text-xs text-muted-foreground'>
-								O total desembolsado não está disponível para todos os seus pagamentos online. Isso não
-								altera o saldo da cobrança.
+								O Total pago não está disponível para todos os seus pagamentos online. Isso não altera o
+								saldo da cobrança.
 							</p>
 						)}
 						<div className='flex justify-between gap-2 font-semibold'>

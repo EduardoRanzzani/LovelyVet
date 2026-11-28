@@ -1,3 +1,10 @@
+## 1.6.0 — Fix 07J — progresso segmentado (27/11/2026)
+
+- Barra reutilizável na confirmação e no comprovante: cartão emerald-700, Pix emerald-400, débito emerald-800, dinheiro emerald-600, outros emerald-300; saldo cinza neutro. Legenda compacta, acessível e responsiva, tema claro. Somente principal de recebimentos confirmados; agrega por método, sem acréscimos, parcelas ou identidade do pagador. Histórico incompleto/divergente mantém progresso total sem inventar composição. Sem alteração de autorização, conciliação, dependências, migration, versão ou banco.
+- Fixes 07G–07I consolidados em `663ac5f`; 07F em `d212324`. Última suíte relatada: 1.184 testes/112 arquivos antes da última alteração textual. Privacidade 14/14, Brick 15/15 e persistência/arredondamento 13/13 homologados; divergência remota 87,71/87,72 reproduzida. Etapa 5.1C encerrada por decisão do desenvolvedor; concorrência manual dispensada, não executada nem aprovada.
+- 5.1D: geração 9/9, recuperação navegador 12/12, reinício Next.js 14/14. Pix de teste aprovado automaticamente pelo cenário APRO; expiração real e liberação após expiração não homologadas manualmente. Revisar cobertura automatizada na 5.2. Implementação Pix preservada por decisão do desenvolvedor.
+- 5.1E inventário confirmado: cartão principal 8.000 e Pix 6.000 centavos, dois recebimentos, saldo 6.000 de 20.000. Limpeza ainda não executada; preservar para homologar 07J, depois simulação ROLLBACK e limpeza autorizada. Oito testes novos preparados; validação local e aceite visual pendentes. Não fazer commit/push automático. Manter versão 1.5.0 até release; pagamentos novos DEV desabilitados durante validação. 5.2, 5.3 e release 6 seguem pendentes.
+
 ## 1.6.0 — fechamento da etapa 4.2 — 26/11/2026
 
 Este checkpoint prevalece sobre os registros anteriores do ciclo Mercado Pago.
@@ -410,7 +417,7 @@ Arquivos de código e testes alterados neste fix:
 - Confirmação com destaque verde horizontal, resumo financeiro compacto, detalhes e itens em cards responsivos e ícones no histórico. Preserva valores desconhecidos, autorização de continuidade, escopo e regras de conciliação.
 - Dois testes de apresentação adicionados; validação local e visual pendentes. Sem migration, dependência, alteração de banco ou push. Preservar os recebimentos atuais para homologação visual.
 
-## 5.1C — Fix 07F: total desembolsado e tema claro
+## 5.1C — Fix 07F: Total pago e tema claro
 
 - Fix 07E: homologação visual 12/12 itens aplicáveis informada; tema escuro não faz parte do produto. LovelyVet utiliza exclusivamente tema claro; não adicionar variantes `dark:` nem seletor de tema. Remoção das variantes introduzidas na confirmação; auditoria global de tema não incluída.
 - Decisão explícita do responsável: priorizar `transactions.payments[0].paid_amount` na diferença de até um centavo entre totais válidos de cartão parcelado. Não há confirmação formal do provedor de precedência em caso de divergência. Principal, identidade, método, parcelas, estornos e limites permanecem exatos; valor confirmado divergente não é sobrescrito.
